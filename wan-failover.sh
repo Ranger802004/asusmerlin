@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Author: Ranger802004
+# Version 1.1
+
 # Cause the script to exit if errors are encountered
 set -e
 set -u
@@ -9,7 +12,7 @@ scriptstatus ()
 {
 # Checking if script is already running
  echo "Checking if $0 is already running..."
-if [[ "$(echo $(ps | grep -v "grep" | grep -e "$0" | wc -l))" -gt "1" ]] >/dev/null; then
+if [[ "$(echo $(ps | grep -v "grep" | grep -e "$0" | wc -l))" -gt "5" ]] >/dev/null; then
   echo "$0 is already running..."
 else
 setvariables
@@ -267,6 +270,8 @@ fi
 ip route add default via $(nvram get "$ACTIVEWAN"_gateway) dev $(nvram get "$ACTIVEWAN"_ifname)
 
 # Change QoS Settings
+if [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
+  echo $(date "+%D @ %T"): $0 - QoS is Enabled... >> $LOGPATH
 if [[ -z "$(nvram get qos_obw)" ]] && [[ -z "$(nvram get qos_obw)" ]] >/dev/null;then
   echo $(date "+%D @ %T"): $0 - QoS set to Automatic Bandwidth Setting... >> $LOGPATH
 else
@@ -282,6 +287,9 @@ nvram set qos_ibw=$WAN1_QOS_IBW
 nvram set qos_overhead=$WAN1_QOS_OVERHEAD
 nvram set qos_atm=$WAN1_QOS_ATM
 fi
+fi
+else
+  echo $(date "+%D @ %T"): $0 - QoS is Disabled... >> $LOGPATH
 fi
 sleep 1
 done
