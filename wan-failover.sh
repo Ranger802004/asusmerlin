@@ -12,7 +12,7 @@ scriptstatus ()
 {
 # Checking if script is already running
  echo "Checking if $0 is already running..."
-if [[ "$(echo $(ps | grep -v "grep" | grep -e "$0" | wc -l))" -gt "5" ]] >/dev/null; then
+if [[ "$(echo $(ps | grep -v "grep" | grep -e "$0" | wc -l))" -gt "1" ]] >/dev/null; then
   echo "$0 is already running..."
 else
 setvariables
