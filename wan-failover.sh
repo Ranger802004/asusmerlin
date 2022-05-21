@@ -91,7 +91,8 @@ elif [[ "$(nvram get "${WANPREFIX}"_enable)" == "1" ]] >/dev/null;then
 if [[ "${WANPREFIX}" == "wan0" ]] >/dev/null;then
 if [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] >/dev/null;then
   echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is not connected, attempting to restart interface... >> $LOGPATH
-service restart_wan_if 0 && break
+service "restart_wan_if 0"
+sleep 3
 else
   echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is connected... >> $LOGPATH
 fi
@@ -106,7 +107,8 @@ fi
 elif [[ "${WANPREFIX}" == "wan1" ]] >/dev/null;then
 if [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] >/dev/null;then
   echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is not connected, attempting to restart interface... >> $LOGPATH
-service restart_wan_if 1 && break
+service "restart_wan_if 1"
+sleep 3
 else
   echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is connected... >> $LOGPATH
 fi
