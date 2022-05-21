@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Author: Ranger802004
-# Version 1.1
+# Version 1.2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -28,6 +28,9 @@ WANPREFIXES="wan0 wan1"
 #Path to Log File
 LOGPATH="/tmp/wan_event.log"
 
+#Number of Log Records to Keep
+LOGNUMBER="250"
+
 #DNS Resolver File
 DNSRESOLVFILE="/tmp/resolv.conf"
 
@@ -40,7 +43,7 @@ PINGCOUNT="3"
 #Ping timeout in seconds
 PINGTIMEOUT="1"
 
-# If a Dual WAN is disabled, this is how long the script will sleep before checking again.  Value is in seconds
+# If Dual WAN is disabled, this is how long the script will sleep before checking again.  Value is in seconds
 WANDISABLEDSLEEPTIMER="3"
 
 #QoS Manual Settings Variables
@@ -86,19 +89,33 @@ fi
 elif [[ "$(nvram get "${WANPREFIX}"_enable)" == "1" ]] >/dev/null;then
   echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} enabled... >> $LOGPATH
 if [[ "${WANPREFIX}" == "wan0" ]] >/dev/null;then
-if [[ "$(ping -I $(nvram get ${WANPREFIX}_ifname) $WAN0TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}')" == "0%" ]] >/dev/null;then
-  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} connected with 0% packet loss... >> $LOGPATH
+if [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] >/dev/null;then
+  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is not connected, attempting to restart interface... >> $LOGPATH
+service restart_wan_if 0 && break
+else
+  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is connected... >> $LOGPATH
+fi
+WAN0PACKETLOSS="$(ping -I $(nvram get ${WANPREFIX}_ifname) $WAN0TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}')"
+if [[ "$WAN0PACKETLOSS" == "0%" ]] >/dev/null;then
+  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} has $WAN0PACKETLOSS packet loss... >> $LOGPATH
 WAN0STATUS="CONNECTED"
 else
-  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is disconnected with 100% packet loss... >> $LOGPATH
+  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} has $WAN0PACKETLOSS packet loss... >> $LOGPATH
 WAN0STATUS="DISCONNECTED"
 fi
 elif [[ "${WANPREFIX}" == "wan1" ]] >/dev/null;then
-if [[ "$(ping -I $(nvram get ${WANPREFIX}_ifname) $WAN1TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}')" == "0%" ]] >/dev/null;then
-  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is connected with 0% packet loss... >> $LOGPATH
+if [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] >/dev/null;then
+  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is not connected, attempting to restart interface... >> $LOGPATH
+service restart_wan_if 1 && break
+else
+  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is connected... >> $LOGPATH
+fi
+WAN1PACKETLOSS="$(ping -I $(nvram get ${WANPREFIX}_ifname) $WAN1TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}')"
+if [[ "$WAN1PACKETLOSS" == "0%" ]] >/dev/null;then
+  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} has $WAN1PACKETLOSS packet loss... >> $LOGPATH
 WAN1STATUS="CONNECTED"
 else
-  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} is disconnected with 100% packet loss... >> $LOGPATH
+  echo $(date "+%D @ %T"): $0 - WAN Status: ${WANPREFIX} has $WAN1PACKETLOSS packet loss... >> $LOGPATH
 WAN1STATUS="DISCONNECTED"
 fi
 fi
@@ -195,7 +212,7 @@ INACTIVEWAN=wan1
 echo Switching to $ACTIVEWAN
 fi
 
-until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$ACTIVEWAN"_primary)" == "1" ]] ;} & [[ "$(echo $(ip route show default | awk '{print $3}'))" == "$(nvram get "$ACTIVEWAN"_gateway)" ]] >/dev/null;do
+until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$ACTIVEWAN"_primary)" == "1" ]] ;} && [[ "$(echo $(ip route show default | awk '{print $3}'))" == "$(nvram get "$ACTIVEWAN"_gateway)" ]] >/dev/null;do
 # Change Primary WAN
   echo $(date "+%D @ %T"): $0 - Switching $ACTIVEWAN to primary... >> $LOGPATH
 nvram set "$ACTIVEWAN"_primary=1 && nvram set "$INACTIVEWAN"_primary=0
@@ -211,52 +228,69 @@ nvram set wan_gateway=$(nvram get "$ACTIVEWAN"_gateway)
 nvram set wan_ifname=$(nvram get "$ACTIVEWAN"_ifname)
 
 # Switch DNS
-# Change Automatic ISP DNS Settings
-if [ ! -z "$(echo $(nvram get "$ACTIVEWAN"_dns))" ] >/dev/null;then
-# Change Automatic ISP DNS Settings
-  echo $(date "+%D @ %T"): $0 - Setting Automatic DNS Settings from ISP: $(nvram get "$ACTIVEWAN"_dns)... >> $LOGPATH
-nvram set wan_dns="$(echo $(nvram get "$ACTIVEWAN"_dns))"
-if [[ "$(cat "$DNSRESOLVFILE" | grep -e $(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $1}') | wc -l)" == "0" ]] >/dev/null;then
-sed -i '1i nameserver '$(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $1}')'' $DNSRESOLVFILE
-sed -i '/nameserver '$(echo $(nvram get "$INACTIVEWAN"_dns) | awk '{print $1}')'/d' $DNSRESOLVFILE
-else
-  echo $(date "+%D @ %T"): $0 - $DNSRESOLVFILE already updated for DNS1... >> $LOGPATH
-fi
-if [[ "$(cat "$DNSRESOLVFILE" | grep -e $(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $2}') | wc -l)" == "0" ]] >/dev/null;then
-sed -i '2i nameserver '$(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $2}')'' $DNSRESOLVFILE
-sed -i '/nameserver '$(echo $(nvram get "$INACTIVEWAN"_dns) | awk '{print $2}')'/d' $DNSRESOLVFILE
-else
-  echo $(date "+%D @ %T"): $0 - $DNSRESOLVFILE already updated for DNS2... >> $LOGPATH
-fi
-else
-  echo $(date "+%D @ %T"): $0 - No Automatic DNS Settings from ISP... >> $LOGPATH
-fi
-
+if [ ! -z "$(nvram get "$ACTIVEWAN"_dns1_x)" ] || [ ! -z "$(nvram get "$ACTIVEWAN"_dns2_x)" ] >/dev/null;then
+  echo $(date "+%D @ %T"): $0 - Setting Manual DNS Settings... >> $LOGPATH
+# Change Manual DNS Settings
 if [ ! -z "$(nvram get "$ACTIVEWAN"_dns1_x)" ] >/dev/null;then
-# Change DNS1
-  echo $(date "+%D @ %T"): $0 - Setting DNS1: $(nvram get "$ACTIVEWAN"_dns1_x)... >> $LOGPATH
+# Change DNS1 Server
+  echo $(date "+%D @ %T"): $0 - Setting DNS1 Server: $(nvram get "$ACTIVEWAN"_dns1_x)... >> $LOGPATH
 nvram set wan_dns1_x=$(nvram get "$ACTIVEWAN"_dns1_x)
 if [[ "$(cat "$DNSRESOLVFILE" | grep -e $(echo $(nvram get "$ACTIVEWAN"_dns1_x)) | wc -l)" == "0" ]] >/dev/null;then
 sed -i '1i nameserver '$(nvram get "$ACTIVEWAN"_dns1_x)'' $DNSRESOLVFILE
 sed -i '/nameserver '$(nvram get "$INACTIVEWAN"_dns1_x)'/d' $DNSRESOLVFILE
 else
-  echo $(date "+%D @ %T"): $0 - $DNSRESOLVFILE already updated for DNS1... >> $LOGPATH
+  echo $(date "+%D @ %T"): $0 - $DNSRESOLVFILE already updated for $ACTIVEWAN DNS1 Server... >> $LOGPATH
 fi
 else
-  echo $(date "+%D @ %T"): $0 - No DNS1 Setting for $(nvram get "$ACTIVEWAN"_ifname)... >> $LOGPATH
+  echo $(date "+%D @ %T"): $0 - No DNS1 Server for $ACTIVEWAN... >> $LOGPATH
 fi
 if [ ! -z "$(nvram get "$ACTIVEWAN"_dns2_x)" ] >/dev/null;then
-# Change DNS2
-  echo $(date "+%D @ %T"): $0 - Setting DNS2: $(nvram get "$ACTIVEWAN"_dns2_x)... >> $LOGPATH
+# Change DNS2 Server
+  echo $(date "+%D @ %T"): $0 - Setting DNS2 Server: $(nvram get "$ACTIVEWAN"_dns2_x)... >> $LOGPATH
 nvram set wan_dns2_x=$(nvram get "$ACTIVEWAN"_dns2_x)
 if [[ "$(cat "$DNSRESOLVFILE" | grep -e $(echo $(nvram get "$ACTIVEWAN"_dns2_x)) | wc -l)" == "0" ]] >/dev/null;then
 sed -i '2i nameserver '$(nvram get "$ACTIVEWAN"_dns2_x)'' $DNSRESOLVFILE
 sed -i '/nameserver '$(nvram get "$INACTIVEWAN"_dns2_x)'/d' $DNSRESOLVFILE
 else
-  echo $(date "+%D @ %T"): $0 - $DNSRESOLVFILE already updated for DNS2... >> $LOGPATH
+  echo $(date "+%D @ %T"): $0 - $DNSRESOLVFILE already updated for $ACTIVEWAN DNS2 Server... >> $LOGPATH
 fi
 else
-  echo $(date "+%D @ %T"): $0 - No DNS2 Setting for $(nvram get "$ACTIVEWAN"_ifname)... >> $LOGPATH
+  echo $(date "+%D @ %T"): $0 - No DNS2 Server for $ACTIVEWAN... >> $LOGPATH
+fi
+
+# Blank Value Test
+if [ ! -z "$(nvram get "$ACTIVEWAN"_desc)" ] >/dev/null;then
+  echo $(date "+%D @ %T"): $0 - Setting DNS Test: Value Exists - $ACTIVEWAN... >> $LOGPATH
+else
+  echo $(date "+%D @ %T"): $0 - Setting DNS Test: Blank - $ACTIVEWAN... >> $LOGPATH
+fi
+
+# Change Automatic ISP DNS Settings
+elif [ ! -z "$(echo $(nvram get "$ACTIVEWAN"_dns))" ] >/dev/null;then
+  echo $(date "+%D @ %T"): $0 - Setting Automatic DNS Settings from ISP: $(nvram get "$ACTIVEWAN"_dns)... >> $LOGPATH
+nvram set wan_dns="$(echo $(nvram get "$ACTIVEWAN"_dns))"
+if [ ! -z "$(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $1}')" ] >/dev/null;then
+if [[ "$(cat "$DNSRESOLVFILE" | grep -e $(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $1}') | wc -l)" == "0" ]] >/dev/null;then
+sed -i '1i nameserver '$(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $1}')'' $DNSRESOLVFILE
+sed -i '/nameserver '$(echo $(nvram get "$INACTIVEWAN"_dns) | awk '{print $1}')'/d' $DNSRESOLVFILE
+else
+  echo $(date "+%D @ %T"): $0 - $DNSRESOLVFILE already updated for $ACTIVEWAN DNS1 Server... >> $LOGPATH
+fi
+else
+  echo $(date "+%D @ %T"): $0 - DNS1 Server not detected in Automatic ISP Settings for $ACTIVEWAN... >> $LOGPATH
+fi
+if [ ! -z "$(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $2}')" ] >/dev/null;then
+if [[ "$(cat "$DNSRESOLVFILE" | grep -e $(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $2}') | wc -l)" == "0" ]] >/dev/null;then
+sed -i '2i nameserver '$(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $2}')'' $DNSRESOLVFILE
+sed -i '/nameserver '$(echo $(nvram get "$INACTIVEWAN"_dns) | awk '{print $2}')'/d' $DNSRESOLVFILE
+else
+  echo $(date "+%D @ %T"): $0 - $DNSRESOLVFILE already updated for $ACTIVEWAN DNS2 Server... >> $LOGPATH
+fi
+else
+  echo $(date "+%D @ %T"): $0 - DNS2 Server not detected in Automatic ISP Settings for $ACTIVEWAN... >> $LOGPATH
+fi
+else
+  echo $(date "+%D @ %T"): $0 - No DNS Settings detected... >> $LOGPATH
 fi
 
 # Change Default Route
@@ -273,9 +307,9 @@ ip route add default via $(nvram get "$ACTIVEWAN"_gateway) dev $(nvram get "$ACT
 if [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
   echo $(date "+%D @ %T"): $0 - QoS is Enabled... >> $LOGPATH
 if [[ -z "$(nvram get qos_obw)" ]] && [[ -z "$(nvram get qos_obw)" ]] >/dev/null;then
-  echo $(date "+%D @ %T"): $0 - QoS set to Automatic Bandwidth Setting... >> $LOGPATH
+  echo $(date "+%D @ %T"): $0 - QoS is set to Automatic Bandwidth Setting... >> $LOGPATH
 else
-  echo $(date "+%D @ %T"): $0 - Setting QoS Bandwidth Settings... >> $LOGPATH
+  echo $(date "+%D @ %T"): $0 - Setting Manual QoS Bandwidth Settings... >> $LOGPATH
 if [[ "$ACTIVEWAN" == "wan0" ]] >/dev/null;then
 nvram set qos_obw=$WAN0_QOS_OBW
 nvram set qos_ibw=$WAN0_QOS_IBW
@@ -311,7 +345,24 @@ wanevent
 # Trigger WAN Event
 wanevent ()
 {
+if [[ -f "/jffs/scripts/wan-event" ]] >/dev/null;then
 /jffs/scripts/wan-event
+logclean
+else
+logclean
+fi
+}
+
+# Log Clean
+logclean ()
+{
+  echo $(date "+%D @ %T"): $0 - Log Cleanup: Deleting logs older than last $LOGNUMBER log messages... >> $LOGPATH
+tail -n $LOGNUMBER $LOGPATH > $LOGPATH'.tmp'
+sleep 1
+cp -f $LOGPATH'.tmp' $LOGPATH
+sleep 1
+rm -f $LOGPATH'.tmp'
+sleep 1
 wanstatus
 }
 scriptstatus
