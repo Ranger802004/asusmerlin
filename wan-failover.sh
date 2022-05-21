@@ -258,13 +258,6 @@ else
   echo $(date "+%D @ %T"): $0 - No DNS2 Server for $ACTIVEWAN... >> $LOGPATH
 fi
 
-# Blank Value Test
-if [ ! -z "$(nvram get "$ACTIVEWAN"_desc)" ] >/dev/null;then
-  echo $(date "+%D @ %T"): $0 - Setting DNS Test: Value Exists - $ACTIVEWAN... >> $LOGPATH
-else
-  echo $(date "+%D @ %T"): $0 - Setting DNS Test: Blank - $ACTIVEWAN... >> $LOGPATH
-fi
-
 # Change Automatic ISP DNS Settings
 elif [ ! -z "$(echo $(nvram get "$ACTIVEWAN"_dns))" ] >/dev/null;then
   echo $(date "+%D @ %T"): $0 - Setting Automatic DNS Settings from ISP: $(nvram get "$ACTIVEWAN"_dns)... >> $LOGPATH
