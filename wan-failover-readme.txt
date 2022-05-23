@@ -13,7 +13,7 @@ v1.3.3 Notes - 05/23/2022
 General:
 - Log Cleaner sleeps if there are less than 1000 messages in the log.
 - Optimized WAN Status
-- Optimiazed WAN Disabled
+- Optimized WAN Disabled
 - If the Target IP Address is the same IP as the Default Gateway, route will not be added.
 
 WAN Monitor:
