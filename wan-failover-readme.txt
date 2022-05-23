@@ -19,6 +19,9 @@ General:
 WAN Monitor:
 - Resolved an issue where there IP Route for the WAN Monitor would delete during a WAN interface restart, added a check in the Monitor to return to WAN Status if the route is not in the Route Table.
 
+Run Modes:
+- Added a new run mode "switchwan", this will manually change from Secondary WAN to Primary WAN.
+
 v1.3 Notes - 05/22/2022
 General:
 - If you are using a version prior to v1.3 of Wan-Failover, delete your configuration and install fresh using the provided installation command.
