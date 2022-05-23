@@ -1,10 +1,23 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/22/2022
-# Version: v1.3
+# Date: 05/23/2022
+# Version: v1.3.3
 
 Install:
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh install
+
+Update:
+/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh kill
+
+v1.3.3 Notes - 05/23/2022
+General:
+- Log Cleaner sleeps if there are less than 1000 messages in the log.
+- Optimized WAN Status
+- Optimiazed WAN Disabled
+- If the Target IP Address is the same IP as the Default Gateway, route will not be added.
+
+WAN Monitor:
+- Resolved an issue where there IP Route for the WAN Monitor would delete during a WAN interface restart, added a check in the Monitor to return to WAN Status if the route is not in the Route Table.
 
 v1.3 Notes - 05/22/2022
 General:
