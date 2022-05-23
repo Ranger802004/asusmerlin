@@ -25,14 +25,12 @@ Run Modes:
 - Log Clean Mode: This will clean the log file leaving only the last 1000 messages. Add the command argument "logclean" to use this mode.
 
 WAN IP Address Targets:
-- The script will now attempt to create a route for each WAN IP Address Target if it does not exist, this will allow the ping monintor to work for both interfaces simultaneously.
+- The script will now attempt to create a route for each WAN IP Address Target if it does not exist, this will allow the ping monitor to work for both interfaces simultaneously.
 - Test the IP Addresses you configure during install prior to installing to make sure that server allows ICMP Echo Requests "ping".
 - Use Different IP Addresses for each interface
 
 Configuration:
 - User Set Variables that are created on install will be created under /jffs/configs/wan-failover.conf and used by the script for these custom variables.
-
-Hello guys, I have attached a script I wrote to replace the built in Failover function from ASUS that is awful. Please let me know if you have any suggestions or questions, thank you. You can set this to run in the background with a cron job or let another script start it like wan-event, also you will see there are several variables you can set from within the script.
 
 v1.2 Notes - 05/21/2022:
 - DNS Logic Update to account for missing variables.
