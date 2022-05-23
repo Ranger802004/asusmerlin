@@ -20,7 +20,7 @@ WAN Monitor:
 - Resolved an issue where there IP Route for the WAN Monitor would delete during a WAN interface restart, added a check in the Monitor to return to WAN Status if the route is not in the Route Table.
 
 Run Modes:
-- Added a new run mode "switchwan", this will manually change from Secondary WAN to Primary WAN.
+- Added a new run mode "switchwan", this will manually change the Primary WAN.
 
 v1.3 Notes - 05/22/2022
 General:
