@@ -9,6 +9,17 @@ Install:
 Update:
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh kill
 
+v1.3.5 Notes - 05/24/2022
+General:
+- Optimized WAN Disabled Logic.
+- During WAN Status Check, it will look for 0.0.0.0 as a WAN interface's Gateway or IP Address and mark it as Disconnected.
+- Updated logging Verbiage for Switch WAN.
+- Moved DNS Resolv File Variable to Global Variables
+- Added key events to go to System Log that can be displayed in the ASUS System Log Web GUI.  This includes Failures, Primary WAN switching, and Packet Loss detection.
+
+Monitor Mode:
+- Monitor Mode will now not be killed by Kill Mode or Log Clean Mode
+
 v1.3.3 Notes - 05/23/2022
 General:
 - Log Cleaner sleeps if there are less than 1000 messages in the log.
