@@ -11,6 +11,8 @@ Update:
 
 v1.3.5 Notes - 05/24/2022
 General:
+- Renamed WAN0Monitor to WAN0 Failover Monitor
+- Renamed WAN0RestoreMonitor to WAN0 Failback Monitor
 - Optimized WAN Disabled Logic.
 - During WAN Status Check, it will look for 0.0.0.0 as a WAN interface's Gateway or IP Address and mark it as Disconnected.
 - Updated logging Verbiage for Switch WAN.
