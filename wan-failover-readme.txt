@@ -1,13 +1,30 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 05/23/2022
-# Version: v1.3.3
+# Version: v1.3.7
 
 Install:
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh install
 
 Update:
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh kill
+
+Run Modes:
+- Install Mode: This will install the script and configuration files necessary for it to run. Add the command argument "install" to use this mode.
+- Uninstall Mode: This will uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
+- Run Mode: This mode is for the script to run in the background via cron job. Add the command argument "run" to use this mode.
+- Update Mode: This mode will check to see if there is an update available from the GitHub Repository and update.  (Must be on v1.3.7 or newer)
+- Manual Mode: This will allow you to run the script in a command console. Add the command argument "manual" to use this mode.
+- Switch WAN Mode: This will manually switch the Primary WAN. Add the command argument "switchwan" to use this mode.
+- Monitor Mode: This will monitor the log file of the script. Add the command argument "monitor" to use this mode.
+- Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
+- Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
+- Log Clean Mode: This will clean the log file leaving only the last 1000 messages. Add the command argument "logclean" to use this mode.
+
+v1.3.7 Notes - 05/25/2022
+General
+- Tied system logs into built in logger method.
+- Added Update Mode using argument "update", this will update the script from the GitHub Repository.
 
 v1.3.5 Notes - 05/24/2022
 General:
