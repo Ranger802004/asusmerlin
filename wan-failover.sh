@@ -3,13 +3,15 @@
 # WAN Failover for ASUS Routers using Merlin Firmware v386.5.2
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 05/25/2022
-# Version: v1.3.6
+# Version: v1.3.7
 
 # Cause the script to exit if errors are encountered
 set -e
 set -u
 
 # Global Variables
+DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh"
+VERSION="v1.3.7"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 LOGPATH="/tmp/wan_event.log"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -30,6 +32,7 @@ if [ -z "$(echo ${1#})" ] >/dev/null;then
   echo -e "${GREEN}$0 run${WHITE} - This mode is for the script to run in the background via cron job.${NOCOLOR}"
   echo -e "${GREEN}$0 manual${WHITE} - This will allow you to run the script in a command console.${NOCOLOR}"
   echo -e "${GREEN}$0 monitor${WHITE} - This will monitor the log file of the script.${NOCOLOR}"
+  echo -e "${YELLOW}$0 update${WHITE} - This will download and update to the latest version.${NOCOLOR}"
   echo -e "${YELLOW}$0 cronjob${WHITE} - This will create the Cron Jobs necessary for the script to run and also perform log cleaning.${NOCOLOR}"
   echo -e "${YELLOW}$0 logclean${WHITE} - This will clean the log file leaving only the last 1000 messages.${NOCOLOR}"
   echo -e "${YELLOW}$0 switchwan${WHITE} - This will manually switch Primary WAN.${NOCOLOR}"
@@ -67,6 +70,9 @@ elif [[ "${mode}" == "logclean" ]] >/dev/null;then
 elif [[ "${mode}" == "switchwan" ]] >/dev/null;then 
   echo -e "${YELLOW}${0##*/} - Switch WAN Mode${NOCOLOR}"
   setvariables
+elif [[ "${mode}" == "update" ]] >/dev/null;then 
+  echo -e "${YELLOW}${0##*/} - Update Mode${NOCOLOR}"
+  update
 fi
 if [[ ! -f "$CONFIGFILE" ]] >/dev/null;then
   echo -e "${RED}${0##*/} - No Configuration File Detected - Run Install Mode${NOCOLOR}"
@@ -260,6 +266,21 @@ echo -e "${RED}Killing ${0##*/}...${NOCOLOR}"
 echo "$(date "+%D @ %T"): $0 - Kill: Killing ${0##*/}..." >> $LOGPATH
 sleep 3 && killall ${0##*/}
 exit
+}
+
+# Update Script
+update ()
+{
+REMOTEVERSION="$(curl $DOWNLOADPATH | grep -e "# Version:" | awk '{print $3}')" 
+if [[ "$VERSION" != "$REMOTEVERSION" ]];then
+  echo -e "${YELLOW}Script is out of date...${NOCOLOR}"
+  read -n 1 -s -r -p "Press any key to continue to update..."
+  echo "Run Command"
+  /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 & kill
+  echo -e "${GREEN}Script has been updated...${NOCOLOR}"
+elif [[ "$VERSION" == "$REMOTE" ]];then
+  echo -e "${GREEN}Script is up to date...${NOCOLOR}"
+fi
 }
 
 # Script Status
