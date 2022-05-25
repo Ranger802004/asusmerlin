@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using Merlin Firmware v386.5.2
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/24/2022
-# Version: v1.3.5
+# Date: 05/25/2022
+# Version: v1.3.6
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,6 @@ set -u
 # Global Variables
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 LOGPATH="/tmp/wan_event.log"
-SYSTEMLOGPATH="/tmp/syslog.log"
 DNSRESOLVFILE="/tmp/resolv.conf"
 LOGNUMBER="1000"
 WANPREFIXES="wan0 wan1"
@@ -494,7 +493,7 @@ fi
 wan0failovermonitor ()
 {
   echo "$(date "+%D @ %T"): $0 - WAN0 Failover Monitor: Monitoring WAN0 via $WAN0TARGET for Failure..." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Monitoring WAN0 via $WAN0TARGET for Failure" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "Monitoring WAN0 via $WAN0TARGET for Failure"
 while { [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "1" ]] ;} && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_primary)" == "1" ]] >/dev/null;do
   WAN0PACKETLOSS="$(ping -I $(nvram get $(echo $WANPREFIXES | awk '{print $1}')_ifname) $WAN0TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}')"
   if [ -z "$(ip route list $WAN0TARGET via "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_gateway)" dev "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_ifname)")" ] >/dev/null;then
@@ -503,11 +502,11 @@ while { [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" 
     continue
   elif [[ "$WAN0PACKETLOSS" == "100%" ]] >/dev/null;then
     echo "$(date "+%D @ %T"): $0 - WAN0 Failover Monitor: Failure Detected - WAN0 Packet Loss: $WAN0PACKETLOSS..." >> $LOGPATH
-    echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Failure Detected - WAN0 Packet Loss: $WAN0PACKETLOSS" >> $SYSTEMLOGPATH
+    logger -t "${0##*/}" "Failure Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
     switchwan
   elif [[ "$WAN0PACKETLOSS" != "0%" ]] >/dev/null;then
     echo "$(date "+%D @ %T"): $0 - WAN0 Failover Monitor: Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS..." >> $LOGPATH
-    echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS" >> $SYSTEMLOGPATH
+    logger -t "${0##*/}" "Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
   fi
 done
   wanstatus
@@ -517,7 +516,7 @@ done
 wan0failbackmonitor ()
 {
   echo "$(date "+%D @ %T"): $0 - WAN0 Failback Monitor: Monitoring WAN0 via $WAN0TARGET for Failback..." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Monitoring WAN0 via $WAN0TARGET for Failback" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "Monitoring WAN0 via $WAN0TARGET for Failback"
 while [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_primary)" == "1" ]] >/dev/null;do
   WAN0PACKETLOSS="$(ping -I $(nvram get $(echo $WANPREFIXES | awk '{print $1}')_ifname) $WAN0TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}')"
   if [ -z "$(ip route list $WAN0TARGET via "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_gateway)" dev "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_ifname)")" ] >/dev/null;then
@@ -526,11 +525,11 @@ while [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]]
     continue
   elif [[ "$WAN0PACKETLOSS" == "0%" ]] >/dev/null;then
     echo "$(date "+%D @ %T"): $0 - WAN0 Failback Monitor: Connection Detected - WAN0 Packet Loss: $WAN0PACKETLOSS..." >> $LOGPATH
-    echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Connection Detected - WAN0 Packet Loss: $WAN0PACKETLOSS" >> $SYSTEMLOGPATH
+    logger -t "${0##*/}" "Connection Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
     switchwan
   elif [[ "$WAN0PACKETLOSS" != "0%" ]] >/dev/null;then
     echo "$(date "+%D @ %T"): $0 - WAN0 Failback Monitor: Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS..." >> $LOGPATH
-    echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS" >> $SYSTEMLOGPATH
+    logger -t "${0##*/}" "Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
   fi
 done
   wanstatus
@@ -541,22 +540,22 @@ wandisabled ()
 {
 if [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "none" ]] || [[ "$(nvram get wans_mode)" != "fo" ]] >/dev/null;then
   echo "$(date "+%D @ %T"): $0 - WAN Failover Disabled: Dual WAN is disabled or not in Failover Mode." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Dual WAN is disabled or not in Failover Mode" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "Dual WAN is disabled or not in Failover Mode"
 elif [[ "$(nvram get wandog_enable)" != "0" ]] >/dev/null;then
   echo "$(date "+%D @ %T"): $0 - WAN Failover Disabled: ASUS Factory WAN Failover is enabled." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: ASUS Factory WAN Failover is enabled" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "ASUS Factory WAN Failover is enabled"
 elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "0" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "0" ]] >/dev/null;then
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: $(echo $WANPREFIXES | awk '{print $1}') and $(echo $WANPREFIXES | awk '{print $2}') are disabled" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "$(echo $WANPREFIXES | awk '{print $1}') and $(echo $WANPREFIXES | awk '{print $2}') are disabled"
   echo "$(date "+%D @ %T"): $0 - WAN Failover Disabled: $(echo $WANPREFIXES | awk '{print $1}') and $(echo $WANPREFIXES | awk '{print $2}') are disabled." >> $LOGPATH
 elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "0" ]] >/dev/null;then
   echo "$(date "+%D @ %T"): $0 - WAN Failover Disabled: $(echo $WANPREFIXES | awk '{print $1}') is disabled." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: $(echo $WANPREFIXES | awk '{print $1}') is disabled" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "$(echo $WANPREFIXES | awk '{print $1}') is disabled"
 elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "0" ]] >/dev/null;then
   echo "$(date "+%D @ %T"): $0 - WAN Failover Disabled: $(echo $WANPREFIXES | awk '{print $2}') is disabled." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: $(echo $WANPREFIXES | awk '{print $2}') is disabled" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "$(echo $WANPREFIXES | awk '{print $2}') is disabled"
 fi
   echo "$(date "+%D @ %T"): $0 - WAN Failover Disabled: WAN Failover is currently stopped, will resume when Dual WAN Failover Mode is enabled and WAN Links are enabled with an active connection..." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: WAN Failover is currently stopped, will resume when Dual WAN Failover Mode is enabled and WAN Links are enabled with an active connection" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "WAN Failover is currently stopped, will resume when Dual WAN Failover Mode is enabled and WAN Links are enabled with an active connection"
 while \
   # Return to WAN Status if both interfaces are Enabled and Connected
   if  { [[ "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_enable)" == "1" ]] && [[ "$(nvram get "$(echo $WANPREFIXES | awk '{print $2}')"_enable)" == "1" ]] ;} \
@@ -626,7 +625,7 @@ do
 done
 # Return to WAN Status
 echo "$(date "+%D @ %T"): $0 - WAN Failover Disabled: Returning to check WAN Status..." >> $LOGPATH
-echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Returning to check WAN Status" >> $SYSTEMLOGPATH
+logger -t "${0##*/}" "Returning to check WAN Status"
 wanstatus
 }
 
@@ -647,20 +646,20 @@ fi
 until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$ACTIVEWAN"_primary)" == "1" ]] ;} && [[ "$(echo $(ip route show default | awk '{print $3}'))" == "$(nvram get "$ACTIVEWAN"_gateway)" ]] >/dev/null;do
   # Change Primary WAN
   echo "$(date "+%D @ %T"): $0 - WAN Switch: Switching $ACTIVEWAN to Primary WAN..." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Switching $ACTIVEWAN to Primary WAN" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "Switching $ACTIVEWAN to Primary WAN"
   nvram set "$ACTIVEWAN"_primary=1 && nvram set "$INACTIVEWAN"_primary=0
   # Change WAN IP Address
   echo "$(date "+%D @ %T"): $0 - WAN Switch: Setting WAN IP Address: $(nvram get "$ACTIVEWAN"_ipaddr)..." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: WAN IP Address: $(nvram get "$ACTIVEWAN"_ipaddr)" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "WAN IP Address: $(nvram get "$ACTIVEWAN"_ipaddr)"
   nvram set wan_ipaddr=$(nvram get "$ACTIVEWAN"_ipaddr)
 
   # Change WAN Gateway
   echo "$(date "+%D @ %T"): $0 - WAN Switch: Setting WAN Gateway: $(nvram get "$ACTIVEWAN"_gateway)..." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: WAN Gateway: $(nvram get "$ACTIVEWAN"_gateway)" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "WAN Gateway: $(nvram get "$ACTIVEWAN"_gateway)"
   nvram set wan_gateway=$(nvram get "$ACTIVEWAN"_gateway)
   # Change WAN Interface
   echo "$(date "+%D @ %T"): $0 - WAN Switch: Setting WAN Interface: $(nvram get "$ACTIVEWAN"_ifname)..." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: WAN Interface: $(nvram get "$ACTIVEWAN"_ifname)" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "WAN Interface: $(nvram get "$ACTIVEWAN"_ifname)"
   nvram set wan_ifname=$(nvram get "$ACTIVEWAN"_ifname)
 
 # Switch DNS
@@ -670,7 +669,7 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
     # Change Manual DNS1 Server
     if [ ! -z "$(nvram get "$ACTIVEWAN"_dns1_x)" ] >/dev/null;then
       echo "$(date "+%D @ %T"): $0 - WAN Switch: Setting DNS1 Server: $(nvram get "$ACTIVEWAN"_dns1_x)..." >> $LOGPATH
-      echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: DNS1 Server: $(nvram get "$ACTIVEWAN"_dns1_x)" >> $SYSTEMLOGPATH
+      logger -t "${0##*/}" "DNS1 Server: $(nvram get "$ACTIVEWAN"_dns1_x)"
       nvram set wan_dns1_x=$(nvram get "$ACTIVEWAN"_dns1_x)
       if [ -z "$(cat "$DNSRESOLVFILE" | grep -e "$(echo $(nvram get "$ACTIVEWAN"_dns1_x))")" ] >/dev/null;then
         sed -i '1i nameserver '$(nvram get "$ACTIVEWAN"_dns1_x)'' $DNSRESOLVFILE
@@ -684,7 +683,7 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
     # Change Manual DNS2 Server
     if [ ! -z "$(nvram get "$ACTIVEWAN"_dns2_x)" ] >/dev/null;then
       echo "$(date "+%D @ %T"): $0 - WAN Switch: Setting DNS2 Server: $(nvram get "$ACTIVEWAN"_dns2_x)..." >> $LOGPATH
-      echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: DNS2 Server: $(nvram get "$ACTIVEWAN"_dns2_x)" >> $SYSTEMLOGPATH
+      logger -t "${0##*/}" "DNS2 Server: $(nvram get "$ACTIVEWAN"_dns2_x)"
       nvram set wan_dns2_x=$(nvram get "$ACTIVEWAN"_dns2_x)
       if [ -z "$(cat "$DNSRESOLVFILE" | grep -e "$(echo $(nvram get "$ACTIVEWAN"_dns2_x))")" ] >/dev/null;then
         sed -i '2i nameserver '$(nvram get "$ACTIVEWAN"_dns2_x)'' $DNSRESOLVFILE
@@ -699,7 +698,7 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
   # Change Automatic ISP DNS Settings
   elif [ ! -z "$(echo $(nvram get "$ACTIVEWAN"_dns))" ] >/dev/null;then
     echo "$(date "+%D @ %T"): $0 - WAN Switch: Setting Automatic DNS Settings from ISP: $(nvram get "$ACTIVEWAN"_dns)..." >> $LOGPATH
-    echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Automatic DNS Settings from ISP: $(nvram get "$ACTIVEWAN"_dns)" >> $SYSTEMLOGPATH
+    logger -t "${0##*/}" "Automatic DNS Settings from ISP: $(nvram get "$ACTIVEWAN"_dns)"
     nvram set wan_dns="$(echo $(nvram get "$ACTIVEWAN"_dns))"
     # Change Automatic DNS1 Server
     if [ ! -z "$(echo $(nvram get "$ACTIVEWAN"_dns) | awk '{print $1}')" ] >/dev/null;then
@@ -737,7 +736,7 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
   # Add New Default Route
   if [ -z "$(ip route list default | grep -e "$(nvram get "$ACTIVEWAN"_ifname)")" ]  >/dev/null;then
     echo "$(date "+%D @ %T"): $0 - WAN Switch: Adding default route via $(nvram get "$ACTIVEWAN"_gateway) dev $(nvram get "$ACTIVEWAN"_ifname)..." >> $LOGPATH
-    echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Adding default route via $(nvram get "$ACTIVEWAN"_gateway) dev $(nvram get "$ACTIVEWAN"_ifname)" >> $SYSTEMLOGPATH
+    logger -t "${0##*/}" "Adding default route via $(nvram get "$ACTIVEWAN"_gateway) dev $(nvram get "$ACTIVEWAN"_ifname)"
     ip route add default via $(nvram get "$ACTIVEWAN"_gateway) dev $(nvram get "$ACTIVEWAN"_ifname)
   else
     echo "$(date "+%D @ %T"): $0 - WAN Switch: Default route detected via $(nvram get "$ACTIVEWAN"_gateway) dev $(nvram get "$ACTIVEWAN"_ifname)..." >> $LOGPATH
@@ -748,10 +747,10 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
     echo "$(date "+%D @ %T"): $0 - WAN Switch: QoS is Enabled..." >> $LOGPATH
     if [[ -z "$(nvram get qos_obw)" ]] && [[ -z "$(nvram get qos_obw)" ]] >/dev/null;then
       echo "$(date "+%D @ %T"): $0 - WAN Switch: QoS is set to Automatic Bandwidth Settings..." >> $LOGPATH
-      echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: QoS is set to Automatic Bandwidth Settings" >> $SYSTEMLOGPATH
+      logger -t "${0##*/}" "QoS is set to Automatic Bandwidth Settings"
     else
       echo "$(date "+%D @ %T"): $0 - WAN Switch: Applying Manual QoS Bandwidth Settings..." >> $LOGPATH
-      echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Applying Manual QoS Bandwidth Settings" >> $SYSTEMLOGPATH
+      logger -t "${0##*/}" "Applying Manual QoS Bandwidth Settings"
       if [[ "$ACTIVEWAN" == "wan0" ]] >/dev/null;then
         nvram set qos_obw=$WAN0_QOS_OBW
         nvram set qos_ibw=$WAN0_QOS_IBW
@@ -764,7 +763,7 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
         nvram set qos_atm=$WAN1_QOS_ATM
       fi
       echo "$(date "+%D @ %T"): $0 - WAN Switch: QoS Settings - Download Bandwidth: $(($(nvram get qos_ibw)/1024))Mbps Upload Bandwidth: $(($(nvram get qos_obw)/1024))Mbps..." >> $LOGPATH
-      echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: QoS Settings - Download Bandwidth: $(($(nvram get qos_ibw)/1024))Mbps Upload Bandwidth: $(($(nvram get qos_obw)/1024))Mbps" >> $SYSTEMLOGPATH
+      logger -t "${0##*/}" "QoS Settings - Download Bandwidth: $(($(nvram get qos_ibw)/1024))Mbps Upload Bandwidth: $(($(nvram get qos_obw)/1024))Mbps"
     fi
   else
     echo "$(date "+%D @ %T"): $0 - WAN Switch: QoS is Disabled..." >> $LOGPATH
@@ -772,7 +771,7 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
   sleep 1
 done
   echo "$(date "+%D @ %T"): $0 - WAN Switch: Switched $ACTIVEWAN to Primary WAN." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Switched $ACTIVEWAN to Primary WAN" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "Switched $ACTIVEWAN to Primary WAN"
 restartservices
 }
 
@@ -781,10 +780,10 @@ restartservices ()
 {
 for SERVICE in ${SERVICES};do
   echo "$(date "+%D @ %T"): $0 - Service Restart: Restarting $SERVICE service..." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Restarting $SERVICE service" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "Restarting $SERVICE service"
   service restart_$SERVICE
   echo "$(date "+%D @ %T"): $0 - Service Restart: Restarted $SERVICE service." >> $LOGPATH
-  echo "$(date | awk '{print $2,$3,$4}') ${0##*/}: Restarted $SERVICE service" >> $SYSTEMLOGPATH
+  logger -t "${0##*/}" "Restarted $SERVICE service"
 done
 if [[ "${mode}" == "switchwan" ]] >/dev/null;then
   exit
