@@ -1,6 +1,6 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/23/2022
+# Date: 05/25/2022
 # Version: v1.3.7
 
 Install:
