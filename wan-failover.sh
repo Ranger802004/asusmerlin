@@ -271,14 +271,14 @@ exit
 # Update Script
 update ()
 {
-REMOTEVERSION="$(echo $(curl $DOWNLOADPATH | grep -v "grep" | grep -e "# Version:" | awk '{print $3}'))" 
+REMOTEVERSION="$(echo $(curl "$DOWNLOADPATH" | grep -v "grep" | grep -e "# Version:" | awk '{print $3}'))" 
 if [[ "$VERSION" != "$REMOTEVERSION" ]];then
-  echo -e "${YELLOW}Script is out of date...${NOCOLOR}"
+  echo -e "${YELLOW}Script is out of date - Current Version: $VERSION Available Version: $REMOTEVERSION${NOCOLOR}"
   read -n 1 -s -r -p "Press any key to continue to update..."
   /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 & kill
   echo -e "${GREEN}Script has been updated...${NOCOLOR}"
 elif [[ "$VERSION" == "$REMOTEVERSION" ]];then
-  echo -e "${GREEN}Script is up to date...${NOCOLOR}"
+  echo -e "${GREEN}Script is up to date - Version: $VERSION${NOCOLOR}"
 fi
 }
 
