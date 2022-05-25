@@ -24,7 +24,7 @@ Run Modes:
 v1.3.7 Notes - 05/25/2022
 General
 - Tied system logs into built in logger method.
-- Added Update Mode using argument "update", this will update the script from the GitHub Repository.
+- Added Update Mode using argument "update", this will update the script from the GitHub Repository. (If updating from v1.3.5 or older, use the update command from the readme to update).
 
 v1.3.5 Notes - 05/24/2022
 General:
