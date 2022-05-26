@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/25/2022
-# Version: v1.3.7
+# Date: 05/26/2022
+# Version: v1.4.1
 
 Install:
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh install
@@ -19,7 +19,15 @@ Run Modes:
 - Monitor Mode: This will monitor the log file of the script. Add the command argument "monitor" to use this mode.
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
 - Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
-- Log Clean Mode: This will clean the log file leaving only the last 1000 messages. Add the command argument "logclean" to use this mode.
+
+v1.4.1 - 05/26/2022
+- Email Notifications will generate if you have alerts configured under AiProtection > Alert Preferences.
+- Redirected all logs to System Log, events will now show up under System Log tab in Web GUI as well as Monitor Mode.
+- Monitor mode will now filter logs from System Log
+- Log Cleanup Mode has been deprecated.  This will now cleanup the Log Clean Mode cron job and delete the old proprietary log file.
+- Corrected issue where Monitor Mode would still run in background after it has been exited out.
+- Corrected description for Cron Job mode where argument was stated as "cronjob" instead of "cron"
+- Replaced ScriptStatus function with file lock.
 
 v1.3.7 Notes - 05/25/2022
 General
