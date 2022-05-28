@@ -10,7 +10,7 @@ Requirements:
 - JFFS custom scripts and configs Enabled
 - Dual WAN Enabled
 - Dual WAN to be in Failover Mode
-- ASUS Factory Failover Mode Disabled
+- ASUS Factory Failover Disabled (Network Monitoring Options, Allow Failback Option under WAN > Dual WAN)
 
 Installation:
 Install Command to run to install script:
