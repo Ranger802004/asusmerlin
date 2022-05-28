@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using Merlin Firmware v386.5.2
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/26/2022
-# Version: v1.4.1
+# Date: 05/28/2022
+# Version: v1.4.2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh"
-VERSION="v1.4.1"
+VERSION="v1.4.2"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 SYSTEMLOG="/tmp/syslog.log"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -40,6 +40,7 @@ if [ -z "$(echo ${1#})" ] >/dev/null;then
   echo -e "${GREEN}$0 manual${WHITE} - This will allow you to run the script in a command console.${NOCOLOR}"
   echo -e "${GREEN}$0 monitor${WHITE} - This will monitor the log file of the script.${NOCOLOR}"
   echo -e "${YELLOW}$0 update${WHITE} - This will download and update to the latest version.${NOCOLOR}"
+  echo -e "${YELLOW}$0 config${WHITE} - This will allow go through the WAN Failover configuration to update or change settings.${NOCOLOR}"
   echo -e "${YELLOW}$0 cron${WHITE} - This will create the Cron Jobs necessary for the script to run and also perform log cleaning.${NOCOLOR}"
   echo -e "${YELLOW}$0 switchwan${WHITE} - This will manually switch Primary WAN.${NOCOLOR}"
   echo -e "${RED}$0 uninstall${WHITE} - This will uninstall the configuration files necessary to stop the script from running.${NOCOLOR}"
@@ -50,7 +51,10 @@ mode="${1#}"
 scriptmode ()
 {
 if [[ "${mode}" == "install" ]] >/dev/null;then
-  echo -e "${BLUE}${0##*/} - Install mode...${NOCOLOR}"
+  echo -e "${BLUE}${0##*/} - Install mode${NOCOLOR}"
+  install
+elif [[ "${mode}" == "config" ]] >/dev/null;then 
+  echo -e "${GREEN}${0##*/} - Configuration Mode${NOCOLOR}"
   install
 elif [[ "${mode}" == "run" ]] >/dev/null;then 
   echo -e "${GREEN}${0##*/} - Run Mode${NOCOLOR}"
@@ -95,49 +99,193 @@ fi
 # Install
 install ()
 {
-read -n 1 -s -r -p "Press any key to continue to install..."
 if [[ "${mode}" == "install" ]] >/dev/null;then
-  # Check if JFFS Custom Scripts is enabled
-  if [[ "$(nvram get jffs2_scripts)" != "1" ]] >/dev/null;then
-    echo -e "${RED}Warning!!!  Administration > System > Enable JFFS custom scripts and configs is not enabled.${NOCOLOR}"
-    logger -t "${0##*/}" "Install - Warning!!!  Administration > System > Enable JFFS custom scripts and configs is not enabled"
-  else
-    echo -e "${GREEN}Administration > System > Enable JFFS custom scripts and configs is enabled...${NOCOLOR}"
-    logger -t "${0##*/}" "Install - Administration > System > Enable JFFS custom scripts and configs is enabled"
+  read -n 1 -s -r -p "Press any key to continue to install..."
+fi
+if [[ "${mode}" == "install" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
+  if [[ "${mode}" == "install" ]] >/dev/null;then
+    # Check if JFFS Custom Scripts is enabled during installation
+    if [[ "$(nvram get jffs2_scripts)" != "1" ]] >/dev/null;then
+      echo -e "${RED}Warning!!!  Administration > System > Enable JFFS custom scripts and configs is not enabled.${NOCOLOR}"
+      logger -t "${0##*/}" "Install - Warning!!!  Administration > System > Enable JFFS custom scripts and configs is not enabled"
+    else
+      echo -e "${GREEN}Administration > System > Enable JFFS custom scripts and configs is enabled...${NOCOLOR}"
+      logger -t "${0##*/}" "Install - Administration > System > Enable JFFS custom scripts and configs is enabled"
+    fi
   fi
 
   # Check for Config File
-  echo -e "${BLUE}Creating $CONFIGFILE...${NOCOLOR}"
-  logger -t "${0##*/}" "Install - Creating $CONFIGFILE"
-  if [ ! -f $CONFIGFILE ] >/dev/null;then
-    touch -a $CONFIGFILE
-    chmod 666 $CONFIGFILE
-    echo -e "${GREEN}$CONFIGFILE created.${NOCOLOR}"
-    logger -t "${0##*/}" "Install - $CONFIGFILE created"
-  else
-    echo -e "${YELLOW}$CONFIGFILE already exists...${NOCOLOR}"
-    logger -t "${0##*/}" "Install - $CONFIGFILE already exists"
+  if [[ "${mode}" == "install" ]] >/dev/null;then
+    echo -e "${BLUE}Creating $CONFIGFILE...${NOCOLOR}"
+    logger -t "${0##*/}" "Install - Creating $CONFIGFILE"
+    if [ ! -f $CONFIGFILE ] >/dev/null;then
+      touch -a $CONFIGFILE
+      chmod 666 $CONFIGFILE
+      echo -e "${GREEN}$CONFIGFILE created.${NOCOLOR}"
+      logger -t "${0##*/}" "Install - $CONFIGFILE created"
+    else
+      echo -e "${YELLOW}$CONFIGFILE already exists...${NOCOLOR}"
+      logger -t "${0##*/}" "Install - $CONFIGFILE already exists"
+    fi
+  fi
+
+  # Prompt to ask confirmation for reconfiguration
+  if [[ "${mode}" == "install" ]] >/dev/null;then
+    break
+  elif [[ "${mode}" == "config" ]] && [ -f $CONFIGFILE ] >/dev/null;then
+    while [[ "${mode}" == "config" ]];do
+      read -p "Do you want to reconfigure WAN Failover? ***Enter Y for Yes or N for No***" yn
+      case $yn in
+        [Yy]* ) break;;
+        [Nn]* ) exit;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+      esac
+    done
+  elif [[ "${mode}" == "config" ]] && [ ! -f $CONFIGFILE ] >/dev/null;then
+    echo -e "${RED}$CONFIGFILE doesn't exist, please run Install Mode...${NOCOLOR}"
+    logger -t "${0##*/}" "Configuration - $CONFIGFILE doesn't exist, please run Install Mode"
   fi
 
   # User Input for Custom Variables
   echo "Setting Custom Variables..."
   echo -e "${YELLOW}***WAN Target IP Addresses will be routed via WAN Gateway dev WAN Interface***${NOCOLOR}"
-  read -p "Set WAN0 Target IP Address - Will be routed via $(nvram get $(echo $WANPREFIXES | awk '{print $1}')_gateway) dev $(nvram get $(echo $WANPREFIXES | awk '{print $1}')_ifname): " SETWAN0TARGET
-  read -p "Set WAN1 Target IP Address - Will be routed via $(nvram get $(echo $WANPREFIXES | awk '{print $2}')_gateway) dev $(nvram get $(echo $WANPREFIXES | awk '{print $2}')_ifname): " SETWAN1TARGET
-  read -p "Set Ping Count - WAN Failure will be triggered after this many failed ping requests: " SETPINGCOUNT
-  read -p "Set Ping Timeout - Value is in seconds: " SETPINGTIMEOUT
-  read -p "Set WAN Disabled Timer - This is how long the script will sleep if Dual WAN/Failover Mode/WAN Links are disabled before checking status again, value is in seconds: " SETWANDISABLEDSLEEPTIMER
-  echo -e "${WHITE}***QoS Bandwidth Settings Reference Guide - ${BLUE}1Gbps: 1048576, 500Mbps: 512000 , 250Mbps: 256000, 100Mbps: 102400, 50Mbps: 51200, 25Mbps: 25600, 10Mbps: 10240***${NOCOLOR}"
-  read -p "Set WAN0 QoS Download Bandwidth - Value is in Kbps: " SETWAN0_QOS_IBW
-  read -p "Set WAN1 QoS Download Bandwidth - Value is in Kbps: " SETWAN1_QOS_IBW
-  read -p "Set WAN0 QoS Upload Bandwidth - Value is in Kbps: " SETWAN0_QOS_OBW
-  read -p "Set WAN1 QoS Upload Bandwidth - Value is in Kbps: " SETWAN1_QOS_OBW
+  # Configure WAN0 Target IP Address
+  while true;do  
+    read -p "Configure WAN0 Target IP Address - Will be routed via $(nvram get $(echo $WANPREFIXES | awk '{print $1}')_gateway) dev $(nvram get $(echo $WANPREFIXES | awk '{print $1}')_ifname): " ip
+    if expr "$ip" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null;then
+      for i in 1 2 3 4;do
+        if [ $(echo "$ip" | cut -d. -f$i) -gt "255" ] >/dev/null;then
+          echo -e "${RED}***Invalid IP Address***${NOCOLOR}"
+          break 1
+        else
+          SETWAN0TARGET=$ip
+          break 2
+        fi
+      done
+    else  
+      echo -e "${RED}***Invalid IP Address***${NOCOLOR}"
+      continue
+    fi
+  done
+  # Configure WAN1 Target IP Address
+  while [[ "${mode}" == "config" ]];do  
+    read -p "Configure WAN1 Target IP Address - Will be routed via $(nvram get $(echo $WANPREFIXES | awk '{print $2}')_gateway) dev $(nvram get $(echo $WANPREFIXES | awk '{print $2}')_ifname): " ip
+    if expr "$ip" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null;then
+      for i in 1 2 3 4;do
+        if [ $(echo "$ip" | cut -d. -f$i) -gt "255" ] >/dev/null;then
+          echo -e "${RED}***Invalid IP Address***${NOCOLOR}"
+          break 1
+        else
+          SETWAN1TARGET=$ip
+          break 2
+        fi
+      done
+    else  
+      echo -e "${RED}***Invalid IP Address***${NOCOLOR}"
+      continue
+    fi
+  done
+  # Configure Ping Count
+  while true;do  
+    read -p "Configure Ping Count - This is how many consecutive times a ping will fail before a WAN connection is considered disconnected: " value
+      case $value in
+        [0123456789]* ) SETPINGCOUNT=$value; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter a valid number***${NOCOLOR}"
+      esac
+  done
+  # Configure Ping Timeout
+  while true;do  
+    read -p "Configure Ping Timeout - Value is in seconds: " value
+      case $value in
+        [0123456789]* ) SETPINGTIMEOUT=$value; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+      esac
+  done
+  # Configure WAN Disabled Timer
+  while true;do  
+    read -p "Configure WAN Disabled Timer - This is how long the script will sleep if Dual WAN/Failover Mode/WAN Links are disabled before checking status again, value is in seconds: " value
+      case $value in
+        [0123456789]* ) SETWANDISABLEDSLEEPTIMER=$value; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+      esac
+  done
+  # Configure WAN0 QoS Download Bandwidth
+  while true;do  
+    read -p "Configure WAN0 QoS Download Bandwidth - Value is in Mbps: " value
+      case $value in
+        [0123456789]* ) SETWAN0_QOS_IBW=$(($value*1024)); break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+      esac
+  done
+  # Configure WAN1 QoS Download Bandwidth
+  while true;do  
+    read -p "Configure WAN1 QoS Download Bandwidth - Value is in Mbps: " value
+      case $value in
+        [0123456789]* ) SETWAN1_QOS_IBW=$(($value*1024)); break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+      esac
+  done
+  # Configure WAN0 QoS Upload Bandwidth
+  while true;do  
+    read -p "Configure WAN0 QoS Upload Bandwidth - Value is in Mbps: " value
+      case $value in
+        [0123456789]* ) SETWAN0_QOS_OBW=$(($value*1024)); break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+      esac
+  done
+  # Configure WAN1 QoS Upload Bandwidth
+  while true;do  
+    read -p "Configure WAN1 QoS Upload Bandwidth - Value is in Mbps: " value
+      case $value in
+        [0123456789]* ) SETWAN1_QOS_OBW=$(($value*1024)); break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+      esac
+  done
   echo -e "${WHITE}***QoS WAN Packet Overhead Reference Guide - ${BLUE}None: 0, Conservative Default: 48, VLAN: 42, DOCSIS: 18, PPPoE VDSL: 27, ADSL PPPoE VC: 32, ADSL PPPoE LLC: 40, VDSL Bridged: 19, VDSL2 PPPoE: 30, VDSL2 Bridged: 22***${NOCOLOR}"
-  read -p "Set WAN0 QoS WAN Packet Overhead - Value is in Bytes: " SETWAN0_QOS_OVERHEAD
-  read -p "Set WAN1 QoS WAN Packet Overhead - Value is in Bytes: " SETWAN1_QOS_OVERHEAD
+  # Configure WAN0 QoS Packet Overhead
+  while true;do  
+    read -p "Configure WAN0 QoS Packet Overhead: " value
+      case $value in
+        [0123456789]* ) SETWAN0_QOS_OVERHEAD=$value; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Value is in Bytes***${NOCOLOR}"
+      esac
+  done
+  # Configure WAN1 QoS Packet Overhead
+  while true;do  
+    read -p "Configure WAN1 QoS Packet Overhead: " value
+      case $value in
+        [0123456789]* ) SETWAN1_QOS_OVERHEAD=$value; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Value is in Bytes***${NOCOLOR}"
+      esac
+  done
   echo -e "${WHITE}***QoS ATM Reference Guide - ${BLUE}Recommended is Disabled unless using ISDN***${NOCOLOR}"
-  read -p "Set WAN0 QoS ATM - Enabled: 1 Disabled: 0: " SETWAN0_QOS_ATM
-  read -p "Set WAN1 QoS ATM - Enabled: 1 Disabled: 0: " SETWAN1_QOS_ATM
+  # Configure WAN0 QoS ATM
+  while true;do  
+    read -p "Enable WAN0 QoS ATM? ***Enter Y for Yes or N for No*** " yn
+      case $yn in
+        [Yy]* ) SETWAN0_QOS_ATM=1; break;;
+        [Nn]* ) SETWAN0_QOS_ATM=0; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+      esac
+  done
+  # Configure WAN1 QoS ATM
+  while true;do  
+    read -p "Enable WAN1 QoS ATM? ***Enter Y for Yes or N for No*** " yn
+      case $yn in
+        [Yy]* ) SETWAN1_QOS_ATM=1; break;;
+        [Nn]* ) SETWAN1_QOS_ATM=0; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+      esac
+  done
+  # Configure Packet Loss Logging
+  while true;do  
+    read -p "Enable Packet Loss Logging? ***Enter Y for Yes or N for No*** " yn
+      case $yn in
+        [Yy]* ) SETPACKETLOSSLOGGING=1; break;;
+        [Nn]* ) SETPACKETLOSSLOGGING=0; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+      esac
+  done
 
 # Create Array for Custom Variables
 NEWVARIABLES='
@@ -154,6 +302,7 @@ WAN0_QOS_OVERHEAD=|'$SETWAN0_QOS_OVERHEAD'
 WAN1_QOS_OVERHEAD=|'$SETWAN1_QOS_OVERHEAD'
 WAN0_QOS_ATM=|'$SETWAN0_QOS_ATM'
 WAN1_QOS_ATM=|'$SETWAN1_QOS_ATM'
+PACKETLOSSLOGGING=|'$SETPACKETLOSSLOGGING'
 '
   # Adding Custom Variables to Config File
   echo -e "${BLUE}Adding Custom Settings to $CONFIGFILE...${NOCOLOR}"
@@ -169,38 +318,44 @@ WAN1_QOS_ATM=|'$SETWAN1_QOS_ATM'
   echo -e "${GREEN}Custom Variables added to $CONFIGFILE.${NOCOLOR}"
   logger -t "${0##*/}" "Install - Custom Variables added to $CONFIGFILE"
 
-  # Create Wan-Event if it doesn't exist
-  echo -e "${BLUE}Creating Wan-Event script...${NOCOLOR}"
-  logger -t "${0##*/}" "Install - Creating Wan-Event script"
-  if [ ! -f "/jffs/scripts/wan-event" ] >/dev/null;then
-    touch -a /jffs/scripts/wan-event
-    chmod 755 /jffs/scripts/wan-event
-    echo "#!/bin/sh" >> /jffs/scripts/wan-event
-    echo -e "${GREEN}Wan-Event script has been created.${NOCOLOR}"
-  logger -t "${0##*/}" "Install - Wan-Event script has been created"
-  else
-    echo -e "${YELLOW}Wan-Event script already exists...${NOCOLOR}"
-    logger -t "${0##*/}" "Install - Wan-Event script already exists"
+  if [[ "${mode}" == "install" ]] >/dev/null;then
+    # Create Wan-Event if it doesn't exist
+    echo -e "${BLUE}Creating Wan-Event script...${NOCOLOR}"
+    logger -t "${0##*/}" "Install - Creating Wan-Event script"
+    if [ ! -f "/jffs/scripts/wan-event" ] >/dev/null;then
+      touch -a /jffs/scripts/wan-event
+      chmod 755 /jffs/scripts/wan-event
+      echo "#!/bin/sh" >> /jffs/scripts/wan-event
+      echo -e "${GREEN}Wan-Event script has been created.${NOCOLOR}"
+    logger -t "${0##*/}" "Install - Wan-Event script has been created"
+    else
+      echo -e "${YELLOW}Wan-Event script already exists...${NOCOLOR}"
+      logger -t "${0##*/}" "Install - Wan-Event script already exists"
+    fi
+
+    # Add Script to Wan-event
+    if [ ! -z "$(cat /jffs/scripts/wan-event | grep -e "# Wan-Failover")" ] >/dev/null;then 
+      echo -e "${YELLOW}${0##*/} already added to Wan-Event...${NOCOLOR}"
+      logger -t "${0##*/}" "Install - ${0##*/} already added to Wan-Event"
+    else
+      cmdline="sh $0 cron"
+      echo -e "${BLUE}Adding ${0##*/} to Wan-Event...${NOCOLOR}"
+      logger -t "${0##*/}" "Install - Adding ${0##*/} to Wan-Event"
+      echo -e "\r\n$cmdline # Wan-Failover" >> /jffs/scripts/wan-event
+      echo -e "${GREEN}${0##*/} added to Wan-Event.${NOCOLOR}"
+      logger -t "${0##*/}" "Install - ${0##*/} added to Wan-Event"
+    fi
+
+    # Create Initial Cron Jobs
+    cronjob
+
+    # Start Initial Script
+    sh $0 run
   fi
-
-  # Add Script to Wan-event
-  if [ ! -z "$(cat /jffs/scripts/wan-event | grep -e "# Wan-Failover")" ] >/dev/null;then 
-    echo -e "${YELLOW}${0##*/} already added to Wan-Event...${NOCOLOR}"
-    logger -t "${0##*/}" "Install - ${0##*/} already added to Wan-Event"
-  else
-    cmdline="sh $0 cron"
-    echo -e "${BLUE}Adding ${0##*/} to Wan-Event...${NOCOLOR}"
-    logger -t "${0##*/}" "Install - Adding ${0##*/} to Wan-Event"
-    echo -e "\r\n$cmdline # Wan-Failover" >> /jffs/scripts/wan-event
-    echo -e "${GREEN}${0##*/} added to Wan-Event.${NOCOLOR}"
-    logger -t "${0##*/}" "Install - ${0##*/} added to Wan-Event"
+  # Kill current instance of script to allow new configuration to take place.
+  if [[ "${mode}" == "config" ]] >/dev/null;then
+    kill
   fi
-
-  # Create Initial Cron Jobs
-  cronjob
-
-  # Start Initial Script
-  sh $0 run
 fi
 exit
 }
@@ -359,6 +514,9 @@ WAN1_QOS_OVERHEAD="$(cat $CONFIGFILE | grep -e "WAN1_QOS_OVERHEAD" | awk -F"=" '
 #QoS Enable ATM
 WAN0_QOS_ATM="$(cat $CONFIGFILE | grep -e "WAN0_QOS_ATM" | awk -F"=" '{print $2}')"
 WAN1_QOS_ATM="$(cat $CONFIGFILE | grep -e "WAN1_QOS_ATM" | awk -F"=" '{print $2}')"
+
+#Enables or Disables Partial Packet Loss Alerts
+PACKETLOSSLOGGING="$(cat $CONFIGFILE | grep -e "PACKETLOSSLOGGING" | awk -F"=" '{print $2}')"
 
 # Services to Restart (single quote at the beginning and end of the list):
 SERVICES='
@@ -534,7 +692,12 @@ while { [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" 
     logger -t "${0##*/}" "WAN0 Failover Monitor - Failure Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
     switchwan
   elif [[ "$WAN0PACKETLOSS" != "0%" ]] >/dev/null;then
-    logger -t "${0##*/}" "WAN0 Failover Monitor - Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
+    if [ -z "$PACKETLOSSLOGGING" ] || [[ "$PACKETLOSSLOGGING" == "1"]] >/dev/null;then
+      logger -t "${0##*/}" "WAN0 Failover Monitor - Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
+      continue
+    elif [ ! -z "$PACKETLOSSLOGGING" ] && [[ "$PACKETLOSSLOGGING" == "0"]] >/dev/null;then
+      continue
+    fi
   fi
 done
   wanstatus
@@ -554,7 +717,12 @@ while [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]]
     logger -t "${0##*/}" "WAN0 Failback Monitor - Connection Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
     switchwan
   elif [[ "$WAN0PACKETLOSS" != "0%" ]] >/dev/null;then
-    logger -t "${0##*/}" "WAN0 Failback Monitor - Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
+    if [ -z "$PACKETLOSSLOGGING" ] || [[ "$PACKETLOSSLOGGING" == "1"]] >/dev/null;then
+      logger -t "${0##*/}" "WAN0 Failback Monitor - Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
+      continue
+    elif [ ! -z "$PACKETLOSSLOGGING" ] && [[ "$PACKETLOSSLOGGING" == "0"]] >/dev/null;then
+      continue
+    fi
   fi
 done
   wanstatus
