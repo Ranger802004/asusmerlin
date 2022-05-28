@@ -1,29 +1,54 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/26/2022
-# Version: v1.4.1
+# Date: 05/28/2022
+# Version: v1.4.3
 
-Install Command:
+WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.
+
+Installation:
+Install Command to run to install script:
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh install
 
-Update Command (v1.3.5 or older):
+Updating:
+Update Command (Updating from v1.3.5 or older):
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh kill
 
-Update Command (v1.3.7 or newer)
+Update Command (Updating from v1.3.7 or newer)
 /jffs/scripts/wan-failover.sh update
 
-Run Modes:
+Uninstallation (v1.3 or newer):
+/jffs/scripts/wan-failover.sh uninstall
+
+Configuration: During installation or reconfiguration, the following settings are configured:
+-	WAN0 Target:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Example: 8.8.8.8
+-	WAN1 Target:  This is the target IP address for WAN1, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN1 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Example: 8.8.4.4
+-	Ping Count:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected.   
+-	Ping Timeout:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.
+-	WAN Disabled Timer:  This is how many seconds the script pauses and checks again if Dual WAN, Failover Mode, or WAN links are disabled/disconnected.
+-	QoS Settings are configured for each WAN interface because both interfaces may not have the same bandwidth (download/upload speeds).  The script will automatically change these settings for each interface as they become the active WAN interface.  If QoS is disabled or QoS Automatic Settings are being used, these settings will not be applied.
+  o	WAN0 QoS Download Bandwidth:  Value is in Mbps
+  o	WAN1 QoS Download Bandwidth: Value is in Mbps
+  o	WAN0 QoS Upload Bandwidth: Value is in Mbps
+  o	WAN1 QoS Upload Bandwidth: Value is in Mbps
+  o	WAN0 QoS Packet Overhead:  Value is in Bytes
+  o	WAN1 QoS Packet Overhead: Value is in Bytes
+  o	WAN0 QoS ATM:  This will enable or disable Asynchronous Transfer Mode (ATM) for WAN0, research this technology to verify it is not required for your ISP.  In most      use cases, this setting is Disabled.
+  o	WAN1 QoS ATM:  This will enable or disable Asynchronous Transfer Mode (ATM) for WAN1, research this technology to verify it is not required for your ISP.  In most      use cases, this setting is Disabled.
+-	Packet Loss Logging:  This will log packet loss detections that are less than 100% packet loss but more than 0% packet loss.  These events are not enough to trigger a WAN Failover/Failback condition but may be informal data as to the performance of a WAN interface.  If the Ping Timeout setting is too low (1-2 seconds) combined with a high latency WAN interface such as satellite internet services, this logging can become excessive with the described configuration.
+
+Run Modes (v1.3 or newer):
 - Install Mode: This will install the script and configuration files necessary for it to run. Add the command argument "install" to use this mode.
 - Uninstall Mode: This will uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
 - Run Mode: This mode is for the script to run in the background via cron job. Add the command argument "run" to use this mode.
 - Update Mode: This mode will check to see if there is an update available from the GitHub Repository and update.  (Must be on v1.3.7 or newer)
-- Configuration Mode: This will allow reconfiguration of WAN Failover to update or change settings. (Must be on v1.4.2 or newer)
+- Configuration Mode: This will allow reconfiguration of WAN Failover to update or change settings. Add the command argument "config" to use this mode (Must be on v1.4.2 or newer)
 - Manual Mode: This will allow you to run the script in a command console. Add the command argument "manual" to use this mode.
 - Switch WAN Mode: This will manually switch the Primary WAN. Add the command argument "switchwan" to use this mode.
 - Monitor Mode: This will monitor the log file of the script. Add the command argument "monitor" to use this mode.
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
 - Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
 
+Release Notes:
 v1.4.3 - 05/28/2022
 - Fixed issue where Installation Mode would not set WAN1 Target IP Address.
 - Fixed issue where Packet Loss Logging was not properly logging if enabled.
@@ -44,12 +69,12 @@ v1.4.1 - 05/26/2022
 - Corrected description for Cron Job mode where argument was stated as "cronjob" instead of "cron"
 - Replaced ScriptStatus function with file lock.
 
-v1.3.7 Notes - 05/25/2022
+v1.3.7 - 05/25/2022
 General
 - Tied system logs into built in logger method.
 - Added Update Mode using argument "update", this will update the script from the GitHub Repository. (If updating from v1.3.5 or older, use the update command from the readme to update).
 
-v1.3.5 Notes - 05/24/2022
+v1.3.5 - 05/24/2022
 General:
 - Renamed WAN0Monitor to WAN0 Failover Monitor
 - Renamed WAN0RestoreMonitor to WAN0 Failback Monitor
@@ -62,7 +87,7 @@ General:
 Monitor Mode:
 - Monitor Mode will now not be killed by Kill Mode or Log Clean Mode
 
-v1.3.3 Notes - 05/23/2022
+v1.3.3 - 05/23/2022
 General:
 - Log Cleaner sleeps if there are less than 1000 messages in the log.
 - Optimized WAN Status
@@ -82,16 +107,7 @@ General:
 - During install the script will verify that the following is enabled: Administration > System > JFFS custom scripts and configs
 - If the ASUS Factory Dual WAN Watchdog is enabled, the script will go to Disabled Mode until it is turned off.
 - Enhanced WAN Status Detection by checking for Real IP in NVRAM. This is to ensure script goes into disabled state if Both WAN links are disconnected.
-
-Run Modes:
-- Install Mode: This will install the script and configuration files necessary for it to run. Add the command argument "install" to use this mode.
-- Uninstall Mode: This will uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
-- Run Mode: This mode is for the script to run in the background via cron job. Add the command argument "run" to use this mode.
-- Manual Mode: This will allow you to run the script in a command console. Add the command argument "manual" to use this mode.
-- Monitor Mode: This will monitor the log file of the script. Add the command argument "monitor" to use this mode.
-- Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
-- Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
-- Log Clean Mode: This will clean the log file leaving only the last 1000 messages. Add the command argument "logclean" to use this mode.
+- Intergrated Run Modes into the script
 
 WAN IP Address Targets:
 - The script will now attempt to create a route for each WAN IP Address Target if it does not exist, this will allow the ping monitor to work for both interfaces simultaneously.
