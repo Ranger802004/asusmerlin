@@ -40,7 +40,7 @@ if [ -z "$(echo ${1#})" ] >/dev/null;then
   echo -e "${GREEN}$0 manual${WHITE} - This will allow you to run the script in a command console.${NOCOLOR}"
   echo -e "${GREEN}$0 monitor${WHITE} - This will monitor the log file of the script.${NOCOLOR}"
   echo -e "${YELLOW}$0 update${WHITE} - This will download and update to the latest version.${NOCOLOR}"
-  echo -e "${YELLOW}$0 config${WHITE} - This will allow go through the WAN Failover configuration to update or change settings.${NOCOLOR}"
+  echo -e "${YELLOW}$0 config${WHITE} - This will allow reconfiguration of WAN Failover to update or change settings.${NOCOLOR}"
   echo -e "${YELLOW}$0 cron${WHITE} - This will create the Cron Jobs necessary for the script to run and also perform log cleaning.${NOCOLOR}"
   echo -e "${YELLOW}$0 switchwan${WHITE} - This will manually switch Primary WAN.${NOCOLOR}"
   echo -e "${RED}$0 uninstall${WHITE} - This will uninstall the configuration files necessary to stop the script from running.${NOCOLOR}"
