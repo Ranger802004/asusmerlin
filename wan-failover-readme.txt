@@ -24,6 +24,11 @@ Run Modes:
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
 - Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
 
+v1.4.3 - 05/28/2022
+- Fixed issue where Installation Mode would not set WAN1 Target IP Address.
+- Fixed issue where Packet Loss Logging was not properly logging if enabled.
+- During WAN Status Check, the log to message "***Verify (Target IP) is a valid server for ICMP Echo Requests***" will only occur if there is 100% loss on the initial check.
+
 v1.4.2 - 05/28/2022
 - Added Configuration Mode option to reconfigure configuration file, use argument "config".
 - During Installation Mode or Configuration Mode, QoS Download/Upload Bandwidth inputs are now in Mbps instead of Kbps.  The script will automatically convert these into Kbps inside the configuration file.
