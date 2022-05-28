@@ -5,6 +5,13 @@
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.
 
+Requirements:
+- ASUS Merlin Firmware v386.5.2
+- JFFS custom scripts and configs Enabled
+- Dual WAN Enabled
+- Dual WAN to be in Failover Mode
+- ASUS Factory Failover Mode Disabled
+
 Installation:
 Install Command to run to install script:
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh install
