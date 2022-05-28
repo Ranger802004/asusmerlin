@@ -100,7 +100,7 @@ WAN Monitor:
 Run Modes:
 - Added a new run mode "switchwan", this will manually change the Primary WAN.
 
-v1.3 Notes - 05/22/2022
+v1.3 - 05/22/2022
 General:
 - If you are using a version prior to v1.3 of Wan-Failover, delete your configuration and install fresh using the provided installation command.
 - During install the script will try and add the Cron Job line to Wan-Event during install and create Wan-Event if it does not exist.
@@ -117,7 +117,7 @@ WAN IP Address Targets:
 Configuration:
 - User Set Variables that are created on install will be created under /jffs/configs/wan-failover.conf and used by the script for these custom variables.
 
-v1.2 Notes - 05/21/2022:
+v1.2 - 05/21/2022:
 - DNS Logic Update to account for missing variables.
 - DNS Manual Settings are checked before Automatic ISP Settings.
 - Check if wan-event script exists before calling it.
