@@ -3,7 +3,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware v386.5.2
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 05/28/2022
-# Version: v1.4.2
+# Version: v1.4.3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh"
-VERSION="v1.4.2"
+VERSION="v1.4.3"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 SYSTEMLOG="/tmp/syslog.log"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -168,7 +168,7 @@ if [[ "${mode}" == "install" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
     fi
   done
   # Configure WAN1 Target IP Address
-  while [[ "${mode}" == "config" ]];do  
+  while true;do  
     read -p "Configure WAN1 Target IP Address - Will be routed via $(nvram get $(echo $WANPREFIXES | awk '{print $2}')_gateway) dev $(nvram get $(echo $WANPREFIXES | awk '{print $2}')_ifname): " ip
     if expr "$ip" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null;then
       for i in 1 2 3 4;do
@@ -588,7 +588,7 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] 
           WAN0STATUS="CONNECTED"
           nvram set ${WANPREFIX}_state_t=2
           continue
-        elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] >/dev/null;then
+        elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] && [[ "$WAN0PACKETLOSS" == "100%" ]] >/dev/null;then
           logger -t "${0##*/}" "WAN Status - ${WANPREFIX} has $WAN0PACKETLOSS packet loss ***Verify $WAN0TARGET is a valid server for ICMP Echo Requests***"
           WAN0STATUS="DISCONNECTED"
           continue
@@ -621,7 +621,7 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] 
           WAN1STATUS="CONNECTED"
           nvram set ${WANPREFIX}_state_t=2
           continue
-        elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] >/dev/null;then
+        elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] && [[ "$WAN1PACKETLOSS" == "100%" ]] >/dev/null;then
           logger -t "${0##*/}" "WAN Status - ${WANPREFIX} has $WAN1PACKETLOSS packet loss ***Verify $WAN1TARGET is a valid server for ICMP Echo Requests***"
           WAN1STATUS="DISCONNECTED"
           continue
@@ -635,13 +635,13 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] 
   done
 fi
 # Set WAN Status to DISABLED, DISCONNECTED, or CONNECTED and select function.
-if [[ "$WAN0STATUS" == "DISABLED" ]] && { [[ "$WAN1STATUS" == "DISABLED" ]] ;} >/dev/null;then
+if [[ "$WAN0STATUS" == "DISABLED" ]] && [[ "$WAN1STATUS" == "DISABLED" ]] >/dev/null;then
   wandisabled
-elif [[ "$WAN0STATUS" == "DISCONNECTED" ]] && { [[ "$WAN1STATUS" == "DISCONNECTED" ]] ;} >/dev/null;then
+elif [[ "$WAN0STATUS" == "DISCONNECTED" ]] && [[ "$WAN1STATUS" == "DISCONNECTED" ]] >/dev/null;then
   wandisabled
-elif [[ "$WAN0STATUS" == "CONNECTED" ]] || { [[ "$WAN1STATUS" == "DISABLED" ]] || [[ "$WAN1STATUS" == "DISCONNECTED" ]] ;} >/dev/null;then
+elif [[ "$WAN0STATUS" == "CONNECTED" ]] && { [[ "$WAN1STATUS" == "CONNECTED" ]] || [[ "$WAN1STATUS" == "DISABLED" ]] || [[ "$WAN1STATUS" == "DISCONNECTED" ]] ;} >/dev/null;then
   wan0active
-elif [[ "$WAN1STATUS" == "CONNECTED" ]] && { [[ "$WAN0STATUS" == "DISABLED" ]] || [[ "$WAN0STATUS" == "DISCONNECTED" ]] ;} >/dev/null;then
+elif [[ "$WAN1STATUS" == "CONNECTED" ]] && { [[ "$WAN0STATUS" != "CONNECTED" ]] || [[ "$WAN0STATUS" == "DISABLED" ]] || [[ "$WAN0STATUS" == "DISCONNECTED" ]] ;} >/dev/null;then
   wan1active
 else
   wanstatus
@@ -666,7 +666,7 @@ fi
 # WAN1 Active
 wan1active ()
 {
-  logger -t "${0##*/}" "WAN0 Active - Verifying WAN1"
+  logger -t "${0##*/}" "WAN1 Active - Verifying WAN1"
 if [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_primary)" != "1" ]] >/dev/null;then
   switchwan
 elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_primary)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] >/dev/null;then
@@ -692,7 +692,7 @@ while { [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" 
     logger -t "${0##*/}" "WAN0 Failover Monitor - Failure Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
     switchwan
   elif [[ "$WAN0PACKETLOSS" != "0%" ]] >/dev/null;then
-    if [ -z "$PACKETLOSSLOGGING" ] || [[ "$PACKETLOSSLOGGING" == "1"]] >/dev/null;then
+    if [ -z "$PACKETLOSSLOGGING" ] || [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null;then
       logger -t "${0##*/}" "WAN0 Failover Monitor - Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
       continue
     elif [ ! -z "$PACKETLOSSLOGGING" ] && [[ "$PACKETLOSSLOGGING" == "0"]] >/dev/null;then
@@ -717,7 +717,7 @@ while [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]]
     logger -t "${0##*/}" "WAN0 Failback Monitor - Connection Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
     switchwan
   elif [[ "$WAN0PACKETLOSS" != "0%" ]] >/dev/null;then
-    if [ -z "$PACKETLOSSLOGGING" ] || [[ "$PACKETLOSSLOGGING" == "1"]] >/dev/null;then
+    if [ -z "$PACKETLOSSLOGGING" ] || [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null;then
       logger -t "${0##*/}" "WAN0 Failback Monitor - Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
       continue
     elif [ ! -z "$PACKETLOSSLOGGING" ] && [[ "$PACKETLOSSLOGGING" == "0"]] >/dev/null;then
