@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using Merlin Firmware v386.5.2
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/28/2022
-# Version: v1.4.3
+# Date: 06/06/2022
+# Version: v1.4.6
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh"
-VERSION="v1.4.3"
+VERSION="v1.4.6"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 SYSTEMLOG="/tmp/syslog.log"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -32,7 +32,7 @@ BLUE="\033[0;94m"
 WHITE="\033[0;37m"
 
 # Set Script Mode
-if [ -z "$(echo ${1#})" ] >/dev/null;then
+if [ "$#" == "0" ] >/dev/null;then
   echo -e "${RED}${0##*/} - Executed without a Run Mode Selected!!!${NOCOLOR}"
   echo -e "${WHITE}Use one of the following run modes...${NOCOLOR}"
   echo -e "${BLUE}$0 install${WHITE} - This will install the script and configuration files necessary for it to run.${NOCOLOR}"
@@ -48,6 +48,11 @@ if [ -z "$(echo ${1#})" ] >/dev/null;then
   break && exit
 fi
 mode="${1#}"
+if [ "$#" == "2" ] >/dev/null;then
+  arg2=$2
+elif [ "$#" == "1" ] >/dev/null;then
+  arg2=0
+fi
 scriptmode ()
 {
 if [[ "${mode}" == "install" ]] >/dev/null;then
@@ -89,6 +94,14 @@ elif [[ "${mode}" == "switchwan" ]] >/dev/null;then
 elif [[ "${mode}" == "update" ]] >/dev/null;then 
   echo -e "${YELLOW}${0##*/} - Update Mode${NOCOLOR}"
   update
+elif [[ "${mode}" == "email" ]] >/dev/null;then
+  if [ "$arg2" == "0" ] >/dev/null;then
+    echo -e "${RED}Select (enable) or (disable)${NOCOLOR}"
+    exit
+  elif [ "$arg2" == "enable" ] || [ "$arg2" == "disable" ] >/dev/null;then
+    OPTION=$arg2
+    sendemail
+  fi
 fi
 if [[ ! -f "$CONFIGFILE" ]] >/dev/null;then
   echo -e "${RED}${0##*/} - No Configuration File Detected - Run Install Mode${NOCOLOR}"
@@ -115,7 +128,7 @@ if [[ "${mode}" == "install" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
   fi
 
   # Check for Config File
-  if [[ "${mode}" == "install" ]] >/dev/null;then
+  if [[ "${mode}" == "install" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
     echo -e "${BLUE}Creating $CONFIGFILE...${NOCOLOR}"
     logger -t "${0##*/}" "Install - Creating $CONFIGFILE"
     if [ ! -f $CONFIGFILE ] >/dev/null;then
@@ -157,6 +170,9 @@ if [[ "${mode}" == "install" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
         if [ $(echo "$ip" | cut -d. -f$i) -gt "255" ] >/dev/null;then
           echo -e "${RED}***Invalid IP Address***${NOCOLOR}"
           break 1
+        elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_gateway)" == "$ip" ]] >/dev/null;then
+          echo -e "${RED}***IP Address is the WAN0 Gateway IP Address***${NOCOLOR}"
+          break 1
         else
           SETWAN0TARGET=$ip
           break 2
@@ -174,6 +190,12 @@ if [[ "${mode}" == "install" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
       for i in 1 2 3 4;do
         if [ $(echo "$ip" | cut -d. -f$i) -gt "255" ] >/dev/null;then
           echo -e "${RED}***Invalid IP Address***${NOCOLOR}"
+          break 1
+        elif [[ "$ip" == "$SETWAN0TARGET" ]] >/dev/null;then
+          echo -e "${RED}***IP Address already assigned to WAN0***${NOCOLOR}"
+          break 1
+        elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_gateway)" == "$ip" ]] >/dev/null;then
+          echo -e "${RED}***IP Address is the WAN1 Gateway IP Address***${NOCOLOR}"
           break 1
         else
           SETWAN1TARGET=$ip
@@ -309,7 +331,7 @@ PACKETLOSSLOGGING=|'$SETPACKETLOSSLOGGING'
   logger -t "${0##*/}" "Install - Adding Custom Settings to $CONFIGFILE"
   for NEWVARIABLE in ${NEWVARIABLES};do
     if [ -z "$(cat $CONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')")" ] >/dev/null;then
-      echo "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" >> $CONFIGFILE
+      echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" >> $CONFIGFILE
       sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $CONFIGFILE
     else
       sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $CONFIGFILE
@@ -456,14 +478,25 @@ exit
 # Update Script
 update ()
 {
-REMOTEVERSION="$(echo $(curl "$DOWNLOADPATH" | grep -v "grep" | grep -e "# Version:" | awk '{print $3}'))" 
-if [[ "$VERSION" != "$REMOTEVERSION" ]];then
-  echo -e "${YELLOW}Script is out of date - Current Version: $VERSION Available Version: $REMOTEVERSION${NOCOLOR}"
+REMOTEVERSION="$(echo $(curl "$DOWNLOADPATH" | grep -v "grep" | grep -e "# Version:" | awk '{print $3}'))"
+if [[ ! -z "$(echo "$VERSION" | grep -e "beta")" ]] >/dev/null; then
+  echo -e "${YELLOW}Current Version: $VERSION - Script is a beta version and must be manually upgraded or replaced for a production version.${NOCOLOR}"
+  while true;do  
+    read -p "Do you want to update to the latest production version? "$REMOTEVERSION" ***Enter Y for Yes or N for No*** " yn
+      case $yn in
+        [Yy]* ) break;;
+        [Nn]* ) exit;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+      esac
+  done
+fi
+if [[ "$VERSION" != "$REMOTEVERSION" ]] >/dev/null; then
+  echo -e "${YELLOW}Script is out of date - Current Version: "$VERSION" Available Version: "$REMOTEVERSION"${NOCOLOR}"
   read -n 1 -s -r -p "Press any key to continue to update..."
   /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 & kill
   echo -e "${GREEN}Script has been updated...${NOCOLOR}"
-elif [[ "$VERSION" == "$REMOTEVERSION" ]];then
-  echo -e "${GREEN}Script is up to date - Version: $VERSION${NOCOLOR}"
+elif [[ "$VERSION" == "$REMOTEVERSION" ]] >/dev/null; then
+  echo -e "${GREEN}Script is up to date - Version: "$VERSION"${NOCOLOR}"
 fi
 }
 
@@ -518,6 +551,9 @@ WAN1_QOS_ATM="$(cat $CONFIGFILE | grep -e "WAN1_QOS_ATM" | awk -F"=" '{print $2}
 #Enables or Disables Partial Packet Loss Alerts
 PACKETLOSSLOGGING="$(cat $CONFIGFILE | grep -e "PACKETLOSSLOGGING" | awk -F"=" '{print $2}')"
 
+#Enables or Disables Email Alerts
+SENDEMAIL="$(cat $CONFIGFILE | grep -e "SENDEMAIL" | awk -F"=" '{print $2}')"
+
 # Services to Restart (single quote at the beginning and end of the list):
 SERVICES='
 qos
@@ -567,6 +603,19 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] 
       # Check WAN0 Connection
       if [[ "${WANPREFIX}" == "$(echo $WANPREFIXES | awk '{print $1}')" ]] >/dev/null;then
         # Check if WAN0 is Connected
+        if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] >/dev/null;then
+          logger -t "${0##*/}" "WAN Status - Restarting WAN0: "$(nvram get ${WANPREFIX}_ifname)""
+          service "restart_wan_if 0" & 
+          while [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "6" ]];do
+            sleep 1
+          done
+          logger -t "${0##*/}" "WAN Status - Restarted WAN0: "$(nvram get ${WANPREFIX}_ifname)""
+          if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] >/dev/null;then
+            break
+          else
+            wanstatus
+          fi
+        fi
         if { [[ "$(nvram get ${WANPREFIX}_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get ${WANPREFIX}_gateway)" == "0.0.0.0" ]] ;} >/dev/null;then
           logger -t "${0##*/}" "WAN Status - ${WANPREFIX} is disconnected.  IP Address: "$(nvram get ${WANPREFIX}_ipaddr)" Gateway: "$(nvram get ${WANPREFIX}_gateway)""
           WAN0STATUS="DISCONNECTED"
@@ -600,6 +649,19 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] 
       # Check WAN1 Connection
       elif [[ "${WANPREFIX}" == "$(echo $WANPREFIXES | awk '{print $2}')" ]] >/dev/null;then
         # Check if WAN1 is Connected
+        if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] >/dev/null;then
+          logger -t "${0##*/}" "WAN Status - Restarting WAN1: "$(nvram get ${WANPREFIX}_ifname)""
+          service "restart_wan_if 1" & 
+          while [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "6" ]];do
+            sleep 1
+          done
+          logger -t "${0##*/}" "WAN Status - Restarted WAN1: "$(nvram get ${WANPREFIX}_ifname)""
+          if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] >/dev/null;then
+            break
+          else
+            wanstatus
+          fi
+        fi
         if { [[ "$(nvram get ${WANPREFIX}_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get ${WANPREFIX}_gateway)" == "0.0.0.0" ]] ;} >/dev/null;then
           logger -t "${0##*/}" "WAN Status - ${WANPREFIX} is disconnected.  IP Address: "$(nvram get ${WANPREFIX}_ipaddr)" Gateway: "$(nvram get ${WANPREFIX}_gateway)""
           WAN1STATUS="DISCONNECTED"
@@ -682,7 +744,8 @@ fi
 wan0failovermonitor ()
 {
   logger -t "${0##*/}" "WAN0 Failover Monitor - Monitoring WAN0 via $WAN0TARGET for Failure"
-while { [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "1" ]] ;} && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_primary)" == "1" ]] >/dev/null;do
+while { [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "1" ]] ;} && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_primary)" == "1" ]] \
+&& { [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_gateway)" == "$(ip route show $WAN0TARGET | awk '{print $3}')" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_ifname)" == "$(ip route show $WAN0TARGET | awk '{print $5}')" ]] ;} >/dev/null;do
   WAN0PACKETLOSS="$(ping -I $(nvram get $(echo $WANPREFIXES | awk '{print $1}')_ifname) $WAN0TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}')"
   if [ -z "$(ip route list $WAN0TARGET via "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_gateway)" dev "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_ifname)")" ] >/dev/null;then
     break
@@ -707,7 +770,8 @@ done
 wan0failbackmonitor ()
 {
   logger -t "${0##*/}" "WAN0 Failback Monitor - Monitoring WAN0 via $WAN0TARGET for Failback"
-while [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_primary)" == "1" ]] >/dev/null;do
+while [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "1" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_primary)" == "1" ]] \
+&& { [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_gateway)" == "$(ip route show $WAN0TARGET | awk '{print $3}')" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_ifname)" == "$(ip route show $WAN0TARGET | awk '{print $5}')" ]] ;} >/dev/null;do
   WAN0PACKETLOSS="$(ping -I $(nvram get $(echo $WANPREFIXES | awk '{print $1}')_ifname) $WAN0TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}')"
   if [ -z "$(ip route list $WAN0TARGET via "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_gateway)" dev "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_ifname)")" ] >/dev/null;then
     break
@@ -959,14 +1023,40 @@ for SERVICE in ${SERVICES};do
 done
 if [[ "${mode}" == "switchwan" ]] >/dev/null;then
   exit
-else
+elif [[ "$SENDEMAIL" == "1" ]] || [ -z "$SENDEMAIL" ] >/dev/null;then
   sendemail
+elif [[ "$SENDEMAIL" == "0" ]] >/dev/null;then
+  wanevent
+else
+  wanevent
 fi
 }
 
 # Send Email
 sendemail ()
 {
+# Enable or Disable Email
+if [[ "${mode}" == "email" ]] && [ ! -z "$OPTION" ] >/dev/null;then
+  if [[ "$OPTION" == "enable" ]] >/dev/null;then
+    SETSENDEMAIL=1
+    logger -t "${0##*/}" "Email Notification - Email Notifications Enabled"
+  elif [[ "$OPTION" == "disable" ]] >/dev/null;then
+    SETSENDEMAIL=0
+    logger -t "${0##*/}" "Email Notification - Email Notifications Disabled"
+  else
+    echo -e "${RED}Invalid Selection!!! Select enable or disable${NOCOLOR}"
+    exit
+  fi
+  if [ -z "$(cat $CONFIGFILE | grep -e "SENDEMAIL=")" ] >/dev/null;then
+    echo -e "SENDEMAIL=" >> "$CONFIGFILE"
+    sed -i -e "s/\(^SENDEMAIL=\).*/\1"$SETSENDEMAIL"/" $CONFIGFILE
+    kill
+  else
+    sed -i -e "s/\(^SENDEMAIL=\).*/\1"$SETSENDEMAIL"/" $CONFIGFILE
+    kill
+  fi
+  exit
+fi
 if [ ! -z "$SMTP_SERVER" ] && [ ! -z "$SMTP_PORT" ] && [ ! -z "$MY_NAME" ] && [ ! -z "$MY_EMAIL" ] && [ ! -z "$SMTP_AUTH_USER" ] && [ ! -z "$SMTP_AUTH_PASS" ] >/dev/null;then
   if [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_primary)" == "1" ]] >/dev/null;then
     echo "Subject: WAN Failover Notification" >/tmp/mail.txt
@@ -1025,7 +1115,11 @@ if [ ! -z "$SMTP_SERVER" ] && [ ! -z "$SMTP_PORT" ] && [ ! -z "$MY_NAME" ] && [ 
 
   cat /tmp/mail.txt | sendmail -w 30 -H "exec openssl s_client -quiet -CAfile $CAFILE -connect $SMTP_SERVER:$SMTP_PORT -tls1_3 -starttls smtp" -f"$MY_EMAIL" -au"$SMTP_AUTH_USER" -ap"$SMTP_AUTH_PASS" "$MY_EMAIL"
   rm /tmp/mail.txt
-  logger -t "${0##*/}" "Email Notification - Email Notification Sent"
+  if [ ! -f "/tmp/mail.txt" ] >/dev/null;then
+    logger -t "${0##*/}" "Email Notification - Email Notification Sent"
+  elif [ -f "/tmp/mail.txt" ] >/dev/null;then
+    logger -t "${0##*/}" "Email Notification - Email Notification Failed"
+  fi
   wanevent
 else
   logger -t "${0##*/}" "Email Notification - Email Notifications are not configured"
