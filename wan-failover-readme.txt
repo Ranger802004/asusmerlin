@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/28/2022
-# Version: v1.4.3
+# Date: 06/06/2022
+# Version: v1.4.6
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.
 
@@ -43,6 +43,9 @@ Configuration: During installation or reconfiguration, the following settings ar
   o	WAN1 QoS ATM:  This will enable or disable Asynchronous Transfer Mode (ATM) for WAN1, research this technology to verify it is not required for your ISP.  In most      use cases, this setting is Disabled.
 -	Packet Loss Logging:  This will log packet loss detections that are less than 100% packet loss but more than 0% packet loss.  These events are not enough to trigger a WAN Failover/Failback condition but may be informal data as to the performance of a WAN interface.  If the Ping Timeout setting is too low (1-2 seconds) combined with a high latency WAN interface such as satellite internet services, this logging can become excessive with the described configuration.
 
+Optional Configuration:
+- To enable or disable email notifications, pass the command arguments "email enable" or "email disable" ***Email Notifications rely on Alert Preferences configured under AIProtection.  Default mode is Enabled.  Example: "/jffs/scripts/wan-failover.sh email enable"
+
 Run Modes (v1.3 or newer):
 - Install Mode: This will install the script and configuration files necessary for it to run. Add the command argument "install" to use this mode.
 - Uninstall Mode: This will uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
@@ -56,6 +59,12 @@ Run Modes (v1.3 or newer):
 - Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
 
 Release Notes:
+v1.4.6 - 06/06/2022
+- Fixed issue where if Gateway IP Address changed, script would not return to WAN Status to check if route is created for the monitoring target.
+- Created an enable / disable function for email (Instructions added to Configuration of Readme).
+- Optimized logic for handling no arguments being inputted from the console.
+- Configuration options will not allow WAN0 and WAN1 Target IP Addresses to be the same or match their respective Gateway IP Address.
+
 v1.4.3 - 05/28/2022
 - Fixed issue where Installation Mode would not set WAN1 Target IP Address.
 - Fixed issue where Packet Loss Logging was not properly logging if enabled.
