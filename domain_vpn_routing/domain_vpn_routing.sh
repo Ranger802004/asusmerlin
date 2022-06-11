@@ -2,8 +2,8 @@
 
 # Domain Name based routing for ASUS Routers using Merlin Firmware v386.5.2
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/10/2022
-# Version: v0.9-beta
+# Date: 06/11/2022
+# Version: v0.91-beta
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing.sh"
-VERSION="v0.9-beta"
+VERSION="v0.91-beta"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
 POLICYDIR="/jffs/configs/domain_vpn_routing"
 SYSTEMLOG="/tmp/syslog.log"
@@ -128,9 +128,22 @@ if [[ "${mode}" == "install" ]] >/dev/null;then
     logger -t "${0##*/}" "Install - ${0##*/} already added to Openvpn-Event"
   else
     cmdline="sh $0 cron"
+    cmdline2="sh $0 querypolicy all"
     echo -e "${BLUE}Adding ${0##*/} to Openvpn-Event...${NOCOLOR}"
     logger -t "${0##*/}" "Install - Adding ${0##*/} to Openvpn-Event"
     echo -e "\r\n$cmdline # domain_vpn_routing" >> /jffs/scripts/openvpn-event
+    echo -e "\r\n$cmdline2 # domain_vpn_routing" >> /jffs/scripts/openvpn-event
+    echo -e "${GREEN}${0##*/} added to Openvpn-event.${NOCOLOR}"
+    logger -t "${0##*/}" "Install - ${0##*/} added to Openvpn-Event"
+  fi
+  if [ ! -z "$(cat /jffs/scripts/openvpn-event | grep -e "# domain_vpn_routing_queryall")" ] >/dev/null;then 
+    echo -e "${YELLOW}${0##*/} already added to Openvpn-Event...${NOCOLOR}"
+    logger -t "${0##*/}" "Install - ${0##*/} already added to Openvpn-Event"
+  else
+    cmdline="sh $0 querypolicy all"
+    echo -e "${BLUE}Adding ${0##*/} to Openvpn-Event...${NOCOLOR}"
+    logger -t "${0##*/}" "Install - Adding ${0##*/} to Openvpn-Event"
+    echo -e "\r\n$cmdline # domain_vpn_routing_queryall" >> /jffs/scripts/openvpn-event
     echo -e "${GREEN}${0##*/} added to Openvpn-event.${NOCOLOR}"
     logger -t "${0##*/}" "Install - ${0##*/} added to Openvpn-Event"
   fi
@@ -164,7 +177,7 @@ if [[ "${mode}" == "uninstall" ]] >/dev/null;then
     logger -t "${0##*/}" "Uninstall - Cron Job doesn't exist"
   fi
 
-  # Remove Script from Wan-event
+  # Remove Script from Openvpn-event
   cmdline="sh $0 cron"
   if [ ! -z "$(cat /jffs/scripts/openvpn-event | grep -e "^$cmdline")" ] >/dev/null;then 
     echo -e "${BLUE}${0##*/} - Uninstall: Removing Cron Job from Openvpn-Event...${NOCOLOR}"
@@ -176,6 +189,18 @@ if [[ "${mode}" == "uninstall" ]] >/dev/null;then
     echo -e "${RED}${0##*/} - Uninstall: Cron Job doesn't exist in Openvpn-Event.${NOCOLOR}"
     logger -t "${0##*/}" "Uninstall - Cron Job doesn't exist in Openvpn-Event"
   fi
+  cmdline="sh $0 querypolicy all"
+  if [ ! -z "$(cat /jffs/scripts/openvpn-event | grep -e "^$cmdline")" ] >/dev/null;then 
+    echo -e "${BLUE}${0##*/} - Uninstall: Removing Cron Job from Openvpn-Event...${NOCOLOR}"
+    logger -t "${0##*/}" "Uninstall - Removing Cron Job from Openvpn-Event"
+    sed -i '\~# domain_vpn_routing_queryall~d' /jffs/scripts/openvpn-event
+    echo -e "${GREEN}${0##*/} - Uninstall: Removed Cron Job from Openvpn-Event.${NOCOLOR}"
+    logger -t "${0##*/}" "Uninstall - Removed Cron Job from Openvpn-Event"
+  else
+    echo -e "${RED}${0##*/} - Uninstall: Cron Job doesn't exist in Openvpn-Event.${NOCOLOR}"
+    logger -t "${0##*/}" "Uninstall - Cron Job doesn't exist in Openvpn-Event"
+  fi
+
 
   # Delete Policies
   $0 deletepolicy all
@@ -572,15 +597,35 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # Determine Interface and Route Table for IP Routes.
   INTERFACE="$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $4}')"
   if [[ "$INTERFACE" == "tun11" ]] >/dev/null;then
-    ROUTETABLE=ovpnc1
+    if [[ "$(nvram get vpn_client1_rgw)" == "0" ]] >/dev/null;then
+      ROUTETABLE=ovpnc1
+    else
+      ROUTETABLE=main
+    fi
   elif [[ "$INTERFACE" == "tun12" ]] >/dev/null;then
-    ROUTETABLE=ovpnc2
+    if [[ "$(nvram get vpn_client2_rgw)" == "0" ]] >/dev/null;then
+      ROUTETABLE=ovpnc2
+    else
+      ROUTETABLE=main
+    fi
   elif [[ "$INTERFACE" == "tun13" ]] >/dev/null;then
-    ROUTETABLE=ovpnc3
+    if [[ "$(nvram get vpn_client3_rgw)" == "0" ]] >/dev/null;then
+      ROUTETABLE=ovpnc3
+    else
+      ROUTETABLE=main
+    fi
   elif [[ "$INTERFACE" == "tun14" ]] >/dev/null;then
-    ROUTETABLE=ovpnc4
+    if [[ "$(nvram get vpn_client4_rgw)" == "0" ]] >/dev/null;then
+      ROUTETABLE=ovpnc4
+    else
+      ROUTETABLE=main
+    fi
   elif [[ "$INTERFACE" == "tun15" ]] >/dev/null;then
-    ROUTETABLE=ovpnc5
+    if [[ "$(nvram get vpn_client5_rgw)" == "0" ]] >/dev/null;then
+      ROUTETABLE=ovpnc5
+    else
+      ROUTETABLE=main
+    fi
   elif [[ "$INTERFACE" == "tun21" ]] >/dev/null;then
     ROUTETABLE=main
   elif [[ "$INTERFACE" == "tun22" ]] >/dev/null;then
