@@ -24,7 +24,7 @@ Run Modes:
 - createpolicy - This will create a new policy.
 - showpolicy - This will show the policy specified or all policies.
 - querypolicy - This will query domains from a policy or all policies and create IP Routes necessary.
-- addomain - This will add a domain to the policy specified.
+- adddomain - This will add a domain to the policy specified.
 - update - This will download and update to the latest version.
 - cron - This will create the Cron Jobs to automate Query Policy functionality.
 - deletedomain - This will delete a specified domain from a selected policy.
