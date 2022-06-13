@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/11/2022
-# Version: v0.91-beta
+# Date: 06/13/2022
+# Version: v0.92-beta
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -25,6 +25,7 @@ Run Modes:
 - showpolicy - This will show the policy specified or all policies.
 - querypolicy - This will query domains from a policy or all policies and create IP Routes necessary.
 - adddomain - This will add a domain to the policy specified.
+- editpolicy - This will modify an existing policy.
 - update - This will download and update to the latest version.
 - cron - This will create the Cron Jobs to automate Query Policy functionality.
 - deletedomain - This will delete a specified domain from a selected policy.
@@ -40,7 +41,9 @@ Step 2: Select a name for the Policy (Case Sensitive).
 
 Step 3: Select an existing OpenVPN Interface.  Type the name of the interface as displayed.
 
-Step 4: Policy is created, proceed to Section: Adding a Domain.
+Step 4: Select to enable or disable Verbose Logging for the Policy
+
+Step 5: Policy is created, proceed to Section: Adding a Domain.
 
 Adding a Domain:
 Step 1: Add a domain to an existing policy by running the following command: /jffs/scripts/domain_vpn_routing.sh adddomain <Insert Domain>
@@ -62,6 +65,15 @@ Show Policies:
 	Example: /jffs/scripts/domain_vpn_routing.sh showpolicy all
 	Note: When querying all policies, only the policy names will be displayed.  When selecting a specific policy, the Policy Name, Interface, and Domains added to the Policy will be displayed.
 
+Editing a Policy:
+Step 1: Edit a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh editpolicy <Insert Name>
+
+Step 2: Select the existing or new interface
+
+Step 3: Select whether to enable Verbose Logging for the Policy.
+
+Step 4: Allow the routes for the Policy to be recreated.
+
 Deleting a Policy:
 - Delete a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh deletepolicy <Insert Name/all>
 	Example: /jffs/scripts/domain_vpn_routing.sh deletepolicy all
@@ -82,6 +94,10 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
+v0.92-beta - 06/13/2022
+- Added option for enabling or disabling Verbose Logging for each Policy, this allows messages such as Querying Policy, etc to not be logged in System Log.
+- Added option to edit an existing policy's interface or verbose logging.
+
 v0.91-beta - 06/11/2022
 - If VPN Director is enabled, routes will now be added to the main routing table.
 - Added option for Query Policy All to execute during OpenVPN Events. (If Option is missing run install command again)
