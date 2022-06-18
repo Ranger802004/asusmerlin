@@ -2,8 +2,8 @@
 
 # Domain Name based routing for ASUS Routers using Merlin Firmware v386.5.2
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/13/2022
-# Version: v0.92-beta
+# Date: 06/17/2022
+# Version: v1.0
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing.sh"
-VERSION="v0.92-beta"
+VERSION="v1.0"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
 POLICYDIR="/jffs/configs/domain_vpn_routing"
 SYSTEMLOG="/tmp/syslog.log"
