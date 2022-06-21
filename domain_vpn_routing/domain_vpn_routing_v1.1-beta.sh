@@ -153,11 +153,9 @@ if [[ "${mode}" == "install" ]] >/dev/null;then
     logger -t "${0##*/}" "Install - ${0##*/} already added to Openvpn-Event"
   else
     cmdline="sh $0 cron"
-    cmdline2="sh $0 querypolicy all"
     echo -e "${BLUE}Adding ${0##*/} to Openvpn-Event...${NOCOLOR}"
     logger -t "${0##*/}" "Install - Adding ${0##*/} to Openvpn-Event"
     echo -e "\r\n$cmdline # domain_vpn_routing" >> /jffs/scripts/openvpn-event
-    echo -e "\r\n$cmdline2 # domain_vpn_routing" >> /jffs/scripts/openvpn-event
     echo -e "${GREEN}${0##*/} added to Openvpn-event.${NOCOLOR}"
     logger -t "${0##*/}" "Install - ${0##*/} added to Openvpn-Event"
   fi
