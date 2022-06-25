@@ -627,8 +627,10 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] 
         # Check WAN0 IP Address Target Route
         elif [ ! -z "$(ip route list default | grep -e "$WAN0TARGET")" ] && [[ "$(nvram get wans_mode)" == "fo" ]] >/dev/null;then
           logger -t "${0##*/}" "WAN Status - Default route already exists via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)""
-        elif [[ "$(echo $(ip route list $WAN0TARGET | awk '{print $3}'))" != "$(nvram get ${WANPREFIX}_gateway)" ]] || [[ "$(echo $(ip route list $WAN0TARGET | awk '{print $5}'))" != "$(nvram get ${WANPREFIX}_gw_ifname)" ]] >/dev/null;then
+        elif [ ! -z "$(ip route list $WAN0TARGET)" ] && { [[ "$(echo $(ip route list $WAN0TARGET | awk '{print $3}'))" != "$(nvram get ${WANPREFIX}_gateway)" ]] || [[ "$(echo $(ip route list $WAN0TARGET | awk '{print $5}'))" != "$(nvram get ${WANPREFIX}_gw_ifname)" ]] ;} >/dev/null;then
           logger -t "${0##*/}" "WAN Status - Route already exists for incorrect Gateway or Interface: $(echo $(ip route list "$WAN0TARGET"))"
+          WAN0STATUS="MISCONFIGURED"
+          continue
         elif [ ! -z "$(ip route list $WAN0TARGET)" ] >/dev/null;then
           logger -t "${0##*/}" "WAN Status - Route already exists: $(echo $(ip route list "$WAN0TARGET"))"
         elif [ -z "$(ip route list $WAN0TARGET)" ] >/dev/null;then
@@ -675,8 +677,10 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] 
         # Check WAN1 IP Address Target Route
         elif [ ! -z "$(ip route list default | grep -e "$WAN1TARGET")" ] && [[ "$(nvram get wans_mode)" == "fo" ]]  >/dev/null;then
           logger -t "${0##*/}" "WAN Status - Default route already exists via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)""
-        elif [[ "$(echo $(ip route list $WAN1TARGET | awk '{print $3}'))" != "$(nvram get ${WANPREFIX}_gateway)" ]] || [[ "$(echo $(ip route list $WAN1TARGET | awk '{print $5}'))" != "$(nvram get ${WANPREFIX}_gw_ifname)" ]] >/dev/null;then
+        elif [ ! -z "$(ip route list $WAN1TARGET)" ] && { [[ "$(echo $(ip route list $WAN1TARGET | awk '{print $3}'))" != "$(nvram get ${WANPREFIX}_gateway)" ]] || [[ "$(echo $(ip route list $WAN1TARGET | awk '{print $5}'))" != "$(nvram get ${WANPREFIX}_gw_ifname)" ]] ;} >/dev/null;then
           logger -t "${0##*/}" "WAN Status - Route already exists for incorrect Gateway or Interface: $(echo $(ip route list "$WAN1TARGET"))"
+          WAN1STATUS="MISCONFIGURED"
+          continue
         elif [ ! -z "$(ip route list $WAN1TARGET)" ] >/dev/null;then
           logger -t "${0##*/}" "WAN Status - Route already exists: $(echo $(ip route list "$WAN1TARGET"))"
         elif [ -z "$(ip route list $WAN1TARGET)" ] >/dev/null;then
@@ -708,6 +712,8 @@ fi
 if [[ "$WAN0STATUS" == "DISABLED" ]] && [[ "$WAN1STATUS" == "DISABLED" ]] >/dev/null;then
   wandisabled
 elif [[ "$(nvram get wans_mode)" == "fo" ]] && [[ "$WAN0STATUS" == "DISCONNECTED" ]] && [[ "$WAN1STATUS" == "DISCONNECTED" ]] >/dev/null;then
+  wandisabled
+elif [[ "$(nvram get wans_mode)" == "fo" ]] && { [[ "$WAN0STATUS" == "MISCONFIGURED" ]] || [[ "$WAN1STATUS" == "MISCONFIGURED" ]] ;} >/dev/null;then
   wandisabled
 elif [[ "$(nvram get wans_mode)" == "fo" ]] && [[ "$WAN0STATUS" == "CONNECTED" ]] && { [[ "$WAN1STATUS" == "CONNECTED" ]] || [[ "$WAN1STATUS" == "DISABLED" ]] || [[ "$WAN1STATUS" == "DISCONNECTED" ]] ;} >/dev/null;then
   wan0active
@@ -879,6 +885,12 @@ if [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "none" ]] >/dev/null;the
   logger -t "${0##*/}" "WAN Failover Disabled - Dual WAN is disabled"
 elif [[ "$(nvram get wandog_enable)" != "0" ]] >/dev/null;then
   logger -t "${0##*/}" "WAN Failover Disabled - ASUS Factory WAN Failover is enabled"
+elif [ ! -z "$(ip route list $WAN0TARGET)" ] && { [[ "$(echo $(ip route list $WAN0TARGET | awk '{print $3}'))" != "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_gateway)" ]] || [[ "$(echo $(ip route list $WAN0TARGET | awk '{print $5}'))" != "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_gw_ifname)" ]] ;} >/dev/null;then
+  logger -t "${0##*/}" "WAN Failover Disabled - WAN Failover will be Disabled until misconfigured route is deleted for $WAN0TARGET or a new $(echo $WANPREFIXES | awk '{print $1}') Target IP Address is configured."
+  logger -t "${0##*/}" "WAN Failover Disabled - ***Verify $WAN0TARGET is not a DNS Server for $(echo $WANPREFIXES | awk '{print $2}')***"
+elif [ ! -z "$(ip route list $WAN1TARGET)" ] && { [[ "$(echo $(ip route list $WAN1TARGET | awk '{print $3}'))" != "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_gateway)" ]] || [[ "$(echo $(ip route list $WAN1TARGET | awk '{print $5}'))" != "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_gw_ifname)" ]] ;} >/dev/null;then
+  logger -t "${0##*/}" "WAN Failover Disabled - WAN Failover will be Disabled until misconfigured route is deleted for $WAN1TARGET or a new $(echo $WANPREFIXES | awk '{print $2}') Target IP Address is configured."
+  logger -t "${0##*/}" "WAN Failover Disabled - ***Verify $WAN1TARGET is not a DNS Server for $(echo $WANPREFIXES | awk '{print $1}')***"
 elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "0" ]] && [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "0" ]] >/dev/null;then
   logger -t "${0##*/}" "WAN Failover Disabled - $(echo $WANPREFIXES | awk '{print $1}') and $(echo $WANPREFIXES | awk '{print $2}') are disabled"
 elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "0" ]] >/dev/null;then
@@ -888,8 +900,13 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_enable)" == "0" ]] 
 fi
   logger -t "${0##*/}" "WAN Failover Disabled - WAN Failover is currently stopped, will resume when Dual WAN Failover Mode is enabled and WAN Links are enabled with an active connection"
 while \
+  # WAN Failover Disabled if a WAN Target IP Address has a misconfigured Route.
+  if [ ! -z "$(ip route list $WAN0TARGET)" ] && { [[ "$(echo $(ip route list $WAN0TARGET | awk '{print $3}'))" != "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_gateway)" ]] || [[ "$(echo $(ip route list $WAN0TARGET | awk '{print $5}'))" != "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_gw_ifname)" ]] ;} \
+  || [ ! -z "$(ip route list $WAN1TARGET)" ] && { [[ "$(echo $(ip route list $WAN1TARGET | awk '{print $3}'))" != "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_gateway)" ]] || [[ "$(echo $(ip route list $WAN1TARGET | awk '{print $5}'))" != "$(nvram get $(echo $WANPREFIXES | awk '{print $2}')_gw_ifname)" ]] ;} >/dev/null;then
+    sleep $WANDISABLEDSLEEPTIMER
+    continue
   # Return to WAN Status if both interfaces are Enabled and Connected
-  if  { [[ "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_enable)" == "1" ]] && [[ "$(nvram get "$(echo $WANPREFIXES | awk '{print $2}')"_enable)" == "1" ]] ;} \
+  elif  { [[ "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_enable)" == "1" ]] && [[ "$(nvram get "$(echo $WANPREFIXES | awk '{print $2}')"_enable)" == "1" ]] ;} \
         && { [[ "$(nvram get "$(echo $WANPREFIXES | awk '{print $1}')"_state_t)" == "2" ]] && [[ "$(nvram get "$(echo $WANPREFIXES | awk '{print $2}')"_state_t)" == "2" ]] ;} >/dev/null;then
     logger -t "${0##*/}" "WAN Failover Disabled - $(echo $WANPREFIXES | awk '{print $1}') and $(echo $WANPREFIXES | awk '{print $2}') are enabled and connected"
     break
