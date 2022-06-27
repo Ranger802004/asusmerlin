@@ -1,9 +1,9 @@
 #!/bin/sh
 
-# Domain Name based routing for ASUS Routers using Merlin Firmware v386.5.2
+# Domain Name based routing for ASUS Routers using Merlin Firmware v386.7
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/17/2022
-# Version: v1.0
+# Date: 06/26/2022
+# Version: v1.1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing.sh"
-VERSION="v1.0"
+VERSION="v1.1"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
 POLICYDIR="/jffs/configs/domain_vpn_routing"
 SYSTEMLOG="/tmp/syslog.log"
@@ -73,7 +73,7 @@ elif [[ "${mode}" == "deletepolicy" ]] >/dev/null;then
 elif [[ "${mode}" == "querypolicy" ]] >/dev/null;then 
   echo -e "${GREEN}${0##*/} - Query Policy${NOCOLOR}"
   exec 100>"$LOCKFILE" || exit
-  flock -x -n 100 || exit
+  flock -x -n 100 || { echo -e "${RED}${0##*/} - Query Policy already running...${NOCOLOR}" && exit ;}
   trap 'rm -f "$LOCKFILE"' EXIT
   POLICY="$arg2"
   querypolicy
@@ -133,17 +133,29 @@ if [[ "${mode}" == "install" ]] >/dev/null;then
     logger -t "${0##*/}" "Install - "$CONFIGFILE" already exists"
   fi
 
+  # Create openvpn-event if it doesn't exist
+  echo -e "${BLUE}Creating openvpn-event script...${NOCOLOR}"
+  logger -t "${0##*/}" "Install - Creating openvpn-event script"
+    if [ ! -f "/jffs/scripts/openvpn-event" ] >/dev/null;then
+      touch -a /jffs/scripts/openvpn-event
+      chmod 755 /jffs/scripts/openvpn-event
+      echo "#!/bin/sh" >> /jffs/scripts/openvpn-event
+      echo -e "${GREEN}openvpn-event script has been created.${NOCOLOR}"
+    logger -t "${0##*/}" "Install - openvpn-event script has been created"
+    else
+      echo -e "${YELLOW}openvpn-event script already exists...${NOCOLOR}"
+      logger -t "${0##*/}" "Install - openvpn-event script already exists"
+    fi
+
   # Add Script to Openvpn-event
   if [ ! -z "$(cat /jffs/scripts/openvpn-event | grep -e "# domain_vpn_routing")" ] >/dev/null;then 
     echo -e "${YELLOW}${0##*/} already added to Openvpn-Event...${NOCOLOR}"
     logger -t "${0##*/}" "Install - ${0##*/} already added to Openvpn-Event"
   else
     cmdline="sh $0 cron"
-    cmdline2="sh $0 querypolicy all"
     echo -e "${BLUE}Adding ${0##*/} to Openvpn-Event...${NOCOLOR}"
     logger -t "${0##*/}" "Install - Adding ${0##*/} to Openvpn-Event"
     echo -e "\r\n$cmdline # domain_vpn_routing" >> /jffs/scripts/openvpn-event
-    echo -e "\r\n$cmdline2 # domain_vpn_routing" >> /jffs/scripts/openvpn-event
     echo -e "${GREEN}${0##*/} added to Openvpn-event.${NOCOLOR}"
     logger -t "${0##*/}" "Install - ${0##*/} added to Openvpn-Event"
   fi
