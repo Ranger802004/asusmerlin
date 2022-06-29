@@ -54,6 +54,7 @@ Run Modes (v1.3 or newer):
 - Configuration Mode: This will allow reconfiguration of WAN Failover to update or change settings. Add the command argument "config" to use this mode (Must be on v1.4.2 or newer)
 - Manual Mode: This will allow you to run the script in a command console. Add the command argument "manual" to use this mode.
 - Switch WAN Mode: This will manually switch the Primary WAN. Add the command argument "switchwan" to use this mode.
+- Email Configuration Mode: This will enable or disable email notifications using enable or disable parameter.  Add command argument "email enable" or "email disable".
 - Monitor Mode: This will monitor the log file of the script. Add the command argument "monitor" to use this mode.
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
 - Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
