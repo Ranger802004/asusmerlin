@@ -1,15 +1,14 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/06/2022
-# Version: v1.4.6
+# Date: 06/29/2022
+# Version: v1.5.4
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.
 
 Requirements:
-- ASUS Merlin Firmware v386.5.2
+- ASUS Merlin Firmware v386.7
 - JFFS custom scripts and configs Enabled
 - Dual WAN Enabled
-- Dual WAN to be in Failover Mode
 - ASUS Factory Failover Disabled (Network Monitoring Options, Allow Failback Option under WAN > Dual WAN)
 
 Installation:
@@ -32,6 +31,7 @@ Configuration: During installation or reconfiguration, the following settings ar
 -	Ping Count:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected.   
 -	Ping Timeout:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.
 -	WAN Disabled Timer:  This is how many seconds the script pauses and checks again if Dual WAN, Failover Mode, or WAN links are disabled/disconnected.
+- Boot Delay Timer: This is how many seconds System Uptime has to be before script begins checking WAN Status.
 -	QoS Settings are configured for each WAN interface because both interfaces may not have the same bandwidth (download/upload speeds).  The script will automatically change these settings for each interface as they become the active WAN interface.  If QoS is disabled or QoS Automatic Settings are being used, these settings will not be applied.
   o	WAN0 QoS Download Bandwidth:  Value is in Mbps
   o	WAN1 QoS Download Bandwidth: Value is in Mbps
@@ -44,7 +44,7 @@ Configuration: During installation or reconfiguration, the following settings ar
 -	Packet Loss Logging:  This will log packet loss detections that are less than 100% packet loss but more than 0% packet loss.  These events are not enough to trigger a WAN Failover/Failback condition but may be informal data as to the performance of a WAN interface.  If the Ping Timeout setting is too low (1-2 seconds) combined with a high latency WAN interface such as satellite internet services, this logging can become excessive with the described configuration.
 
 Optional Configuration:
-- To enable or disable email notifications, pass the command arguments "email enable" or "email disable" ***Email Notifications rely on Alert Preferences configured under AIProtection.  Default mode is Enabled.  Example: "/jffs/scripts/wan-failover.sh email enable"
+- To enable or disable email notifications, pass the command arguments "email enable" or "email disable", default mode is Enabled.  Example: "/jffs/scripts/wan-failover.sh email enable"  ***Email Notifications work with amtm or AIProtection Alert Preferences****
 
 Run Modes (v1.3 or newer):
 - Install Mode: This will install the script and configuration files necessary for it to run. Add the command argument "install" to use this mode.
@@ -59,6 +59,20 @@ Run Modes (v1.3 or newer):
 - Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
 
 Release Notes:
+v1.5.4 - 06/29/2022
+- Added delay in WAN Status for when NVRAM is inaccessible.
+- Added support for Load Balance Mode
+- Changed from using NVRAM Variables: wan0_ifname & wan1_ifname to using NVRAM Variables: wan0_gw_ifname & wan1_gw_ifname.
+- Improved DNS Settings detection during Switch WAN function.
+- Improved Switch WAN Logic to verify NVRAM Variables: wan_gateway, wan_gw_ifname, and wan_ipaddr are properly updated.
+- Added warning message when attempting to execute Run or Manual Mode if the script is already running.
+- Support for ASUS Merlin Firmware 386.7
+- Added Boot Delay Timer
+- Target IP Routes are now created using IP Rules from Local Router to Routing Table 100 (WAN0) and Routing Table 200 (WAN1) so client devices on the network do not use the created routes.
+- Moved Email Variables from Global Variables so Email Configuration is checked every time a switch occurs instead of when script restarts.
+- Email Notification will not be sent if System Uptime is less than 60 seconds + Boot Delay Timer if configured.  This is created because the firmware will start up with WAN1 as Active Connection and switch to WAN0 with the script.
+- Added integration for amtm email notifications, if amtm is properly configured, it will be used for Email Notifications, otherwise it will attempt to use AIProtection Alerts.
+
 v1.4.6 - 06/06/2022
 - Fixed issue where if Gateway IP Address changed, script would not return to WAN Status to check if route is created for the monitoring target.
 - Created an enable / disable function for email (Instructions added to Configuration of Readme).
