@@ -587,7 +587,7 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] 
         if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "3" ]] >/dev/null;then
           logger -t "${0##*/}" "WAN Status - WAN0: Cable Unplugged"
           WAN0STATUS="DISCONNECTED"
-          break
+          continue
         elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] >/dev/null;then
           logger -t "${0##*/}" "WAN Status - Restarting WAN0: "$(nvram get ${WANPREFIX}_gw_ifname)""
           service "restart_wan_if 0" & 
@@ -641,7 +641,7 @@ elif [[ "$(nvram get $(echo $WANPREFIXES | awk '{print $1}')_enable)" == "1" ]] 
         if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "3" ]] >/dev/null;then
           logger -t "${0##*/}" "WAN Status - WAN1: Cable Unplugged"
           WAN1STATUS="DISCONNECTED"
-          break
+          continue
         elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] >/dev/null;then
           logger -t "${0##*/}" "WAN Status - Restarting WAN1: "$(nvram get ${WANPREFIX}_gw_ifname)""
           service "restart_wan_if 1" & 
