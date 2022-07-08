@@ -61,19 +61,19 @@ elif [[ "${mode}" == "run" ]] >/dev/null;then
   echo -e "${GREEN}${0##*/} - Run Mode${NOCOLOR}"
   exec 100>"$LOCKFILE" || exit
   flock -x -n 100 || { echo -e "${RED}${0##*/} already running...${NOCOLOR}" && exit ;}
-  trap 'rm -f "$LOCKFILE"' HUP INT QUIT TERM
+  trap 'rm -f "$LOCKFILE"' EXIT HUP INT QUIT TERM
   systemcheck
 elif [[ "${mode}" == "manual" ]] >/dev/null;then 
   echo -e "${GREEN}${0##*/} - Manual Mode${NOCOLOR}"
   exec 100>"$LOCKFILE" || exit
   flock -x -n 100 || { echo -e "${RED}${0##*/} already running...${NOCOLOR}" && exit ;}
-  trap 'rm -f "$LOCKFILE"' HUP INT QUIT TERM
+  trap 'rm -f "$LOCKFILE"' EXIT HUP INT QUIT TERM
   systemcheck
 elif [[ "${mode}" == "restart" ]] >/dev/null;then
   killscript
 elif [[ "${mode}" == "monitor" ]] >/dev/null;then 
   echo -e "${GREEN}${0##*/} - Monitor Mode${NOCOLOR}"
-  trap 'exit' HUP INT QUIT TERM
+  trap 'exit' EXIT HUP INT QUIT TERM
   monitor
 elif [[ "${mode}" == "kill" ]] >/dev/null;then 
   echo -e "${RED}${0##*/} - Kill Mode${NOCOLOR}"
@@ -496,8 +496,8 @@ killscript ()
 if [[ "${mode}" == "restart" ]] || [[ "${mode}" == "update" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
   logger -st "${0##*/}" "Restart - Restarting ${0##*/} ***This can take up to approximately 1 minute***"
   cronjob >/dev/null &
-  RESTARTTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+65))"
-  while [[ "$(date "+%T" | awk -F ":" '{print $3}')" -lt "55" ]] && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -lt "$RESTARTTIMEOUT" ]] >/dev/null;do
+  RESTARTTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+55))"
+  while [[ "$(date "+%T" | awk -F ":" '{print $3}')" -lt "50" ]] && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -lt "$RESTARTTIMEOUT" ]] >/dev/null;do
     sleep 1
   done
 fi
