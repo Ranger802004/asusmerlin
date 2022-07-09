@@ -1092,7 +1092,7 @@ logger -p 6 -t "${0##*/}" "Debug - Function: wan0active"
 # Delay if NVRAM is not accessible
 nvramcheck || return
 
-logger -p  -t "${0##*/}" "WAN0 Active - Verifying WAN0"
+logger -p 5 -t "${0##*/}" "WAN0 Active - Verifying WAN0"
 if [[ "$(nvram get wan0_primary)" != "1" ]] >/dev/null;then
   switchwan
 elif [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] >/dev/null;then
@@ -1583,11 +1583,11 @@ nvramcheck || return
 # Determine Current Primary WAN and change it to the Inactive WAN
 for WANPREFIX in ${WANPREFIXES};do
   if [[ "$(nvram get ${WANPREFIX}_primary)" == "1" ]] >/dev/null;then
-    ACTIVEWAN="${WANPREFIX}"
+    INACTIVEWAN="${WANPREFIX}"
     logger -p 6 -t "${0##*/}" "Debug - Active WAN: "${WANPREFIX}""
     continue
-  elif [[ "$(nvram get wan1_primary)" == "0" ]] >/dev/null;then
-    INACTIVEWAN="${WANPREFIX}"
+  elif [[ "$(nvram get ${WANPREFIX}_primary)" == "0" ]] >/dev/null;then
+    ACTIVEWAN="${WANPREFIX}"
     logger -p 6 -t "${0##*/}" "Debug - Inactive WAN: "${WANPREFIX}""
     continue
   fi
@@ -2004,8 +2004,10 @@ fi
 wanevent ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: wanevent"
-if [ -f "/jffs/scripts/wan-event" ] >/dev/null;then
-  sh /jffs/scripts/wan-event &
+if [[ "${mode}" != "manual" ]] >/dev/null;then
+  if [ -f "/jffs/scripts/wan-event" ] >/dev/null;then
+    sh -c /jffs/scripts/wan-event &
+  fi
 fi
 wanstatus
 }
