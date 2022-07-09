@@ -534,20 +534,94 @@ killscript ()
 logger -p 6 -t "${0##*/}" "Debug - Function: killscript"
 if [[ "${mode}" == "restart" ]] || [[ "${mode}" == "update" ]] || [[ "${mode}" == "config" ]] || [[ "$[mode}" == "email" ]] >/dev/null;then
   logger -p 1 -st "${0##*/}" "Restart - Restarting ${0##*/} ***This can take up to approximately 1 minute***"
+  logger -p 6 -t "${0##*/}" "Debug - Calling CronJob to be rescheduled"
   cronjob >/dev/null &
-  RESTARTTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+55))"
-  while [[ "$(date "+%T" | awk -F ":" '{print $3}')" -le "50" ]] && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$RESTARTTIMEOUT" ]] >/dev/null;do
+  logger -p 6 -t "${0##*/}" "Debug - Waiting to kill script until seconds into the minute are above 45 seconds or below 50 seconds"
+  CURRENTSYSTEMUPTIME="$(awk -F "." '{print $1}' "/proc/uptime")"
+  while [[ "$(date "+%S")" -le "45" ]] || [[ "$(date "+%S")" -ge "50" ]] >/dev/null;do
+    if [[ "${mode}" == "restart" ]] >/dev/null;then
+      WAITTIMER=$(($(awk -F "." '{print $1}' "/proc/uptime")-$CURRENTSYSTEMUPTIME))
+      printf '%s\r' "***Waiting to kill ${0##*/}*** Current Wait Time: "$WAITTIMER" Seconds"
+    fi
     sleep 1
   done
-fi
-if [[ "${mode}" == "kill" ]] >/dev/null;then
+
+  # Determine PIDs to kill
+  logger -p 6 -t "${0##*/}" "Debug - Selecting PIDs to kill"
+  PIDS=""
+  PIDSRUN="$(ps | grep -v "grep" | grep -w "$0 run" | awk '{print $1}')"
+  PIDSMANUAL="$(ps | grep -v "grep" | grep -w "$0 manual" | awk '{print $1}')"
+  for PID in ${PIDSRUN};do
+    PIDS="${PIDS} ${PID}"
+  done
+  for PID in ${PIDSMANUAL};do
+    PIDS="${PIDS} ${PID}"
+  done
+
+  logger -p 6 -t "${0##*/}" "Debug - Checking if PIDs array is null ***Process ID: "$PIDS""
+  if [ ! -z "$PIDS" ] >/dev/null;then
+    for PID in ${PIDS};do
+      logger -p 1 -st "${0##*/}" "Restart - Killing ${0##*/} Process ID: "${PID}""
+      kill -9 ${PID}
+      logger -p 1 -st "${0##*/}" "Restart - Killed ${0##*/} Process ID: "${PID}""
+    done
+  fi
+
+  # Check for restart from CronJob
+  RESTARTTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+90))"
+  logger -p 1 -t "${0##*/}" "Restart - Waiting for ${0##*/} to restart from CronJob"
+  logger -p 6 -t "${0##*/}" "Debug - System Uptime: "$(awk -F "." '{print $1}' "/proc/uptime")" Seconds"
+  logger -p 6 -t "${0##*/}" "Debug - Restart Timeout is in "$(($RESTARTTIMEOUT-$(awk -F "." '{print $1}' "/proc/uptime")))" Seconds"
+  while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$RESTARTTIMEOUT" ]] >/dev/null;do
+    PIDS=""
+    PIDSRUN="$(ps | grep -v "grep" | grep -w "$0 run" | awk '{print $1}')"
+    PIDSMANUAL="$(ps | grep -v "grep" | grep -w "$0 manual" | awk '{print $1}')"
+    for PID in ${PIDSRUN};do
+      PIDS="${PIDS} ${PID}"
+    done
+    for PID in ${PIDSMANUAL};do
+      PIDS="${PIDS} ${PID}"
+    done
+    if [ ! -z "$PIDS" ] >/dev/null;then
+      break
+    elif [ -z "$PIDS" ] >/dev/null;then
+      if [[ "${mode}" == "restart" ]] >/dev/null;then
+        TIMEOUTTIMER=$(($RESTARTTIMEOUT-$(awk -F "." '{print $1}' "/proc/uptime")))
+        printf '%s\r' "***Waiting for ${0##*/} to restart from cronjob*** Timeout: "$TIMEOUTTIMER" Seconds"
+      fi
+      sleep 1
+    fi
+  done
+  logger -p 6 -t "${0##*/}" "Debug - System Uptime: "$(awk -F "." '{print $1}' "/proc/uptime")" Seconds"
+
+  # Check if script restarted
+  logger -p 6 -t "${0##*/}" "Debug - Checking if "${0##*/}" restarted"
+  PIDS=""
+  PIDSRUN="$(ps | grep -v "grep" | grep -w "$0 run" | awk '{print $1}')"
+  PIDSMANUAL="$(ps | grep -v "grep" | grep -w "$0 manual" | awk '{print $1}')"
+  for PID in ${PIDSRUN};do
+    PIDS="${PIDS} ${PID}"
+  done
+  for PID in ${PIDSMANUAL};do
+    PIDS="${PIDS} ${PID}"
+  done
+  logger -p 6 -t "${0##*/}" "Debug - Checking if PIDs array is null ***Process ID: "$PIDS""
+  if [ ! -z "$PIDS" ] >/dev/null;then
+    logger -p 1 -st "${0##*/}" "Restart - Successfully Restarted ${0##*/} Process ID: $PIDS"
+  elif [ -z "$PIDS" ] >/dev/null;then
+    logger -p 1 -st "${0##*/}" "Restart - Failed to restart ${0##*/} ***Check Logs***"
+  fi
+  exit
+elif [[ "${mode}" == "kill" ]] >/dev/null;then
   logger -p 0 -st "${0##*/}" "Kill - Killing ${0##*/}"
   cronjob >/dev/null &
+  if [ -f "$LOCKFILE" ] >/dev/null;then
+    rm -f "$LOCKFILE"
+  fi
+  logger -p 6 -t "${0##*/}" "Debug - Killing ${0##*/}"
+  killall ${0##*/}
+  exit
 fi
-if [ -f "$LOCKFILE" ] >/dev/null;then
-  rm -f "$LOCKFILE"
-fi
-sleep 3 && killall ${0##*/}
 exit
 }
 
@@ -2027,7 +2101,7 @@ if [ -z "$(nvram get model)" ] >/dev/null;then
   done
   return
 fi
-logger -p 6 -t "${0##*/}" "Debug - **NVRAM Check Passed***"
+logger -p 6 -t "${0##*/}" "Debug - ***NVRAM Check Passed***"
 return
 }
 
