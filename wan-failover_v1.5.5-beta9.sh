@@ -536,7 +536,7 @@ if [[ "${mode}" == "restart" ]] || [[ "${mode}" == "update" ]] || [[ "${mode}" =
   logger -p 1 -st "${0##*/}" "Restart - Restarting ${0##*/} ***This can take up to approximately 1 minute***"
   cronjob >/dev/null &
   RESTARTTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+55))"
-  while [[ "$(date "+%T" | awk -F ":" '{print $3}')" -lt "50" ]] && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -lt "$RESTARTTIMEOUT" ]] >/dev/null;do
+  while [[ "$(date "+%T" | awk -F ":" '{print $3}')" -le "50" ]] && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$RESTARTTIMEOUT" ]] >/dev/null;do
     sleep 1
   done
 fi
@@ -796,9 +796,9 @@ nvramcheck || return
 logger -p 6 -t "${0##*/}" "Debug - System Uptime: "$(awk -F "." '{print $1}' "/proc/uptime")" Seconds"
 logger -p 6 -t "${0##*/}" "Debug - Boot Delay Timer: "$BOOTDELAYTIMER" Seconds"
 if [ ! -z "$BOOTDELAYTIMER" ] >/dev/null;then
-  if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -lt "$BOOTDELAYTIMER" ]] >/dev/null;then
+  if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$BOOTDELAYTIMER" ]] >/dev/null;then
     logger -p 4 -st "${0##*/}" "Boot Delay - Waiting for System Uptime to reach $BOOTDELAYTIMER seconds"
-    while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -lt "$BOOTDELAYTIMER" ]] >/dev/null;do
+    while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$BOOTDELAYTIMER" ]] >/dev/null;do
       sleep 1
     done
     logger -p 5 -st "${0##*/}" "Boot Delay - System Uptime is $(awk -F "." '{print $1}' "/proc/uptime") seconds"
@@ -851,7 +851,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         sleep 1
         # Set Timeout for WAN interface to restart to a max of 30 seconds and while WAN Interface is State 6
         RESTARTTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
-        while [[ "$(nvram get "${WANPREFIX}"_state_t)" == "6" ]] && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -lt "$RESTARTTIMEOUT" ]] >/dev/null;do
+        while [[ "$(nvram get "${WANPREFIX}"_state_t)" == "6" ]] && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$RESTARTTIMEOUT" ]] >/dev/null;do
           sleep 1
         done
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" State - Post-Restart: "$(nvram get ${WANPREFIX}_state_t)""
@@ -1849,7 +1849,7 @@ if [[ "${mode}" == "email" ]] && [ ! -z "$OPTION" ] >/dev/null;then
 fi
 
 # Send email notification if Alert Preferences are configured if System Uptime is more than Boot Delay Timer + Variable SKIPEMAILSYSEMUPTIME seconds.
-if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -gt "$(($SKIPEMAILSYSTEMUPTIME+$BOOTDELAYTIMER))" ]] && { [ -f "$AIPROTECTION_EMAILCONFIG" ] || [ -f "$AMTM_EMAILCONFIG" ] ;} >/dev/null;then
+if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -ge "$(($SKIPEMAILSYSTEMUPTIME+$BOOTDELAYTIMER))" ]] && { [ -f "$AIPROTECTION_EMAILCONFIG" ] || [ -f "$AMTM_EMAILCONFIG" ] ;} >/dev/null;then
 
   # Check for old mail temp file and delete it or create file and set permissions
   logger -p 6 -t "${0##*/}" "Debug - Checking if "$TMPEMAILFILE" exists"
@@ -2014,14 +2014,18 @@ wanstatus
 nvramcheck ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: nvramcheck"
-NVRAMTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+5))"
-if [ -z "$(nvram get model)" ] && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -lt "$NVRAMTIMEOUT" ]] >/dev/null;then
+if [ -z "$(nvram get model)" ] >/dev/null;then
   logger -p 1 -st "${0##*/}" "***NVRAM Inaccessible***"
-  while [ -z "$(nvram get model)" ] && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -lt "$NVRAMTIMEOUT" ]] >/dev/null;do
-    printf '%s\r' "***Waiting for NVRAM Access***"
+  NVRAMTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+5))"
+  while [ -z "$(nvram get model)" ] || [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$NVRAMTIMEOUT" ]] >/dev/null;do
+    if [[ "${mode}" == "manual" ]] >/dev/null;then
+      printf '%s\r' "***Waiting for NVRAM Access***"
+    fi
     sleep 1
   done
+  return
 fi
+logger -p 6 -t "${0##*/}" "Debug - **NVRAM Check Passed***"
 return
 }
 
