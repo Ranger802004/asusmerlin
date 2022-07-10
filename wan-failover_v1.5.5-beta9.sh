@@ -535,7 +535,7 @@ logger -p 6 -t "${0##*/}" "Debug - Function: killscript"
 if [[ "${mode}" == "restart" ]] || [[ "${mode}" == "update" ]] || [[ "${mode}" == "config" ]] || [[ "$[mode}" == "email" ]] >/dev/null;then
   logger -p 1 -st "${0##*/}" "Restart - Restarting ${0##*/} ***This can take up to approximately 1 minute***"
   logger -p 6 -t "${0##*/}" "Debug - Calling CronJob to be rescheduled"
-  cronjob >/dev/null &
+  $(cronjob >/dev/null &)
   logger -p 6 -t "${0##*/}" "Debug - Waiting to kill script until seconds into the minute are above 45 seconds or below 50 seconds"
   CURRENTSYSTEMUPTIME="$(awk -F "." '{print $1}' "/proc/uptime")"
   while [[ "$(date "+%S")" -le "45" ]] || [[ "$(date "+%S")" -ge "50" ]] >/dev/null;do
@@ -613,12 +613,9 @@ if [[ "${mode}" == "restart" ]] || [[ "${mode}" == "update" ]] || [[ "${mode}" =
   fi
   exit
 elif [[ "${mode}" == "kill" ]] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - Calling CronJob to delete jobs"
+  $(cronjob >/dev/null &)
   logger -p 0 -st "${0##*/}" "Kill - Killing ${0##*/}"
-  cronjob >/dev/null &
-  if [ -f "$LOCKFILE" ] >/dev/null;then
-    rm -f "$LOCKFILE"
-  fi
-  logger -p 6 -t "${0##*/}" "Debug - Killing ${0##*/}"
   killall ${0##*/}
   exit
 fi
@@ -659,18 +656,19 @@ cronjob ()
 logger -p 6 -t "${0##*/}" "Debug - Function: cronjob"
 # Create Cron Job
 if [[ "${mode}" == "cron" ]] || [[ "${mode}" == "install" ]] || [[ "${mode}" == "restart" ]] || [[ "${mode}" == "update" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
-  if [ -z "$(cru l | grep -e "$0")" ] >/dev/null;then
+  if [ -z "$(cru l | grep -w "$0")" ] >/dev/null;then
     logger -p 5 -st "${0##*/}" "Cron - Creating Cron Job"
     cru a setup_wan_failover_run "*/1 * * * *" $0 run
     logger -p 5 -st "${0##*/}" "Cron - Created Cron Job"
   fi
 # Remove Cron Job
 elif [[ "${mode}" == "kill" ]] || [[ "${mode}" == "uninstall" ]] >/dev/null;then
-  if [ ! -z "$(cru l | grep -e "$0")" ] >/dev/null; then
+  if [ ! -z "$(cru l | grep -w "$0")" ] >/dev/null;then
     logger -p 3 -st "${0##*/}" "Cron - Removing Cron Job"
     cru d setup_wan_failover_run
     logger -p 3 -st "${0##*/}" "Cron - Removed Cron Job"
   fi
+  return
 fi
 exit
 }
@@ -1026,7 +1024,7 @@ fi
 # Check Rules for Load Balance Mode
 if [[ "$(nvram get wans_mode)" == "lb" ]] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Checking IPTables Mangle Rules"
-  # Check IPTables Mangle Balance Rule for PREROUTING Table
+  # Check IPTables Mangle Balance Rules for PREROUTING Table
   if [ -z "$(iptables -t mangle -L PREROUTING -v -n | awk '{ if( /balance/ && /'$(nvram get lan_ifname)'/ && /state/ && /NEW/ ) print}')" ] >/dev/null;then
     logger -p 5 -t "${0##*/}" "WAN Status - Adding IPTables MANGLE Balance Rule"
     iptables -t mangle -A PREROUTING -i $(nvram get lan_ifname) -m state --state NEW -j balance
@@ -1115,6 +1113,26 @@ for WANPREFIX in ${WANPREFIXES};do
       fi
     fi
   fi
+
+  # Check Guest Network Rules for Load Balance Mode
+  logger -p 6 -t "${0##*/}" "Debug - Checking Guest Networks IPTables Mangle Rules"
+  i=0
+  while [ "$i" -le "10" ] >/dev/null;do
+    i=$(($i+1))
+    if [ ! -z "$(nvram get lan${i}_ifname)" ] >/dev/null;then
+      if [ -z "$(iptables -t mangle -L PREROUTING -v -n | awk '{ if( /balance/ && /'$(nvram get lan${i}_ifname)'/ && /state/ && /NEW/ ) print}')" ] >/dev/null;then
+        logger -p 5 -t "${0##*/}" "WAN Status - Adding IPTables MANGLE Balance Rule for "$(nvram get lan${i}_ifname)""
+        iptables -t mangle -A PREROUTING -i $(nvram get lan${i}_ifname) -m state --state NEW -j balance
+      fi
+    fi
+  
+    # Check IPTables Mangle Match Rule for WAN for PREROUTING Table
+    if [ -z "$(iptables -t mangle -L PREROUTING -v -n | awk '{ if( /CONNMARK/ && /'$(nvram get lan${i}_ifname)'/ && /connmark match/ && /'$MARK'/ && /CONNMARK/ && /restore/ && /mask/ && /'$MASK'/ ) print}')" ] >/dev/null;then
+      logger -p 5 -t "${0##*/}" "WAN Status - Adding IPTables MANGLE match rule for $(nvram get lan${i}_ifname) marked with "$MARK""
+      iptables -t mangle -A PREROUTING -i $(nvram get lan${i}_ifname) -m connmark --mark "$MARK"/"$MARK" -j CONNMARK --restore-mark --mask "$MASK"
+    fi
+  done
+  i=0
 done
 
   # If OVPN Split Tunneling is Disabled in Configuration, create rules to bind OpenVPN Clients to a single interface
