@@ -3,7 +3,7 @@
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 07/12/2022
-# Version: v1.5.5
+# Version: v1.5.5-beta11
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh"
-VERSION="v1.5.5"
+VERSION="v1.5.5-beta11"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 SYSTEMLOG="/tmp/syslog.log"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -939,6 +939,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
       logger -p 1 -st "${0##*/}" "WAN Status - ${WANPREFIX} disabled"
       STATUS=DISABLED
       logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
+      setwanstatus && continue
     # Check if WAN is Enabled
     elif [[ "$(nvram get "${WANPREFIX}"_enable)" == "1" ]] >/dev/null;then
       logger -p 5 -t "${0##*/}" "WAN Status - ${WANPREFIX} enabled"
@@ -951,7 +952,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         fi
         logger -p 1 -st "${0##*/}" "WAN Status - Restarting "${WANPREFIX}""
         WANSUFFIX="$(echo "${WANPREFIX}" | awk -F "wan" '{print $2}')"
-        service "restart_wan_if "$WANSUFFIX"" & 
+        service "restart_wan_if "$WANSUFFIX"" &
         sleep 1
         # Set Timeout for WAN interface to restart to a max of 30 seconds and while WAN Interface is State 6
         RESTARTTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
@@ -967,7 +968,8 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
           fi
           STATUS=DISCONNECTED
           logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
-        elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] >/dev/null;then
+          setwanstatus && continue
+          elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] >/dev/null;then
           logger -p 1 -st "${0##*/}" "WAN Status - Restarted "${WANPREFIX}""
           break
         else
@@ -979,7 +981,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         logger -p 1 -st "${0##*/}" "WAN Status - ${WANPREFIX} is disconnected.  IP Address: "$(nvram get ${WANPREFIX}_ipaddr)" Gateway: "$(nvram get ${WANPREFIX}_gateway)""
         STATUS=DISCONNECTED
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
-        continue
+        setwanstatus && continue
       fi
       # Check WAN IP Address Target Route
       if [[ "$(nvram get ${WANPREFIX}_primary)" == "1" ]] && [ ! -z "$(ip route list default table main | grep -e "$TARGET")" ] && [[ "$(nvram get wans_mode)" == "fo" ]] >/dev/null;then
@@ -1004,6 +1006,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         logger -p 5 -t "${0##*/}" "WAN Status - "${WANPREFIX}" has "$PACKETLOSS" packet loss"
         STATUS="CONNECTED"
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
+        setwanstatus && continue
         if [[ "$(nvram get ${WANPREFIX}_state_t)" != "2" ]] >/dev/null;then
           nvram set ${WANPREFIX}_state_t=2
         fi
@@ -1011,17 +1014,13 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         logger -p 2 -st "${0##*/}" "WAN Status - ${WANPREFIX} has $PACKETLOSS packet loss ***Verify $TARGET is a valid server for ICMP Echo Requests***"
         STATUS="DISCONNECTED"
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
+        setwanstatus && continue
       else
         logger -p 2 -st "${0##*/}" "WAN Status - "${WANPREFIX}" has "$PACKETLOSS" packet loss"
         STATUS="DISCONNECTED"
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
+        setwanstatus && continue
       fi
-    fi
-    # Set WAN Status
-    if [[ "${WANPREFIX}" == "$WAN0" ]] >/dev/null;then
-      WAN0STATUS="$STATUS"
-    elif [[ "${WANPREFIX}" == "$WAN1" ]] >/dev/null;then
-      WAN1STATUS="$STATUS"
     fi
   done
 fi
@@ -1259,6 +1258,20 @@ done
 return
 }
 
+# Set WAN Status
+setwanstatus ()
+{
+logger -p 6 -t "${0##*/}" "Debug - Function: setwanstatus"
+
+if [[ "${WANPREFIX}" == "$WAN0" ]] >/dev/null;then
+  WAN0STATUS="$STATUS"
+elif [[ "${WANPREFIX}" == "$WAN1" ]] >/dev/null;then
+  WAN1STATUS="$STATUS"
+fi
+return
+}
+
+
 # WAN0 Active
 wan0active ()
 {
@@ -1269,12 +1282,15 @@ nvramcheck || return
 
 logger -p 5 -t "${0##*/}" "WAN0 Active - Verifying WAN0"
 if [[ "$(nvram get wan0_primary)" != "1" ]] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - WAN0 is not Primary WAN"
   switchwan
 elif [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - WAN1 does not have a valid IP: $(nvram get wan1_ipaddr) or Gateway IP: $(nvram get wan1_gateway)"
   wandisabled
 elif [[ "$(nvram get wan0_primary)" == "1" ]] && [[ "$(nvram get wan1_enable)" == "1" ]] >/dev/null;then
   wan0failovermonitor
 elif [[ "$(nvram get wan0_primary)" == "1" ]] && [[ "$(nvram get wan1_enable)" == "0" ]] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - WAN1 is not Enabled"
   wandisabled
 else
   wanstatus
@@ -1291,12 +1307,15 @@ nvramcheck || return
 
 logger -p 5 -t "${0##*/}" "WAN1 Active - Verifying WAN1"
 if [[ "$(nvram get wan1_primary)" != "1" ]] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - WAN1 is not Primary WAN"
   switchwan
 elif [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - WAN0 does not have a valid IP: $(nvram get wan0_ipaddr) or Gateway IP: $(nvram get wan0_gateway)"
   wandisabled
 elif [[ "$(nvram get wan1_primary)" == "1" ]] && [[ "$(nvram get wan0_enable)" == "1" ]] >/dev/null;then
   wan0failbackmonitor
 elif [[ "$(nvram get wan1_primary)" == "1" ]] && [[ "$(nvram get wan0_enable)" == "0" ]] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - WAN0 is not Enabled"
   wandisabled
 else
   wanstatus
