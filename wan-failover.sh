@@ -40,6 +40,7 @@ if [ "$#" == "0" ] >/dev/null;then
   echo -e "${YELLOW}$0 switchwan${WHITE} - This will manually switch Primary WAN.  ***Failover Mode Only***${NOCOLOR}"
   echo -e "${YELLOW}$0 email${WHITE} - This will enable or disable email notifications using enable or disable parameter.${NOCOLOR}"
   echo -e "${RED}$0 uninstall${WHITE} - This will uninstall the configuration files necessary to stop the script from running.${NOCOLOR}"
+  echo -e "${RED}$0 restart${WHITE} - This will restart the script if it is currently running.${NOCOLOR}"
   echo -e "${RED}$0 kill${WHITE} - This will kill any running instances of the script.${NOCOLOR}"
   break && exit
 fi
