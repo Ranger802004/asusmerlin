@@ -1,12 +1,12 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/29/2022
-# Version: v1.5.4
+# Date: 07/13/2022
+# Version: v1.5.5
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
 Requirements:
-- ASUS Merlin Firmware v386.7
+- ASUS Merlin Firmware v386.5 or higher
 - JFFS custom scripts and configs Enabled
 - Dual WAN Enabled
 - ASUS Factory Failover Disabled (Network Monitoring Options, Allow Failback Option under WAN > Dual WAN)
@@ -16,13 +16,9 @@ Install Command to run to install script:
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh install
 
 Updating:
-Update Command (Updating from v1.3.5 or older):
-/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh kill
-
-Update Command (Updating from v1.3.7 or newer)
 /jffs/scripts/wan-failover.sh update
 
-Uninstallation (v1.3 or newer):
+Uninstallation:
 /jffs/scripts/wan-failover.sh uninstall
 
 Configuration: During installation or reconfiguration, the following settings are configured:
@@ -45,8 +41,28 @@ Configuration: During installation or reconfiguration, the following settings ar
 
 Optional Configuration:
 - To enable or disable email notifications, pass the command arguments "email enable" or "email disable", default mode is Enabled.  Example: "/jffs/scripts/wan-failover.sh email enable"  ***Email Notifications work with amtm or AIProtection Alert Preferences****
+Options that can be adjusted in the configuration file
+- BOOTDELAYTIMER: This will delay the script from executing until System Uptime reaches this time.
+- SKIPEMAILSYSTEMUPTIME: This will delay sending emails while System Uptime is less than this time. Default: 180 Seconds
+- EMAILTIMEOUT: This defines the timeout for sending an email after a Failover/Failback event.  Default: 30 Seconds
+- WAN0TARGETRULEPRIORITY: This defines the IP Rule Priority for the WAN0 Target IP Address.  Default: 100
+- WAN1TARGETRULEPRIORITY: This defines the IP Rule Priority for the WAN1 Target IP Address.  Default: 100
+- LBRULEPRIORITY: This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change. Default: 150
+- OVPNSPLITTUNNEL: This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode. Default: 1 (Enabled)
+- WAN0ROUTETABLE: This defines the Routing Table for WAN0, it is recommended to leave this default unless necessary to change. Default: 100
+- WAN1ROUTETABLE: This defines the Routing Table for WAN1, it is recommended to leave this default unless necessary to change. Default: 200
+- WAN0MARK: This defines the FW Mark used to mark and match traffic for WAN0 in IPTables Rules. Default: 0x80000000
+- WAN1MARK: This defines the FW Mark used to mark and match traffic for WAN1 in IPTables Rules. Default: 0x90000000
+- WAN0MASK: This defines the FW Mask used to mark and match traffic for WAN0 in IPTables Rules. Default: 0xf0000000
+- WAN1MASK: This defines the FW Mask used to mark and match traffic for WAN1 in IPTables Rules. Default: 0xf0000000
+- FROMWAN0PRIORITY: This defines the IP Rule Priority for Traffic from WAN0 that are automatically created by Load Balance Mode.  It is recommended to leave this default unless necessary to change.  Default: 200
+- FROMWAN1PRIORITY: This defines the IP Rule Priority for Traffic from WAN1 that are automatically created by Load Balance Mode.  It is recommended to leave this default unless necessary to change.  Default: 200
+- TOWAN0PRIORITY: This defines the IP Rule Priority for Traffic to WAN0 that are automatically created by Load Balance Mode. It is recommended to leave this default unless necessary to change. Default: 400
+- TOWAN1PRIORITY: This defines the IP Rule Priority for Traffic to WAN1 that are automatically created by Load Balance Mode. It is recommended to leave this default unless necessary to change. Default: 400
+- OVPNWAN0PRIORITY: This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is 0 (Disabled). Default: 100
+- OVPNWAN1PRIORITY: This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is 0 (Disabled). Default: 200
 
-Run Modes (v1.3 or newer):
+Run Modes:
 - Install Mode: This will install the script and configuration files necessary for it to run. Add the command argument "install" to use this mode.
 - Uninstall Mode: This will uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
 - Run Mode: This mode is for the script to run in the background via cron job. Add the command argument "run" to use this mode.
@@ -56,10 +72,44 @@ Run Modes (v1.3 or newer):
 - Switch WAN Mode: This will manually switch the Primary WAN. Add the command argument "switchwan" to use this mode.
 - Email Configuration Mode: This will enable or disable email notifications using enable or disable parameter.  Add command argument "email enable" or "email disable".
 - Monitor Mode: This will monitor the log file of the script. Add the command argument "monitor" to use this mode.
+- Restart Mode: This will restart the script if it is currently running.  Add the command argument "restart" to use this mode.
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
 - Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
 
 Release Notes:
+v1.5.5 - 07/13/2022
+- General optimization of script logic
+- If AdGuard is running or AdGuard Local is enabled, Switch WAN function will not update the resolv.conf file. (Collaboration with SomeWhereOverTheRainbow)
+- Optimized the way script loads configuration variables.
+- Service restarts will dynamically check which services need to be restarted.
+- Optimized Boot Delay Timer functionality and changed logging messages to clarify how the Boot Delay Timer effects the script startup.
+- WAN Status will now check if a cable is unplugged.
+- Resolved issues with Load Balancing Mode introduced in v1.5.4
+- Enhancements to Load Balancing Mode
+- When in Load Balancing Mode, OpenVPN Split Tunneling can be disabled where remote addresses will default to WAN0 and failover to WAN1 if WAN0 fails and back to WAN0 when it is restored.  This can be changed in Configuration file using the Setting: OVPNSPLITTUNNEL (1 = Enabled / 0 = Disabled).
+- Corrected issue with Cron Job creation.
+- Corrected issues with IP Rules creation for Target IP Addresses.
+- When in Load Balance Mode, script will create IPTables Mangle rules for marking packets if they are missing.  This is to correct an issue with the firmware.
+- Increased email skip default delay to 180 seconds additional to Boot Delay Timer.  Adjustable in configuration file using Setting: SKIPEMAILSYSTEMUPTIME (Value is in seconds).
+- Script will check for supported ASUS Merlin Firmware Versions
+- Script will verify System Binaries are used over Optional Binaries
+- Added email functionality for Load Balancing Mode.  If a WAN Interface fails, an email notification will be sent if enabled.
+- Corrected issue where temporary file for mail would not have correct write permissions to create email for notification.
+- Script will now create NAT Rules for services that are enabled.
+- Load Balancing Rule Priority, WAN0/WAN1 Route Tables, FW Marks/Masks, IP Rule Priorities, and OpenVPN WAN Priority (Split Tunneling Disabled) are now all customizable using the configuration file.  Recommended to leave default unless necessary to change.
+- WAN Interface restarts during WAN Status checks will only wait 30 seconds maximum to check status again.
+- Corrected issue where Monitor mode would stay running in background, now will exit background process when escaped with Ctrl + C.
+- Added a restart mode to reload WAN Failover, use argument "restart".  Config, Update, and Restart Mode will wait before cronjob cycle to kill script and allow cron job to reload script.
+- Kill Mode will now delete the cron job to prevent WAN Failover from relaunching.
+- If YazFi is installed and has a scheduled Cron Job, WAN Failover will trigger YazFi to update if installed in default location (/jffs/scripts/YazFi).
+- Configured debug logging, to enable debug logging, set System Log > Log only messages more urgent than: debug
+- Load Balancer will now work with Guest Networks created.
+- Fixed issue where email would fail to send if --insecure flag was removed from amtm configuration.
+- When running WAN Failover from the Console, the script will actively display the current Packet Loss.  0% will be displayed in Green, 100% will be displayed in Red, and 1% - 99% will be displayed in Yellow.
+- Added email timeout option, adjusted in configuration using EMAILTIMEOUT setting.
+- Moved ping process into seperate function and called by the failover monitors.
+
+
 v1.5.4 - 06/29/2022
 - Added delay in WAN Status for when NVRAM is inaccessible.
 - Added support for Load Balance Mode
