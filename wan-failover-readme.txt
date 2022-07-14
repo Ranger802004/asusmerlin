@@ -66,13 +66,13 @@ Run Modes:
 - Install Mode: This will install the script and configuration files necessary for it to run. Add the command argument "install" to use this mode.
 - Uninstall Mode: This will uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
 - Run Mode: This mode is for the script to run in the background via cron job. Add the command argument "run" to use this mode.
-- Update Mode: This mode will check to see if there is an update available from the GitHub Repository and update.  (Must be on v1.3.7 or newer)
-- Configuration Mode: This will allow reconfiguration of WAN Failover to update or change settings. Add the command argument "config" to use this mode (Must be on v1.4.2 or newer)
+- Update Mode: This mode will check to see if there is an update available from the GitHub Repository and update.  (v1.3.7 or higher)
+- Configuration Mode: This will allow reconfiguration of WAN Failover to update or change settings. Add the command argument "config" to use this mode (v1.4.2 or higher)
 - Manual Mode: This will allow you to run the script in a command console. Add the command argument "manual" to use this mode.
 - Switch WAN Mode: This will manually switch the Primary WAN. Add the command argument "switchwan" to use this mode.
 - Email Configuration Mode: This will enable or disable email notifications using enable or disable parameter.  Add command argument "email enable" or "email disable".
 - Monitor Mode: This will monitor the log file of the script. Add the command argument "monitor" to use this mode.
-- Restart Mode: This will restart the script if it is currently running.  Add the command argument "restart" to use this mode.
+- Restart Mode: This will restart the script if it is currently running.  Add the command argument "restart" to use this mode. (v1.5.5 or higher)
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
 - Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
 
