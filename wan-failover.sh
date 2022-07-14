@@ -1570,6 +1570,7 @@ if [[ "$(nvram get wandog_enable)" != "0" ]] >/dev/null;then
 fi
 if [[ "$(nvram get wan0_enable)" == "0" ]] >/dev/null;then
   logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" is disabled"
+fi
 if [[ "$(nvram get wan1_enable)" == "0" ]] >/dev/null;then
   logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" is disabled"
 fi
