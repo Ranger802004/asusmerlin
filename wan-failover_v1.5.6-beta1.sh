@@ -1925,10 +1925,10 @@ fi
 
 if [ ! -z "$SERVICES2" ] >/dev/null;then
   for SERVICE2 in ${SERVICES2};do
-    logger -p 4 -st "${0##*/}" "Service Restart - Stopping $SERVICE service"
+    logger -p 4 -st "${0##*/}" "Service Restart - Stopping $SERVICE2 service"
     service stop_$SERVICE2
     sleep 1
-    logger -p 4 -st "${0##*/}" "Service Restart - Starting $SERVICE service"
+    logger -p 4 -st "${0##*/}" "Service Restart - Starting $SERVICE2 service"
     service start_$SERVICE2
   done
 fi
