@@ -744,6 +744,10 @@ if [ -z "$(awk -F "=" '/PINGTIMEOUT/ {print $1}' "$CONFIGFILE")" ] >/dev/null;th
   logger -p 6 -t "${0##*/}" "Debug - Setting PINGTIMEOUT Default: 1 Second"
   echo -e "PINGTIMEOUT=1" >> $CONFIGFILE
 fi
+if [ -z "$(awk -F "=" '/PACKETSIZE/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - Setting PACKETSIZE Default: 56 Bytes"
+  echo -e "PACKETSIZE=56" >> $CONFIGFILE
+fi
 if [ -z "$(awk -F "=" '/WANDISABLEDSLEEPTIMER/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WANDISABLEDSLEEPTIMER Default: 10 Seconds"
   echo -e "WANDISABLEDSLEEPTIMER=10" >> $CONFIGFILE
@@ -873,7 +877,7 @@ if [ -z "$(awk -F "=" '/INTERFACE6IN4/ {print $1}' "$CONFIGFILE")" ] >/dev/null;
   echo -e "INTERFACE6IN4=wan0" >> $CONFIGFILE
 fi
 if [ -z "$(awk -F "=" '/RULEPRIORITY6IN4/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
-  logger -p 6 -t "${0##*/}" "Debug - Setting RULEPRIORITY6IN4 Default: 100"
+  logger -p 6 -t "${0##*/}" "Debug - Setting RULEPRIORITY6IN4 Default: Priority 100"
   echo -e "RULEPRIORITY6IN4=100" >> $CONFIGFILE
 fi
 
@@ -1030,7 +1034,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
       i=1
       while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
         logger -p 6 -t "${0##*/}" "Debug - "Checking ${WANPREFIX}" for packet loss via $TARGET - Attempt: "$i""
-        PACKETLOSS="$(ping -I $(nvram get ${WANPREFIX}_gw_ifname) $TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}' &)"
+        PACKETLOSS="$(ping -I $(nvram get ${WANPREFIX}_gw_ifname) $TARGET -c $PINGCOUNT -W $PINGTIMEOUT -s $PACKETSIZE | grep -e "packet loss" | awk '{print $7}' &)"
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS"%"
         if [[ "$PACKETLOSS" == "0%" ]] >/dev/null;then
           logger -p 5 -t "${0##*/}" "WAN Status - "${WANPREFIX}" has "$PACKETLOSS" packet loss"
@@ -1385,8 +1389,8 @@ pingtargets ()
 {
 i=1
 while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
-  WAN0PACKETLOSS="$(ping -I $(nvram get wan0_gw_ifname) $WAN0TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}' &)"
-  WAN1PACKETLOSS="$(ping -I $(nvram get wan1_gw_ifname) $WAN1TARGET -c $PINGCOUNT -W $PINGTIMEOUT | grep -e "packet loss" | awk '{print $7}' &)"
+  WAN0PACKETLOSS="$(ping -I $(nvram get wan0_gw_ifname) $WAN0TARGET -c $PINGCOUNT -W $PINGTIMEOUT -s $PACKETSIZE | grep -e "packet loss" | awk '{print $7}' &)"
+  WAN1PACKETLOSS="$(ping -I $(nvram get wan1_gw_ifname) $WAN1TARGET -c $PINGCOUNT -W $PINGTIMEOUT -s $PACKETSIZE | grep -e "packet loss" | awk '{print $7}' &)"
   if [[ "$WAN0PACKETLOSS" == "0%" ]] && [[ "$WAN1PACKETLOSS" == "0%" ]] >/dev/null;then
     if tty >/dev/null 2>&1;then
       printf '\033[K%b\r' ""${BOLD}"$(date "+%D @ %T") - WAN0 Target: "${BLUE}""$WAN0TARGET" "${WHITE}"Packet Loss: "${GREEN}""$WAN0PACKETLOSS" "${WHITE}"WAN1 Target: "${BLUE}""$WAN1TARGET" "${WHITE}"Packet Loss: "${GREEN}""$WAN1PACKETLOSS""${NOCOLOR}""
