@@ -75,7 +75,9 @@ Step 2: Select the existing or new interface
 
 Step 3: Select whether to enable Verbose Logging for the Policy.
 
-Step 4: Allow the routes for the Policy to be recreated.
+Step 4: Select to enable or disable Private IP Addresses (This will allow or disallow Private IP Addresses from being added to the policy rules when queried).
+
+Step 5: Allow the routes for the Policy to be recreated.
 
 Deleting a Policy:
 - Delete a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh deletepolicy <Insert Name/all>
