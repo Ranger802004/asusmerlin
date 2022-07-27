@@ -59,6 +59,7 @@ Optional Configuration: ***Options that can be adjusted in the configuration fil
 - TOWAN1PRIORITY: This defines the IP Rule Priority for Traffic to WAN1 that are automatically created by Load Balance Mode. It is recommended to leave this default unless necessary to change. Default: 400
 - OVPNWAN0PRIORITY: This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is 0 (Disabled). Default: 100
 - OVPNWAN1PRIORITY: This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is 0 (Disabled). Default: 200
+- RECURSIVEPINGCHECK: This defines how many times a WAN Interface has to fail target pings to be considered failed (Ping Count x RECURSIVEPINGCHECK), this setting is for circumstances where ICMP Echo / Response can be disrupted by ISP DDoS Prevention or other factors.  It is recommended to leave this setting default.  Default: 1 Iteration (1)
 
 Run Modes:
 - Install Mode: Install the script and configuration files necessary. Add the command argument "install" to use this mode.
