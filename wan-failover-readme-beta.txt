@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 07/13/2022
-# Version: v1.5.5
+# Date: 07/27/2022
+# Version: v1.5.6-beta5
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -21,28 +21,26 @@ Updating:
 Uninstallation:
 /jffs/scripts/wan-failover.sh uninstall
 
-Configuration: During installation or reconfiguration, the following settings are configured:
+Required Configuration: During installation or reconfiguration, the following settings are configured:
 -	WAN0 Target:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Example: 8.8.8.8
 -	WAN1 Target:  This is the target IP address for WAN1, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN1 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Example: 8.8.4.4
 -	Ping Count:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected.   
 -	Ping Timeout:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.
--	WAN Disabled Timer:  This is how many seconds the script pauses and checks again if Dual WAN, Failover Mode, or WAN links are disabled/disconnected.
-- Boot Delay Timer: This is how many seconds System Uptime has to be before script begins checking WAN Status.
 -	QoS Settings are configured for each WAN interface because both interfaces may not have the same bandwidth (download/upload speeds).  The script will automatically change these settings for each interface as they become the active WAN interface.  If QoS is disabled or QoS Automatic Settings are being used, these settings will not be applied.
   o	WAN0 QoS Download Bandwidth:  Value is in Mbps
   o	WAN1 QoS Download Bandwidth: Value is in Mbps
   o	WAN0 QoS Upload Bandwidth: Value is in Mbps
   o	WAN1 QoS Upload Bandwidth: Value is in Mbps
-  o	WAN0 QoS Packet Overhead:  Value is in Bytes
-  o	WAN1 QoS Packet Overhead: Value is in Bytes
-  o	WAN0 QoS ATM:  This will enable or disable Asynchronous Transfer Mode (ATM) for WAN0, research this technology to verify it is not required for your ISP.  In most      use cases, this setting is Disabled.
-  o	WAN1 QoS ATM:  This will enable or disable Asynchronous Transfer Mode (ATM) for WAN1, research this technology to verify it is not required for your ISP.  In most      use cases, this setting is Disabled.
--	Packet Loss Logging:  This will log packet loss detections that are less than 100% packet loss but more than 0% packet loss.  These events are not enough to trigger a WAN Failover/Failback condition but may be informal data as to the performance of a WAN interface.  If the Ping Timeout setting is too low (1-2 seconds) combined with a high latency WAN interface such as satellite internet services, this logging can become excessive with the described configuration.
 
-Optional Configuration:
+Optional Configuration: ***Options that can be adjusted in the configuration file***
 - To enable or disable email notifications, pass the command arguments "email enable" or "email disable", default mode is Enabled.  Example: "/jffs/scripts/wan-failover.sh email enable"  ***Email Notifications work with amtm or AIProtection Alert Preferences****
-Options that can be adjusted in the configuration file
-- BOOTDELAYTIMER: This will delay the script from executing until System Uptime reaches this time.
+- WAN0_QOS_OVERHEAD: This will define WAN0 Packet Overhead when QoS is Enabled.  Default: 0 Bytes
+- WAN1_QOS_OVERHEAD: This will define WAN1 Packet Overhead when QoS is Enabled.  Default: 0 Bytes
+- WAN0_QOS_ATM: This will enable or disable Asynchronous Transfer Mode (ATM) for WAN0 when QoS is Enabled. Default: Disabled (0)
+- WAN1_QOS_ATM: This will enable or disable Asynchronous Transfer Mode (ATM) for WAN1 when QoS is Enabled. Default: Disabled (0)
+- WANDISABLEDSLEEPTIMER: This is how many seconds the script pauses and checks again if Dual WAN, Failover/Load Balance Mode, or WAN links are disabled/disconnected. Default: 10 seconds
+- PACKETLOSSLOGGING: This will log packet loss detections that are less than 100% packet loss but more than 0% packet loss.  These events are not enough to trigger a WAN Failover/Failback condition but may be informational data as to the performance of a WAN interface.  If the Ping Timeout setting is too low (1-2 seconds) combined with a high latency WAN interface such as satellite internet services, this logging can become excessive with the described configuration. Default: Enabled (1)
+- BOOTDELAYTIMER: This will delay the script from executing until System Uptime reaches this time. Default: 0 Seconds
 - SKIPEMAILSYSTEMUPTIME: This will delay sending emails while System Uptime is less than this time. Default: 180 Seconds
 - EMAILTIMEOUT: This defines the timeout for sending an email after a Failover/Failback event.  Default: 30 Seconds
 - WAN0TARGETRULEPRIORITY: This defines the IP Rule Priority for the WAN0 Target IP Address.  Default: 100
@@ -51,10 +49,10 @@ Options that can be adjusted in the configuration file
 - OVPNSPLITTUNNEL: This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode. Default: 1 (Enabled)
 - WAN0ROUTETABLE: This defines the Routing Table for WAN0, it is recommended to leave this default unless necessary to change. Default: 100
 - WAN1ROUTETABLE: This defines the Routing Table for WAN1, it is recommended to leave this default unless necessary to change. Default: 200
-- WAN0MARK: This defines the FW Mark used to mark and match traffic for WAN0 in IPTables Rules. Default: 0x80000000
-- WAN1MARK: This defines the FW Mark used to mark and match traffic for WAN1 in IPTables Rules. Default: 0x90000000
-- WAN0MASK: This defines the FW Mask used to mark and match traffic for WAN0 in IPTables Rules. Default: 0xf0000000
-- WAN1MASK: This defines the FW Mask used to mark and match traffic for WAN1 in IPTables Rules. Default: 0xf0000000
+- WAN0MARK: This defines the FWMark used to mark and match traffic for WAN0 in IPTables Rules. Default: 0x80000000
+- WAN1MARK: This defines the FWMark used to mark and match traffic for WAN1 in IPTables Rules. Default: 0x90000000
+- WAN0MASK: This defines the FWMask used to mark and match traffic for WAN0 in IPTables Rules. Default: 0xf0000000
+- WAN1MASK: This defines the FWMask used to mark and match traffic for WAN1 in IPTables Rules. Default: 0xf0000000
 - FROMWAN0PRIORITY: This defines the IP Rule Priority for Traffic from WAN0 that are automatically created by Load Balance Mode.  It is recommended to leave this default unless necessary to change.  Default: 200
 - FROMWAN1PRIORITY: This defines the IP Rule Priority for Traffic from WAN1 that are automatically created by Load Balance Mode.  It is recommended to leave this default unless necessary to change.  Default: 200
 - TOWAN0PRIORITY: This defines the IP Rule Priority for Traffic to WAN0 that are automatically created by Load Balance Mode. It is recommended to leave this default unless necessary to change. Default: 400
@@ -63,20 +61,38 @@ Options that can be adjusted in the configuration file
 - OVPNWAN1PRIORITY: This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is 0 (Disabled). Default: 200
 
 Run Modes:
-- Install Mode: This will install the script and configuration files necessary for it to run. Add the command argument "install" to use this mode.
-- Uninstall Mode: This will uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
-- Run Mode: This mode is for the script to run in the background via cron job. Add the command argument "run" to use this mode.
-- Update Mode: This mode will check to see if there is an update available from the GitHub Repository and update.  (v1.3.7 or higher)
-- Configuration Mode: This will allow reconfiguration of WAN Failover to update or change settings. Add the command argument "config" to use this mode (v1.4.2 or higher)
-- Manual Mode: This will allow you to run the script in a command console. Add the command argument "manual" to use this mode.
-- Switch WAN Mode: This will manually switch the Primary WAN. Add the command argument "switchwan" to use this mode.
-- Email Configuration Mode: This will enable or disable email notifications using enable or disable parameter.  Add command argument "email enable" or "email disable".
-- Monitor Mode: This will monitor the log file of the script. Add the command argument "monitor" to use this mode.
-- Restart Mode: This will restart the script if it is currently running.  Add the command argument "restart" to use this mode. (v1.5.5 or higher)
+- Install Mode: Install the script and configuration files necessary. Add the command argument "install" to use this mode.
+- Uninstall Mode: Uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
+- Run Mode: Execute the script in the background via Cron Job. Add the command argument "run" to use this mode.
+- Update Mode: Download and update to the latest version.  (v1.3.7 or higher)
+- Configuration Mode: Reconfiguration of WAN Failover to update or change settings. Add the command argument "config" to use this mode (v1.4.2 or higher)
+- Manual Mode: Execute the script in a command console. Add the command argument "manual" to use this mode.
+- Switch WAN Mode: ***Failover Mode Only*** Manually switch Primary WAN. Add the command argument "switchwan" to use this mode.
+- Email Configuration Mode: Enable or disable email notifications using enable or disable parameter.  Add command argument "email enable" or "email disable".
+- Monitor Mode: Monitor the System Log file for the script. Add the command argument "monitor" to use this mode.
+- Restart Mode: Restart the script if it is currently running.  Add the command argument "restart" to use this mode. (v1.5.5 or higher)
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
-- Cron Job Mode: This will create the Cron Jobs necessary for the script to run and also perform log cleaning. Add the command argument "logclean" to use this mode.
+- Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
+v1.5.6-beta5 - 07/27/2022
+- General optimization
+- Added a confirmation prompt to Restart Mode.
+- Fixed visual bugs when running Restart Mode.
+- Load Balance Monitor now triggers Service Restart function during failover events.
+- YazFi trigger during service restart will no longer run process in the background to prevent issues with script execution of YazFi.
+- IP Rules should no longer create conflict with other scripts such as VPNMON.
+- Target IPs for both interfaces can now be the same the Target IP.
+- Added Recursive Ping Check feature. If packet loss is not 0% during a check, the Target IP Addresses will be checked again based on the number of iterations specified by this setting before determing a failure or packet loss. RECURSIVEPINGCHECK (Value is in # of iterations). Default: 1
+- Resolved issues that prevented 4G USB Devices from properly working in Failover Mode.
+- Moved WAN0_QOS_OVERHEAD, WAN1_QOS_OVERHEAD, WAN0_QOS_ATM, WAN1_QOS_ATM, BOOTDELAYTIMER, PACKETLOSSLOGGING and WANDISABLEDSLEEPTIMER to Optional Configuration and no longer are required to be set during Config or Installation.  They will be given Default values that can be modified in the Configuration file.
+- Created new Optional Configured Option to specify the ping packet size.  PACKETSIZE specifes the packet size in Bytes, Default: 56 Bytes.
+- Resolve issue where script would loop from WAN Status to Load Balance Monitor when an interface was disabled.
+- Load Balance Mode will now dynamically update resolv.conf (DNS) for Disconnected WAN Interfaces.
+- Fixed Cron Job deletion during Uninstallation.
+- If IPv6 6in4 is being used, the script will perform a service restart.
+- Corrected issue with Failure Detected log not logging if a device was unplugged or powered off from the Router while in Failover Mode.
+
 v1.5.5 - 07/13/2022
 - General optimization of script logic
 - If AdGuard is running or AdGuard Local is enabled, Switch WAN function will not update the resolv.conf file. (Collaboration with SomeWhereOverTheRainbow)
