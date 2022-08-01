@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 07/28/2022
-# Version: v1.5.6-beta6
+# Date: 07/31/2022
+# Version: v1.5.6-beta7
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -76,7 +76,7 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
-v1.5.6-beta5 - 07/27/2022
+v1.5.6-beta7 - 07/31/2022
 - General optimization
 - Added a confirmation prompt to Restart Mode.
 - Fixed visual bugs when running Restart Mode.
@@ -91,8 +91,10 @@ v1.5.6-beta5 - 07/27/2022
 - Resolve issue where script would loop from WAN Status to Load Balance Monitor when an interface was disabled.
 - Load Balance Mode will now dynamically update resolv.conf (DNS) for Disconnected WAN Interfaces.
 - Fixed Cron Job deletion during Uninstallation.
-- If IPv6 6in4 is being used, the script will perform a service restart.
 - Corrected issue with Failure Detected log not logging if a device was unplugged or powered off from the Router while in Failover Mode.
+- Modified Restart Mode logic to better detect PIDs of running instances of the script.
+- Created Alias for script as wan-failover to shorten length of commands used in console.
+- Fixed issue where if the USB Device is unplugged and plugged back in, script will now leave Disabled State to go back to WAN Status.
 
 v1.5.5 - 07/13/2022
 - General optimization of script logic
