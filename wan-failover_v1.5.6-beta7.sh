@@ -206,6 +206,11 @@ fi
 
 # Check Alias
 logger -p 6 -t "${0##*/}" "Debug - Checking Alias in /jffs/configs/profile.add"
+if [ ! -f "/jffs/configs/profile.add" ] >/dev/null;then
+  logger -p 4 -st "${0##*/}" "System Check - Creating /jffs/configs/profile.add"
+  touch -a /jffs/configs/profile.add
+  chmod 666 /jffs/configs/profile.add
+fi
 if [ -z "$(cat /jffs/configs/profile.add | grep -w "# Wan-Failover")" ] >/dev/null;then
   logger -p 4 -st "${0##*/}" "System Check - Creating Alias for "$0" as wan-failover"
   echo -e "alias wan-failover=\"sh $0\" # Wan-Failover" >> /jffs/configs/profile.add
@@ -427,6 +432,19 @@ WAN1_QOS_OBW=|'$SETWAN1_QOS_OBW'
       echo -e "\r\n$cmdline # Wan-Failover" >> /jffs/scripts/wan-event
       echo -e "${GREEN}${0##*/} added to Wan-Event.${NOCOLOR}"
       logger -p 5 -t "${0##*/}" "Install - ${0##*/} added to Wan-Event"
+    fi
+
+    # Create /jffs/configs/profile.add if it doesn't exist
+    echo -e "${BLUE}Creating /jffs/configs/profile.add...${NOCOLOR}"
+    logger -p 5 -t "${0##*/}" "Install - Creating /jffs/configs/profile.add"
+    if [ ! -f "/jffs/configs/profile.add" ] >/dev/null;then
+      touch -a /jffs/configs/profile.add
+      chmod 666 /jffs/configs/profile.add
+      echo -e "${GREEN}/jffs/configs/profile.add has been created.${NOCOLOR}"
+    logger -p 5 -t "${0##*/}" "Install - /jffs/configs/profile.add has been created"
+    else
+      echo -e "${YELLOW}/jffs/configs/profile.add already exists...${NOCOLOR}"
+      logger -p 5 -t "${0##*/}" "Install - /jffs/configs/profile.add already exists"
     fi
 
     # Create Alias
