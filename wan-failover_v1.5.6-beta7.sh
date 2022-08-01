@@ -963,10 +963,12 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
       TARGET="$WAN0TARGET"
       TABLE="$WAN0ROUTETABLE"
       PRIORITY="$WAN0TARGETRULEPRIORITY"
+      WANUSB="$(nvram get wans_dualwan | awk '{print $1}')"
     elif [[ "${WANPREFIX}" == "$WAN1" ]] >/dev/null;then
       TARGET="$WAN1TARGET"
       TABLE="$WAN1ROUTETABLE"
       PRIORITY="$WAN1TARGETRULEPRIORITY"
+      WANUSB="$(nvram get wans_dualwan | awk '{print $2}')"
     fi
 
     # Check if WAN Interfaces are Disabled
@@ -979,8 +981,10 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
     elif [[ "$(nvram get "${WANPREFIX}"_enable)" == "1" ]] >/dev/null;then
       logger -p 5 -t "${0##*/}" "WAN Status - ${WANPREFIX} enabled"
       # Check WAN Connection
-      if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "0" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "3" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] >/dev/null;then
-        if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "0" ]] >/dev/null;then
+      if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "0" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "3" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] || { [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] ;} >/dev/null;then
+        if [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] >/dev/null;then
+          logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": USB Unplugged"
+        elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "0" ]] >/dev/null;then
           logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": N/A"
         elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "3" ]] >/dev/null;then
           logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": Cable Unplugged"
@@ -997,8 +1001,10 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
           sleep 1
         done
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" State - Post-Restart: "$(nvram get ${WANPREFIX}_state_t)""
-        if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "0" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "3" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] >/dev/null;then
-          if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "0" ]] >/dev/null;then
+        if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "0" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "3" ]] || [[ "$(nvram get "${WANPREFIX}"_state_t)" == "4" ]] || { [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] ;} >/dev/null;then
+          if [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] >/dev/null;then
+            logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": USB Unplugged"
+          elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "0" ]] >/dev/null;then
             logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": N/A"
           elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "3" ]] >/dev/null;then
             logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": Cable Unplugged"
@@ -1008,7 +1014,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
           STATUS=DISCONNECTED
           logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
           setwanstatus && continue
-          elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] >/dev/null;then
+        elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] >/dev/null;then
           logger -p 1 -st "${0##*/}" "WAN Status - Restarted "${WANPREFIX}""
           break
         else
