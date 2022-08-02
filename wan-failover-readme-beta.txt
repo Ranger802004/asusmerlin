@@ -76,7 +76,7 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
-v1.5.6-beta7 - 07/31/2022
+v1.5.6-beta8 - 08/02/2022
 - General optimization
 - Added a confirmation prompt to Restart Mode.
 - Fixed visual bugs when running Restart Mode.
@@ -95,6 +95,9 @@ v1.5.6-beta7 - 07/31/2022
 - Modified Restart Mode logic to better detect PIDs of running instances of the script.
 - Created Alias for script as wan-failover to shorten length of commands used in console.
 - Fixed issue where if the USB Device is unplugged and plugged back in, script will now leave Disabled State to go back to WAN Status.
+- Enhanced WAN Disabled Logging, will relog every 5 minutes the condition causing the script to be in the Disabled State.
+- Added additional logging throughout script.
+- Email function will check if DDNS is enabled before attempting to use saved DDNS Hostname
 
 v1.5.5 - 07/13/2022
 - General optimization of script logic
