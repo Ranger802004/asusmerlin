@@ -41,6 +41,7 @@ Optional Configuration: ***Options that can be adjusted in the configuration fil
 - WANDISABLEDSLEEPTIMER: This is how many seconds the script pauses and checks again if Dual WAN, Failover/Load Balance Mode, or WAN links are disabled/disconnected. Default: 10 seconds
 - PACKETLOSSLOGGING: This will log packet loss detections that are less than 100% packet loss but more than 0% packet loss.  These events are not enough to trigger a WAN Failover/Failback condition but may be informational data as to the performance of a WAN interface.  If the Ping Timeout setting is too low (1-2 seconds) combined with a high latency WAN interface such as satellite internet services, this logging can become excessive with the described configuration. Default: Enabled (1)
 - BOOTDELAYTIMER: This will delay the script from executing until System Uptime reaches this time. Default: 0 Seconds
+- SENDEMAIL: This will enable or disable Email Notifications for the Script. Default: 1 (Enabled)
 - SKIPEMAILSYSTEMUPTIME: This will delay sending emails while System Uptime is less than this time. Default: 180 Seconds
 - EMAILTIMEOUT: This defines the timeout for sending an email after a Failover/Failback event.  Default: 30 Seconds
 - WAN0TARGETRULEPRIORITY: This defines the IP Rule Priority for the WAN0 Target IP Address.  Default: 100
