@@ -1691,7 +1691,7 @@ while \
     DISABLEDSTARTLOOPTIME="$(awk -F "." '{print $1}' "/proc/uptime")"
   fi
   # WAN Disabled if both interfaces do not have an IP Address
-  if { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] ;} \
+  if { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] ;} \
   && { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] ;} >/dev/null;then
     if [[ "$i" == "1" ]] >/dev/null;then
       logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" does not have a valid IP: $(nvram get wan0_ipaddr) or Gateway IP Address: $(nvram get wan0_gateway)"
