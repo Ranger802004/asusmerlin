@@ -1270,42 +1270,42 @@ for WANPREFIX in ${WANPREFIXES};do
       # Create WAN DNS IP Rules
       if [[ "$(nvram get ${WANPREFIX}_dnsenable_x)" == "0" ]] >/dev/null;then
         if [ ! -z "$(nvram get ${WANPREFIX}_dns1_x)" ] >/dev/null;then
-          if [ -z "$(ip rule list from $(nvram get ${WANPREFIX}_dns1_x) lookup ${TABLE} priority "$FROMWANPRIORITY")" ] >/dev/null;then
-            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule for $(nvram get ${WANPREFIX}_dns1_x) lookup ${TABLE}"
+          if [ -z "$(ip rule list from "$(nvram get ${WANPREFIX}_dns1_x)" lookup ${TABLE} priority "$FROMWANPRIORITY")" ] >/dev/null;then
+            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule for "$(nvram get ${WANPREFIX}_dns1_x)" lookup ${TABLE}"
             ip rule add from $(nvram get ${WANPREFIX}_dns1_x) lookup ${TABLE} priority "$FROMWANPRIORITY"
-            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule for $(nvram get ${WANPREFIX}_dns1_x) lookup ${TABLE}"
+            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule for "$(nvram get ${WANPREFIX}_dns1_x)" lookup ${TABLE}"
           fi
-          if [ -z "$(ip rule list from all to $(nvram get ${WANPREFIX}_dns1_x) lookup ${TABLE} priority "$TOWANPRIORITY")" ] >/dev/null;then
-            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule from all to $(nvram get ${WANPREFIX}_dns1_x) lookup ${TABLE}"
+          if [ -z "$(ip rule list from all to "$(nvram get ${WANPREFIX}_dns1_x)" lookup ${TABLE} priority "$TOWANPRIORITY")" ] >/dev/null;then
+            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule from all to "$(nvram get ${WANPREFIX}_dns1_x)" lookup ${TABLE}"
             ip rule add from all to $(nvram get ${WANPREFIX}_dns1_x) lookup ${TABLE} priority "$TOWANPRIORITY"
-            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule from all to $(nvram get ${WANPREFIX}_dns1_x) lookup ${TABLE}"
+            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule from all to "$(nvram get ${WANPREFIX}_dns1_x)" lookup ${TABLE}"
           fi
         fi
         if [ ! -z "$(nvram get ${WANPREFIX}_dns2_x)" ] >/dev/null;then
-          if [ -z "$(ip rule list from $(nvram get ${WANPREFIX}_dns2_x) lookup ${TABLE} priority "$FROMWANPRIORITY")" ] >/dev/null;then
-            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule for $(nvram get ${WANPREFIX}_dns2_x) lookup ${TABLE}"
+          if [ -z "$(ip rule list from "$(nvram get ${WANPREFIX}_dns2_x)" lookup ${TABLE} priority "$FROMWANPRIORITY")" ] >/dev/null;then
+            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule for "$(nvram get ${WANPREFIX}_dns2_x)" lookup ${TABLE}"
             ip rule add from $(nvram get ${WANPREFIX}_dns2_x) lookup ${TABLE} priority "$FROMWANPRIORITY"
-            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule for $(nvram get ${WANPREFIX}_dns2_x) lookup ${TABLE}"
+            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule for "$(nvram get ${WANPREFIX}_dns2_x)" lookup ${TABLE}"
           fi
-          if [ -z "$(ip rule list from all to $(nvram get ${WANPREFIX}_dns2_x) lookup ${TABLE} priority "$TOWANPRIORITY")" ] >/dev/null;then
-            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule from all to $(nvram get ${WANPREFIX}_dns2_x) lookup ${TABLE}"
+          if [ -z "$(ip rule list from all to "$(nvram get ${WANPREFIX}_dns2_x)" lookup ${TABLE} priority "$TOWANPRIORITY")" ] >/dev/null;then
+            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule from all to "$(nvram get ${WANPREFIX}_dns2_x)" lookup ${TABLE}"
             ip rule add from all to $(nvram get ${WANPREFIX}_dns2_x) lookup ${TABLE} priority "$TOWANPRIORITY"
-            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule from all to $(nvram get ${WANPREFIX}_dns2_x) lookup ${TABLE}"
+            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule from all to "$(nvram get ${WANPREFIX}_dns2_x)" lookup ${TABLE}"
           fi
         fi
       elif [[ "$(nvram get ${WANPREFIX}_dnsenable_x)" == "1" ]] >/dev/null;then
-        if [ ! -z "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')" ] >/dev/null;then
-          if [ -z "$(ip rule list from $(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}') lookup ${TABLE} priority "$FROMWANPRIORITY")" ] >/dev/null;then
-            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule for $(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}') lookup ${TABLE}"
-            ip rule add from $(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}') lookup ${TABLE} priority "$FROMWANPRIORITY"
-            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule for $(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}') lookup ${TABLE}"
+        if [ ! -z "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')" ] >/dev/null;then
+          if [ -z "$(ip rule list from "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')" lookup ${TABLE} priority "$FROMWANPRIORITY")" ] >/dev/null;then
+            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule for "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')" lookup ${TABLE}"
+            ip rule add from $(nvram get ${WANPREFIX}_dns | awk '{print $1}') lookup ${TABLE} priority "$FROMWANPRIORITY"
+            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule for "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')" lookup ${TABLE}"
           fi
         fi
-        if [ ! -z "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')" ] >/dev/null;then
-          if [ -z "$(ip rule list from $(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}') lookup ${TABLE} priority "$FROMWANPRIORITY")" ] >/dev/null;then
-            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule for $(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}') lookup ${TABLE}"
-            ip rule add from $(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}') lookup ${TABLE} priority "$FROMWANPRIORITY"
-            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule for $(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}') lookup ${TABLE}"
+        if [ ! -z "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')" ] >/dev/null;then
+          if [ -z "$(ip rule list from "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')" lookup ${TABLE} priority "$FROMWANPRIORITY")" ] >/dev/null;then
+            logger -p 5 -t "${0##*/}" "Check IP Rules - Adding IP Rule for "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')" lookup ${TABLE}"
+            ip rule add from $(nvram get ${WANPREFIX}_dns | awk '{print $2}') lookup ${TABLE} priority "$FROMWANPRIORITY"
+            logger -p 4 -t "${0##*/}" "Check IP Rules - Added IP Rule for "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')" lookup ${TABLE}"
           fi
         fi
       fi
@@ -1760,8 +1760,8 @@ while \
   if { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] ;} \
   && { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] ;} >/dev/null;then
     if [[ "$i" == "1" ]] >/dev/null;then
-      logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" does not have a valid IP: $(nvram get wan0_ipaddr) or Gateway IP Address: $(nvram get wan0_gateway)"
-      logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" does not have a valid IP: $(nvram get wan1_ipaddr) or Gateway IP Address: $(nvram get wan1_gateway)"
+      logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" does not have a valid IP: "$(nvram get wan0_ipaddr)" or Gateway IP Address: "$(nvram get wan0_gateway)""
+      logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" does not have a valid IP: "$(nvram get wan1_ipaddr)" or Gateway IP Address: "$(nvram get wan1_gateway)""
     fi
     i=$(($i+1))
     sleep $WANDISABLEDSLEEPTIMER
@@ -1785,7 +1785,7 @@ while \
   && { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] ;} >/dev/null;then
     if [[ "$i" == "1" ]] >/dev/null;then
       logger -p 2 -st "${0##*/}" "WAN Failover Disabled - Failover Mode: "$WAN1" is Primary"
-      logger -p 2 -st "${0##*/}" "WAN Failover Disabled - Failover Mode: "$WAN0" does not have a valid IP: $(nvram get wan0_ipaddr) or Gateway IP Address: $(nvram get wan0_gateway)""
+      logger -p 2 -st "${0##*/}" "WAN Failover Disabled - Failover Mode: "$WAN0" does not have a valid IP: "$(nvram get wan0_ipaddr)" or Gateway IP Address: "$(nvram get wan0_gateway)""
     fi
     i=$(($i+1))
     sleep $WANDISABLEDSLEEPTIMER
@@ -1795,7 +1795,7 @@ while \
   && { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] ;} >/dev/null;then
     if [[ "$i" == "1" ]] >/dev/null;then
       logger -p 2 -st "${0##*/}" "WAN Failover Disabled - Failover Mode: "$WAN0" is Primary"
-      logger -p 2 -st "${0##*/}" "WAN Failover Disabled - Failover Mode: "$WAN1" does not have a valid IP: $(nvram get wan1_ipaddr) or Gateway IP Address: $(nvram get wan1_gateway)""
+      logger -p 2 -st "${0##*/}" "WAN Failover Disabled - Failover Mode: "$WAN1" does not have a valid IP: "$(nvram get wan1_ipaddr)" or Gateway IP Address: "$(nvram get wan1_gateway)""
     fi
     i=$(($i+1))
     sleep $WANDISABLEDSLEEPTIMER
@@ -2093,7 +2093,7 @@ for WANPREFIX in ${WANPREFIXES};do
     # Change Manual DNS Settings
     if [[ "$(nvram get ${WANPREFIX}_dnsenable_x)" == "0" ]] >/dev/null;then
       # Change Manual DNS1 Server
-      if [ ! -z "$(nvram get ${WANPREFIX}_dns1_x)" ] && [ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(echo $(nvram get ${WANPREFIX}_dns1_x))")" ] >/dev/null;then
+      if [ ! -z "$(nvram get ${WANPREFIX}_dns1_x)" ] && [ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(nvram get ${WANPREFIX}_dns1_x)")" ] >/dev/null;then
         logger -p 5 -st "${0##*/}" "DNS Switch - Adding ${WANPREFIX} DNS1 Server: "$(nvram get ${WANPREFIX}_dns1_x)""
         if { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} >/dev/null;then
           nvram set wan_dns1_x=$(nvram get ${WANPREFIX}_dns1_x)
@@ -2102,7 +2102,7 @@ for WANPREFIX in ${WANPREFIXES};do
         logger -p 4 -st "${0##*/}" "DNS Switch - Added ${WANPREFIX} DNS1 Server: "$(nvram get ${WANPREFIX}_dns1_x)""
       fi
       # Change Manual DNS2 Server
-      if [ ! -z "$(nvram get ${WANPREFIX}_dns2_x)" ] && [ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(echo $(nvram get ${WANPREFIX}_dns2_x))")" ] >/dev/null;then
+      if [ ! -z "$(nvram get ${WANPREFIX}_dns2_x)" ] && [ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(nvram get ${WANPREFIX}_dns2_x)")" ] >/dev/null;then
         logger -p 5 -st "${0##*/}" "DNS Switch - Adding ${WANPREFIX} DNS2 Server: "$(nvram get ${WANPREFIX}_dns2_x)""
         if { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} >/dev/null;then
           nvram set wan_dns2_x=$(nvram get ${WANPREFIX}_dns2_x)
@@ -2115,19 +2115,19 @@ for WANPREFIX in ${WANPREFIXES};do
     elif [[ "$(nvram get ${WANPREFIX}_dnsenable_x)" == "1" ]] >/dev/null;then
       logger -p 4 -st "${0##*/}" "DNS Switch - Automatic DNS Settings from ${WANPREFIX} ISP: "$(nvram get ${WANPREFIX}_dns)""
       if [[ "$(nvram get ${WANPREFIX}_dns)" != "$(nvram get wan_dns)" ]] && { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} >/dev/null;then
-        nvram set wan_dns="$(echo $(nvram get ${WANPREFIX}_dns))"
+        nvram set wan_dns="$(nvram get ${WANPREFIX}_dns)"
       fi
       # Change Automatic DNS1 Server
-      if [ ! -z "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')" ] && [ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')")" ] >/dev/null;then
-        logger -p 5 -st "${0##*/}" "DNS Switch - Adding ${WANPREFIX} DNS1 Server: "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')""
-        sed -i '1i nameserver '$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')'' $DNSRESOLVFILE
-        logger -p 4 -st "${0##*/}" "DNS Switch - Added ${WANPREFIX} DNS1 Server: "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')""
+      if [ ! -z "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')" ] && [ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')")" ] >/dev/null;then
+        logger -p 5 -st "${0##*/}" "DNS Switch - Adding ${WANPREFIX} DNS1 Server: "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')""
+        sed -i '1i nameserver '$(nvram get ${WANPREFIX}_dns | awk '{print $1}')'' $DNSRESOLVFILE
+        logger -p 4 -st "${0##*/}" "DNS Switch - Added ${WANPREFIX} DNS1 Server: "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')""
       fi
       # Change Automatic DNS2 Server
-      if [ ! -z "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')" ] && [ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')")" ] >/dev/null;then
-        logger -p 5 -st "${0##*/}" "DNS Switch - Adding ${WANPREFIX} DNS2 Server: "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')""
-        sed -i '2i nameserver '$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')'' $DNSRESOLVFILE
-        logger -p 4 -st "${0##*/}" "DNS Switch - Added ${WANPREFIX} DNS2 Server: "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')""
+      if [ ! -z "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')" ] && [ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')")" ] >/dev/null;then
+        logger -p 5 -st "${0##*/}" "DNS Switch - Adding ${WANPREFIX} DNS2 Server: "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')""
+        sed -i '2i nameserver '$(nvram get ${WANPREFIX}_dns | awk '{print $2}')'' $DNSRESOLVFILE
+        logger -p 4 -st "${0##*/}" "DNS Switch - Added ${WANPREFIX} DNS2 Server: "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')""
       fi
     fi
   # Check DNS if Status is Disconnected or not Primary WAN
@@ -2135,13 +2135,13 @@ for WANPREFIX in ${WANPREFIXES};do
     # Remove Manual DNS Settings
     if [[ "$(nvram get ${WANPREFIX}_dnsenable_x)" == "0" ]] >/dev/null;then
       # Remove Manual DNS1 Server
-      if [ ! -z "$(nvram get ${WANPREFIX}_dns1_x)" ] && [ ! -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(echo $(nvram get ${WANPREFIX}_dns1_x))")" ] >/dev/null;then
+      if [ ! -z "$(nvram get ${WANPREFIX}_dns1_x)" ] && [ ! -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(nvram get ${WANPREFIX}_dns1_x)")" ] >/dev/null;then
         logger -p 5 -st "${0##*/}" "DNS Switch - Removing ${WANPREFIX} DNS1 Server: "$(nvram get ${WANPREFIX}_dns1_x)""
         sed -i '/nameserver '$(nvram get ${WANPREFIX}_dns1_x)'/d' $DNSRESOLVFILE
         logger -p 4 -st "${0##*/}" "DNS Switch - Removed ${WANPREFIX} DNS1 Server: "$(nvram get ${WANPREFIX}_dns1_x)""
       fi
       # Change Manual DNS2 Server
-      if [ ! -z "$(nvram get ${WANPREFIX}_dns2_x)" ] && [ ! -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(echo $(nvram get ${WANPREFIX}_dns2_x))")" ] >/dev/null;then
+      if [ ! -z "$(nvram get ${WANPREFIX}_dns2_x)" ] && [ ! -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(nvram get ${WANPREFIX}_dns2_x)")" ] >/dev/null;then
         logger -p 5 -st "${0##*/}" "DNS Switch - Removing ${WANPREFIX} DNS2 Server: "$(nvram get ${WANPREFIX}_dns2_x)""
         sed -i '/nameserver '$(nvram get ${WANPREFIX}_dns2_x)'/d' $DNSRESOLVFILE
         logger -p 4 -st "${0##*/}" "DNS Switch - Removed ${WANPREFIX} DNS2 Server: "$(nvram get ${WANPREFIX}_dns2_x)""
@@ -2150,16 +2150,16 @@ for WANPREFIX in ${WANPREFIXES};do
     # Remove Automatic ISP DNS Settings
     elif [[ "$(nvram get ${WANPREFIX}_dnsenable_x)" == "1" ]] >/dev/null;then
       # Remove Automatic DNS1 Server
-      if [ ! -z "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')" ] && [ ! -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')")" ] >/dev/null;then
-        logger -p 5 -st "${0##*/}" "DNS Switch - Removing ${WANPREFIX} DNS1 Server: "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')""
-        sed -i '/nameserver '$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')'/d' $DNSRESOLVFILE
-        logger -p 4 -st "${0##*/}" "DNS Switch - Removed ${WANPREFIX} DNS1 Server: "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $1}')""
+      if [ ! -z "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')" ] && [ ! -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')")" ] >/dev/null;then
+        logger -p 5 -st "${0##*/}" "DNS Switch - Removing ${WANPREFIX} DNS1 Server: "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')""
+        sed -i '/nameserver '$(nvram get ${WANPREFIX}_dns | awk '{print $1}')'/d' $DNSRESOLVFILE
+        logger -p 4 -st "${0##*/}" "DNS Switch - Removed ${WANPREFIX} DNS1 Server: "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')""
       fi
       # Remove Automatic DNS2 Server
-      if [ ! -z "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')" ] && [ ! -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')")" ] >/dev/null;then
-        logger -p 5 -st "${0##*/}" "DNS Switch - Removing ${WANPREFIX} DNS2 Server: "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')""
-        sed -i '/nameserver '$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')'/d' $DNSRESOLVFILE
-        logger -p 4 -st "${0##*/}" "DNS Switch - Removed ${WANPREFIX} DNS2 Server: "$(echo $(nvram get ${WANPREFIX}_dns) | awk '{print $2}')""
+      if [ ! -z "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')" ] && [ ! -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')")" ] >/dev/null;then
+        logger -p 5 -st "${0##*/}" "DNS Switch - Removing ${WANPREFIX} DNS2 Server: "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')""
+        sed -i '/nameserver '$(nvram get ${WANPREFIX}_dns | awk '{print $2}')'/d' $DNSRESOLVFILE
+        logger -p 4 -st "${0##*/}" "DNS Switch - Removed ${WANPREFIX} DNS2 Server: "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')""
       fi
     fi
   fi
@@ -2224,18 +2224,18 @@ fi
 
 # Restart OpenVPN Server Instances
 OVPNSERVERS="
-server1
-server2
+1
+2
 "
 
 logger -p 6 -t "${0##*/}" "Debug - Checking if OpenVPN Server instances exist and are enabled"
 for OVPNSERVER in ${OVPNSERVERS};do
-  if [ -d "/etc/openvpn/"$OVPNSERVER"" ] >/dev/null;then
+  if [ ! -z "$(nvram get vpn_serverx_start | grep -o "$OVPNSERVER")" ] >/dev/null;then
     # Restart OVPN Server Instance
-    logger -p 5 -st "${0##*/}" "Service Restart - Restarting OpenVPN "$OVPNSERVER""
-    service restart_vpn"$OVPNSERVER" \
-    || { logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to restart OpenVPN "$OVPNSERVER"" && continue ;} \
-    && { logger -p 4 -st "${0##*/}" "Service Restart - Restarted OpenVPN "$OVPNSERVER"" && continue ;}
+    logger -p 5 -st "${0##*/}" "Service Restart - Restarting OpenVPN Server "$OVPNSERVER""
+    service restart_vpnserver"$OVPNSERVER" \
+    || { logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to restart OpenVPN Server "$OVPNSERVER"" && continue ;} \
+    && { logger -p 4 -st "${0##*/}" "Service Restart - Restarted OpenVPN Server "$OVPNSERVER"" && continue ;}
     sleep 1
   fi
 done
@@ -2399,13 +2399,13 @@ if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -ge "$(($SKIPEMAILSYSTEMUPTIME
         fi
       elif [[ "$(nvram get wan_dnsenable_x)" == "1" ]] >/dev/null;then
         logger -p 6 -t "${0##*/}" "Debug - Automatic DNS Servers: $(nvram get wan_dns)"
-        if [ ! -z "$(echo $(nvram get wan_dns) | awk '{print $1}')" ] >/dev/null;then
-          echo "DNS Server 1: $(echo $(nvram get wan_dns) | awk '{print $1}')" >>"$TMPEMAILFILE"
+        if [ ! -z "$(nvram get wan_dns | awk '{print $1}')" ] >/dev/null;then
+          echo "DNS Server 1: $(nvram get wan_dns | awk '{print $1}')" >>"$TMPEMAILFILE"
         else
           echo "DNS Server 1: N/A" >>"$TMPEMAILFILE"
         fi
-        if [ ! -z "$(echo $(nvram get wan_dns) | awk '{print $2}')" ] >/dev/null;then
-          echo "DNS Server 2: $(echo $(nvram get wan_dns) | awk '{print $2}')" >>"$TMPEMAILFILE"
+        if [ ! -z "$(nvram get wan_dns | awk '{print $2}')" ] >/dev/null;then
+          echo "DNS Server 2: $(nvram get wan_dns | awk '{print $2}')" >>"$TMPEMAILFILE"
         else
           echo "DNS Server 2: N/A" >>"$TMPEMAILFILE"
         fi
@@ -2518,6 +2518,7 @@ if [[ "$(nvram get log_level)" -ge "7" ]] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - WAN IPv6 Service: "$(nvram get ipv6_service)""
   logger -p 6 -t "${0##*/}" "Debug - WAN IPv6 Address: "$(nvram get ipv6_wan_addr)""
   logger -p 6 -t "${0##*/}" "Debug - Default Route: "$(ip route list default table main)""
+  logger -p 6 -t "${0##*/}" "Debug - OpenVPN Server Instances Enabled: "$(nvram get vpn_serverx_start)""
   logger -p 6 -t "${0##*/}" "Debug - WAN0 Enabled: "$(nvram get wan0_enable)""
   logger -p 6 -t "${0##*/}" "Debug - WAN0 Routing Table Default Route: "$(ip route list default table "$WAN0ROUTETABLE")""
   logger -p 6 -t "${0##*/}" "Debug - WAN0 Target IP Rule: "$(ip rule list from all iif lo to "$WAN0TARGET" oif "$(nvram get wan0_gw_ifname)" lookup "$WAN0ROUTETABLE")""
