@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/02/2022
-# Version: v1.5.6-beta8
+# Date: 08/07/2022
+# Version: v1.5.6-beta11
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -77,7 +77,7 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
-v1.5.6-beta8 - 08/02/2022
+v1.5.6-beta11 - 08/07/2022
 - General optimization
 - Added a confirmation prompt to Restart Mode.
 - Fixed visual bugs when running Restart Mode.
@@ -99,6 +99,18 @@ v1.5.6-beta8 - 08/02/2022
 - Enhanced WAN Disabled Logging, will relog every 5 minutes the condition causing the script to be in the Disabled State.
 - Added additional logging throughout script.
 - Email function will check if DDNS is enabled before attempting to use saved DDNS Hostname
+- Added cleanup function for when script exits to perform cleanup tasks.
+- Service Restarts now include restarting enabled OpenVPN Server Instances.
+- Target IP Rules will now compensate for the RT-AX88U however this can create conflicts if the Target IPs are the same or are used for other services/scripts.
+- Fixed issue in DNS Switch in Load Balance Mode where WAN1 was using the Status of WAN0.
+- Switch WAN Mode will now prompt for confirmation before switching.
+- Fixed issue where Switch WAN Mode would fail due to missing Status parameters acquired in Run or Manual Mode.
+- Fixed issue where WAN Interface would not come out of Cold Standby if in State 5.
+- Script will now reset VPNMON-R2 if it is installed and running during Failover
+- Enhanced Ping Monitoring to improve failure/packet loss detection time.
+- If an amtm email alert fails to send, an email attempt will be made via AIProtection Alerts if properly configured.
+- An email notification will now be sent if the Secondary WAN fails while in Failover Mode and when Failover Monitor starts.
+- Fixed issue in Load Balance Mode when a Disconnected WAN Interface would cause WAN Failover to error and crash when creating OpenVPN rules when OpenVPN Split Tunneling is Disabled.
 
 v1.5.5 - 07/13/2022
 - General optimization of script logic
