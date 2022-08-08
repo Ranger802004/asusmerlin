@@ -1032,7 +1032,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
       logger -p 5 -t "${0##*/}" "WAN Status - ${WANPREFIX} enabled"
       # Check WAN Connection
       logger -p 6 -t "${0##*/}" "Debug - Checking "${WANPREFIX}" State"
-      if [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" != "0" ]] || { [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] ;} >/dev/null;then
+      if [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" != "0" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} >/dev/null;then
         if [[ "$WANUSB" != "usb" ]] >/dev/null;then
           logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": Cable Unplugged"
         elif [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] >/dev/null;then
@@ -1042,7 +1042,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         STATUS=DISCONNECTED
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
         setwanstatus && continue
-      elif { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "0" ]] || { [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] ;} ;} && { [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" != "6" ]] ;} >/dev/null;then
+      elif { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "0" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] && [ ! -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} ;} && { [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" != "6" ]] ;} >/dev/null;then
         logger -p 1 -st "${0##*/}" "WAN Status - Restarting "${WANPREFIX}""
         WANSUFFIX="$(echo "${WANPREFIX}" | awk -F "wan" '{print $2}')"
         service "restart_wan_if "$WANSUFFIX"" &
@@ -1053,7 +1053,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
           sleep 1
         done
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" State - Post-Restart: "$(nvram get ${WANPREFIX}_state_t)""
-        if { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "0" ]] || { [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] ;} ;} && { [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" != "6" ]] ;} >/dev/null;then
+        if { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "0" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] && [ ! -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} ;} && { [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" != "6" ]] ;} >/dev/null;then
           logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": Disconnected"
           STATUS=DISCONNECTED
           logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
@@ -1159,8 +1159,9 @@ elif { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == 
   if [[ "$(nvram get wan0_primary)" != "1" ]] >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - WAN0 is not Primary WAN"
     failover || return && wan0failovermonitor
-  elif [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] >/dev/null;then
-    logger -p 6 -t "${0##*/}" "Debug - WAN1 does not have a valid IP: $(nvram get wan1_ipaddr) or Gateway IP: $(nvram get wan1_gateway)"
+  elif [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] >/dev/null;then
+    logger -p 6 -t "${0##*/}" "Debug - WAN1 does not have a valid IP: "$(nvram get wan1_ipaddr)" or Gateway IP: "$(nvram get wan1_gateway)" or is unplugged Aux State: "$(nvram get wan1_auxstate_t)" State: "$(nvram get wan1_state_t)""
+
     if [[ "$email" == "1" ]] >/dev/null;then
       sendemail || return
     fi
@@ -1182,8 +1183,8 @@ elif { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == 
   if [[ "$(nvram get wan1_primary)" != "1" ]] >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - WAN1 is not Primary WAN"
     failover || return && wan0failbackmonitor
-  elif [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] >/dev/null;then
-    logger -p 6 -t "${0##*/}" "Debug - WAN0 does not have a valid IP: $(nvram get wan0_ipaddr) or Gateway IP: $(nvram get wan0_gateway)"
+  elif [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || [[ "$(nvram get wan0_state_t)" != "2" ]] >/dev/null;then
+    logger -p 6 -t "${0##*/}" "Debug - WAN0 does not have a valid IP: "$(nvram get wan0_ipaddr)" or Gateway IP: "$(nvram get wan0_gateway)" or is unplugged Aux State: "$(nvram get wan0_auxstate_t)" State: "$(nvram get wan0_state_t)""
     if [[ "$email" == "1" ]] >/dev/null;then
       sendemail || return
     fi
@@ -1827,11 +1828,11 @@ while [[ "$(nvram get wan0_primary)" == "1" ]] \
     fi
     wanstatus || return && break
   elif { [[ "$WAN0PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan0_state_t)" == "2" ]] ;} \
-  && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] ;} ;} >/dev/null;then
+  && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && { [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan1_ifname)" ] || [[ "$(nvram get link_wan1)" == "0" ]] ;} ;} ;} >/dev/null;then
     email=1
     wanstatus || return && break
-  elif { [[ "$WAN0PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan0_enable)" == "0" ]] || [[ "$(nvram get wan0_state_t)" != "2" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && [[ "$(nvram get wan0_is_usb_modem_ready)" == "0" ]] ;} ;} \
-  && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] ;} ;} >/dev/null;then
+  elif { [[ "$WAN0PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan0_enable)" == "0" ]] || [[ "$(nvram get wan0_state_t)" != "2" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && { [[ "$(nvram get wan0_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan0_ifname)" ] || [[ "$(nvram get link_wan)" == "0" ]] ;} ;} ;} \
+  && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && { [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan1_ifname)" ] || [[ "$(nvram get link_wan1)" == "0" ]] ;} ;} ;} >/dev/null;then
     email=0
     wanstatus || return && break
   elif { [[ "$WAN0PACKETLOSS" != "0%" ]] || [[ "$WAN0PACKETLOSS" != "100%" ]] ;} && { [[ "$WAN1PACKETLOSS" != "0%" ]] || [[ "$WAN1PACKETLOSS" != "100%" ]] ;} >/dev/null;then
@@ -1879,8 +1880,8 @@ while [[ "$(nvram get wan1_primary)" == "1" ]] \
     fi
     continue
   elif [[ "$WAN0PACKETLOSS" == "0%" ]] \
-  || { { [[ "$WAN0PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && [[ "$(nvram get wan0_is_usb_modem_ready)" == "1" ]] ;} ;} \
-  && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] ;} ;} ;} >/dev/null;then
+  || { { [[ "$WAN0PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && { [[ "$(nvram get wan0_is_usb_modem_ready)" == "1" ]] || [ ! -z "$(nvram get wan0_ifname)" ] || [[ "$(nvram get link_wan)" == "1" ]] ;} ;} ;} \
+  && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && { [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan1_ifname)" ] || [[ "$(nvram get link_wan1)" == "0" ]] ;} ;} ;} ;} >/dev/null;then
     if [[ "$(nvram get wan0_enable)" == "1" ]] && { [[ "$WAN0PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan0_state_t)" == "2" ]] ;} >/dev/null;then
       WAN0STATUS=CONNECTED
     elif [[ "$(nvram get wan0_enable)" == "0" ]] >/dev/null;then
@@ -1902,8 +1903,8 @@ while [[ "$(nvram get wan1_primary)" == "1" ]] \
       email=0
     fi
     wanstatus || return && break
-  elif { [[ "$WAN0PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan0_enable)" == "0" ]] || [[ "$(nvram get wan0_state_t)" != "2" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && [[ "$(nvram get wan0_is_usb_modem_ready)" == "0" ]] ;} ;} \
-  && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] ;} ;} >/dev/null;then
+  elif { [[ "$WAN0PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan0_enable)" == "0" ]] || [[ "$(nvram get wan0_state_t)" != "2" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && { [[ "$(nvram get wan0_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan0_ifname)" ] || [[ "$(nvram get link_wan)" == "0" ]] ;} ;} ;} \
+  && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && { [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan1_ifname)" ] || [[ "$(nvram get link_wan1)" == "0" ]] ;} ;} ;} >/dev/null;then
     if [[ "$email" == "1" ]] >/dev/null;then
       email=0
     fi
@@ -1960,8 +1961,8 @@ while \
     sleep $WANDISABLEDSLEEPTIMER
     continue
   # Return to WAN Status if WAN0 or WAN1 is a USB Device and is in Ready State but in Cold Standby
-  elif { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && [[ "$(nvram get wan0_state_t)" == "0" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] && [[ "$(nvram get wan0_is_usb_modem_ready)" == "1" ]] ;} \
-  || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && [[ "$(nvram get wan1_state_t)" == "0" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] && [[ "$(nvram get wan1_is_usb_modem_ready)" == "1" ]] ;} >/dev/null;then
+  elif { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && [[ "$(nvram get wan0_state_t)" != "2" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] && [[ "$(nvram get wan0_is_usb_modem_ready)" == "1" ]] && [[ "$(nvram get link_wan)" == "1" ]] && [ ! -z "$(nvram get wan0_ifname)" ] ;} \
+  || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && [[ "$(nvram get wan1_state_t)" != "2" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] && [[ "$(nvram get wan1_is_usb_modem_ready)" == "1" ]] && [[ "$(nvram get link_wan1)" == "1" ]] && [ ! -z "$(nvram get wan1_ifname)" ] ;} >/dev/null;then
     logger -p 3 -st "${0##*/}" "WAN Failover Disabled - USB Device is in Ready State but in Cold Standby"
     i=0
     email=1
