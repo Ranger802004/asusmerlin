@@ -1578,7 +1578,7 @@ while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
     fi
     i=$(($i+1))
     continue
-  elif [[ "$WAN0PACKETLOSS" != "0%" ]] && [[ "$WAN1PACKETLOSS" != "0%" ]] >/dev/null;then
+  elif { [[ "$WAN0PACKETLOSS" != "0%" ]] && [ -z "$WAN0PACKETLOSS" ] ;} && { [[ "$WAN1PACKETLOSS" != "0%" ]] && [ -z "$WAN1PACKETLOSS" ] ;} >/dev/null;then
     if [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null;then
       logger -p 3 -st "${0##*/}" "Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
       logger -p 3 -st "${0##*/}" "Packet Loss Detected - WAN1 Packet Loss: $WAN1PACKETLOSS"
@@ -1588,7 +1588,7 @@ while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
     fi
     i=$(($i+1))
     continue
-  elif [[ "$WAN0PACKETLOSS" != "0%" ]] && [[ "$WAN1PACKETLOSS" == "0%" ]] >/dev/null;then
+  elif { [[ "$WAN0PACKETLOSS" != "0%" ]] && [ -z "$WAN0PACKETLOSS" ] ;} && [[ "$WAN1PACKETLOSS" == "0%" ]] >/dev/null;then
     if [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null;then
       logger -p 3 -st "${0##*/}" "Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
     fi
@@ -1597,7 +1597,7 @@ while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
     fi
     i=$(($i+1))
     continue
-  elif [[ "$WAN0PACKETLOSS" == "0%" ]] && [[ "$WAN1PACKETLOSS" != "0%" ]] >/dev/null;then
+  elif [[ "$WAN0PACKETLOSS" == "0%" ]] && { [[ "$WAN1PACKETLOSS" != "0%" ]] && [ -z "$WAN1PACKETLOSS" ] ;} >/dev/null;then
     if [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null;then
       logger -p 3 -st "${0##*/}" "Packet Loss Detected - WAN1 Packet Loss: $WAN1PACKETLOSS"
     fi
@@ -2474,8 +2474,8 @@ logger -p 6 -t "${0##*/}" "Debug - Checking if YazFi is installed and scheduled 
 if [ ! -z "$(cru l | grep -w "YazFi")" ] && [ -f "/jffs/scripts/YazFi" ] >/dev/null;then
   logger -p 5 -st "${0##*/}" "Service Restart - Executing YazFi Check"
   sh /jffs/scripts/YazFi check \
-  && { logger -p 4 -st "${0##*/}" "Service Restart - Executed YazFi Check ;} \
-  || { logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to execute YazFi Check ;}
+  && logger -p 4 -st "${0##*/}" "Service Restart - Executed YazFi Check \
+  || logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to execute YazFi Check
 fi
 
 # Reset VPNMON-R2
@@ -2483,8 +2483,8 @@ logger -p 6 -t "${0##*/}" "Debug - Checking if VPNMON-R2 is installed, configure
 if [ ! -z "$(pidof vpnmon-r2.sh)" ] && [ -f "/jffs/scripts/vpnmon-r2.sh" ] && [ -f "/jffs/addons/vpnmon-r2.d/vpnmon-r2.cfg" ] >/dev/null;then
   logger -p 5 -st "${0##*/}" "Service Restart - Resetting VPNMON-R2"
   sh /jffs/scripts/vpnmon-r2.sh -reset \
-  && { logger -p 4 -st "${0##*/}" "Service Restart - Reset VPNMON-R2 ;} \
-  || { logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to reset VPNMON-R2 ;}
+  && logger -p 4 -st "${0##*/}" "Service Restart - Reset VPNMON-R2 \
+  || logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to reset VPNMON-R2
 fi
 return
 }
