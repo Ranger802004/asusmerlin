@@ -2,7 +2,7 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/10/2022
+# Date: 08/09/2022
 # Version: v1.5.6-beta13
 
 # Cause the script to exit if errors are encountered
@@ -14,7 +14,6 @@ ALIAS="wan-failover"
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh"
 VERSION="v1.5.6-beta13"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
-SYSTEMLOG="/tmp/syslog.log"
 DNSRESOLVFILE="/tmp/resolv.conf"
 LOCKFILE="/var/lock/wan-failover.lock"
 WANPREFIXES="wan0 wan1"
@@ -146,6 +145,7 @@ elif [[ "${mode}" == "switchwan" ]] >/dev/null;then
         * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
       esac
     done
+    systembinaries || return
     setvariables || return
     failover || return
   fi
@@ -184,11 +184,7 @@ logger -p 5 -t "${0##*/}" "System Check - Process ID: "$$""
 nvramcheck || return
 
 # Check System Binaries Path
-if [[ "$(echo $PATH | awk -F ":" '{print $1":"$2":"$3":"$4":"}')" != "/sbin:/bin:/usr/sbin:/usr/bin:" ]] >/dev/null;then
-  logger -p 6 -t "${0##*/}" "Debug - Setting System Binaries Path"
-  export PATH=/sbin:/bin:/usr/sbin:/usr/bin:$PATH
-  logger -p 6 -t "${0##*/}" "Debug - PATH: "$PATH""
-fi
+systembinaries || return
 
 # Script Version Logging
 logger -p 5 -t "${0##*/}" "System Check - Version: "$VERSION""
@@ -248,6 +244,18 @@ fi
 # Turn off email notification for initial load of WAN Failover
 email=0
 return
+}
+
+# Set Script to use System Binaries
+systembinaries ()
+{
+# Check System Binaries Path
+if [[ "$(echo $PATH | awk -F ":" '{print $1":"$2":"$3":"$4":"}')" != "/sbin:/bin:/usr/sbin:/usr/bin:" ]] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - Setting System Binaries Path"
+  export PATH=/sbin:/bin:/usr/sbin:/usr/bin:$PATH
+  logger -p 6 -t "${0##*/}" "Debug - PATH: "$PATH""
+fi
+
 }
 
 # Install
@@ -771,7 +779,39 @@ exit
 monitor ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: monitor"
-tail -F $SYSTEMLOG | grep -w "${0##*/}" 2>/dev/null && exit
+
+# Set System Binaries
+systembinaries || return
+
+# Set System Log Location
+
+# System Log Locations
+SYSTEMLOGPATHS='
+/tmp/syslog.log
+/jffs/syslog.log
+/var/log/messages
+/opt/var/log/messages
+'
+
+# Locate Valid System Log Path
+systemlogset=${email:=0}
+if [[ "$systemlogset" != "0" ]] >/dev/null;then
+  systemlogset=0
+fi
+for SYSTEMLOGPATH in ${SYSTEMLOGPATHS};do
+if [ -f "$SYSTEMLOGPATH" ] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - System Log located at "$SYSTEMLOGPATH""
+  SYSTEMLOG="/tmp/syslog.log" && systemlogset=1 && break
+fi
+done
+
+# Determine if System Log Path was located and load Monitor Mode
+if [[ "$systemlogset" == "0" ]] >/dev/null;then
+  echo -e "${RED}***Unable to locate System Log***${NOCOLOR}"
+  exit
+elif [[ "$systemlogset" == "1" ]] >/dev/null;then
+  tail -F $SYSTEMLOG | grep -w "${0##*/}" 2>/dev/null && { systemlogset=0 && exit ;} || echo -e "${RED}***Unable to load Monitor Mode***${NOCOLOR}"
+fi
 }
 
 # Set Variables
