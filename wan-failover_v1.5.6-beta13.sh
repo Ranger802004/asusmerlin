@@ -2,7 +2,7 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/09/2022
+# Date: 08/10/2022
 # Version: v1.5.6-beta13
 
 # Cause the script to exit if errors are encountered
@@ -1046,11 +1046,16 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         logger -p 1 -st "${0##*/}" "WAN Status - Restarting "${WANPREFIX}""
         WANSUFFIX="$(echo "${WANPREFIX}" | awk -F "wan" '{print $2}')"
         service "restart_wan_if "$WANSUFFIX"" &
-        sleep 1
         # Set Timeout for WAN interface to restart to a max of 30 seconds and while WAN Interface is State 6
         RESTARTTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
-        while { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "0" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" == "6" ]] ;} && [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$RESTARTTIMEOUT" ]] >/dev/null;do
-          sleep 1
+        while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$RESTARTTIMEOUT" ]] >/dev/null;do
+          if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "6" ]] >/dev/null;then
+            continue
+          elif  [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] || [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" != "0" ]] >/dev/null;then
+            break
+          else
+            sleep 1
+          fi
         done
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" State - Post-Restart: "$(nvram get ${WANPREFIX}_state_t)""
         if { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "0" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] && [ ! -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} ;} && { [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" != "6" ]] ;} >/dev/null;then
@@ -1105,7 +1110,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         wait $PINGWANPID
         PACKETLOSS="$(cat /tmp/${WANPREFIX}packetloss.tmp)"
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS"%"
-        if [[ "$PACKETLOSS" == "0%" ]] >/dev/null;then
+        if { [[ "$PACKETLOSS" == "0%" ]] || [[ "$PACKETLOSS" != "100%" ]] ;} && [ ! -z "$PACKETLOSS" ] >/dev/null;then
           logger -p 5 -t "${0##*/}" "WAN Status - "${WANPREFIX}" has "$PACKETLOSS" packet loss"
           STATUS="CONNECTED"
           logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
@@ -1588,7 +1593,7 @@ while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
     fi
     i=$(($i+1))
     continue
-  elif { [[ "$WAN0PACKETLOSS" != "0%" ]] && [ -z "$WAN0PACKETLOSS" ] ;} && { [[ "$WAN1PACKETLOSS" != "0%" ]] && [ -z "$WAN1PACKETLOSS" ] ;} >/dev/null;then
+  elif { [[ "$WAN0PACKETLOSS" != "0%" ]] && [ ! -z "$WAN0PACKETLOSS" ] ;} && { [[ "$WAN1PACKETLOSS" != "0%" ]] && [ ! -z "$WAN1PACKETLOSS" ] ;} >/dev/null;then
     if [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null;then
       logger -p 3 -st "${0##*/}" "Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
       logger -p 3 -st "${0##*/}" "Packet Loss Detected - WAN1 Packet Loss: $WAN1PACKETLOSS"
@@ -1598,7 +1603,7 @@ while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
     fi
     i=$(($i+1))
     continue
-  elif { [[ "$WAN0PACKETLOSS" != "0%" ]] && [ -z "$WAN0PACKETLOSS" ] ;} && [[ "$WAN1PACKETLOSS" == "0%" ]] >/dev/null;then
+  elif { [[ "$WAN0PACKETLOSS" != "0%" ]] && [ ! -z "$WAN0PACKETLOSS" ] ;} && [[ "$WAN1PACKETLOSS" == "0%" ]] >/dev/null;then
     if [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null;then
       logger -p 3 -st "${0##*/}" "Packet Loss Detected - WAN0 Packet Loss: $WAN0PACKETLOSS"
     fi
@@ -1607,7 +1612,7 @@ while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
     fi
     i=$(($i+1))
     continue
-  elif [[ "$WAN0PACKETLOSS" == "0%" ]] && { [[ "$WAN1PACKETLOSS" != "0%" ]] && [ -z "$WAN1PACKETLOSS" ] ;} >/dev/null;then
+  elif [[ "$WAN0PACKETLOSS" == "0%" ]] && { [[ "$WAN1PACKETLOSS" != "0%" ]] && [ ! -z "$WAN1PACKETLOSS" ] ;} >/dev/null;then
     if [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null;then
       logger -p 3 -st "${0##*/}" "Packet Loss Detected - WAN1 Packet Loss: $WAN1PACKETLOSS"
     fi
@@ -1625,6 +1630,8 @@ return
 # Failover
 failover ()
 {
+logger -p 6 -t "${0##*/}" "Debug - Function: failover"
+
 if [[ "$(nvram get wans_mode)" == "lb" ]] >/dev/null;then
   switchdns || return
   restartservices || return
@@ -1809,11 +1816,27 @@ while { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" ==
   if { { [ -z "$(ip rule list from all iif lo to "$WAN0TARGET" lookup "$WAN0ROUTETABLE")" ] && [[ "$(nvram get wan0_state_t)" == "2" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan0_ipaddr)" != "0.0.0.0" ]] || [[ "$(nvram get wan0_gateway)" != "0.0.0.0" ]] ;} ;} \
   || { { [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan0_gateway)" != "$(ip route list default table "$WAN0ROUTETABLE" | awk '{print $3}')" ]] && [[ "$(nvram get wan0_gw_ifname)" != "$(ip route list default table "$WAN0ROUTETABLE" | awk '{print $5}')" ]] && { [[ "$(nvram get wan0_ipaddr)" != "0.0.0.0" ]] || [[ "$(nvram get wan0_gateway)" != "0.0.0.0" ]] ;} ;} ;} >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - WAN0 Target IP Rule Missing or Default Route for $WAN0ROUTETABLE is invalid"
-    break
+    if [[ "$WAN0PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} >/dev/null;then
+      break
+    elif [[ "$WAN1PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} >/dev/null;then
+      failover || return
+      if [[ "$email" == "1" ]] >/dev/null;then
+        email=0
+      fi
+      wanstatus || return && break
+    fi
   elif { { [ -z "$(ip rule list from all iif lo to "$WAN1TARGET" lookup "$WAN1ROUTETABLE")" ] && [[ "$(nvram get wan1_state_t)" == "2" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] ;} ;} \
   || { { [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan1_gateway)" != "$(ip route list default table "$WAN1ROUTETABLE" | awk '{print $3}')" ]] && [[ "$(nvram get wan1_gw_ifname)" != "$(ip route list default table "$WAN1ROUTETABLE" | awk '{print $5}')" ]] && { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] ;} ;} ;} >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - WAN1 Target IP Rule Missing or Default Route for $WAN1ROUTETABLE is invalid"
-    break
+    if [[ "$WAN0PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} >/dev/null;then
+      break
+    elif [[ "$WAN1PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} >/dev/null;then
+      failover || return
+      if [[ "$email" == "1" ]] >/dev/null;then
+        email=0
+      fi
+      wanstatus || return && break
+    fi
   elif [[ "$WAN0PACKETLOSS" == "0%" ]] && [[ "$WAN1PACKETLOSS" == "0%" ]] >/dev/null;then
     if [[ "$(nvram get wan0_state_t)" != "2" ]] >/dev/null;then
       nvram set wan0_state_t=2
@@ -1884,7 +1907,15 @@ while { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" ==
   elif { { [ -z "$(ip rule list from all iif lo to "$WAN1TARGET" lookup "$WAN1ROUTETABLE")" ] && [[ "$(nvram get wan1_state_t)" == "2" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] ;} ;} \
   || { { [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan1_gateway)" != "$(ip route list default table "$WAN1ROUTETABLE" | awk '{print $3}')" ]] && [[ "$(nvram get wan1_gw_ifname)" != "$(ip route list default table "$WAN1ROUTETABLE" | awk '{print $5}')" ]] && { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] || [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] ;} ;} ;} >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - WAN1 Target IP Rule Missing or Default Route for $WAN1ROUTETABLE is invalid"
-    break
+    if [[ "$WAN0PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} >/dev/null;then
+      failover || return
+      if [[ "$email" == "1" ]] >/dev/null;then
+        email=0
+      fi
+      wanstatus || return && break
+    elif [[ "$WAN1PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} >/dev/null;then
+      break
+    fi
   elif { [[ "$(nvram get wan0_enable)" == "1" ]] && { [[ "$WAN0PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] ;} ;} \
   && { [[ "$(nvram get wan1_enable)" == "1" ]] && { [[ "$WAN1PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} ;} >/dev/null;then
     if [[ "$(nvram get wan1_state_t)" != "2" ]] >/dev/null;then
@@ -2455,6 +2486,12 @@ if [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
   SERVICE="qos"
   SERVICES="${SERVICES} ${SERVICE}"
 fi
+# Check if IPv6 is using a 6in4 tunnel
+if [[ "$(nvram get ipv6_service)" == "6in4" ]] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - IPv6 6in4 is enabled"
+  SERVICE="wan6"
+  SERVICES="${SERVICES} ${SERVICE}"
+fi
 
 # Restart Services
 if [ ! -z "$SERVICES" ] >/dev/null;then
@@ -2490,8 +2527,8 @@ logger -p 6 -t "${0##*/}" "Debug - Checking if YazFi is installed and scheduled 
 if [ ! -z "$(cru l | grep -w "YazFi")" ] && [ -f "/jffs/scripts/YazFi" ] >/dev/null;then
   logger -p 5 -st "${0##*/}" "Service Restart - Executing YazFi Check"
   sh /jffs/scripts/YazFi check \
-  && logger -p 4 -st "${0##*/}" "Service Restart - Executed YazFi Check \
-  || logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to execute YazFi Check
+  && logger -p 4 -st "${0##*/}" "Service Restart - Executed YazFi Check" \
+  || logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to execute YazFi Check"
 fi
 
 # Reset VPNMON-R2
@@ -2499,8 +2536,8 @@ logger -p 6 -t "${0##*/}" "Debug - Checking if VPNMON-R2 is installed, configure
 if [ ! -z "$(pidof vpnmon-r2.sh)" ] && [ -f "/jffs/scripts/vpnmon-r2.sh" ] && [ -f "/jffs/addons/vpnmon-r2.d/vpnmon-r2.cfg" ] >/dev/null;then
   logger -p 5 -st "${0##*/}" "Service Restart - Resetting VPNMON-R2"
   sh /jffs/scripts/vpnmon-r2.sh -reset \
-  && logger -p 4 -st "${0##*/}" "Service Restart - Reset VPNMON-R2 \
-  || logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to reset VPNMON-R2
+  && logger -p 4 -st "${0##*/}" "Service Restart - Reset VPNMON-R2" \
+  || logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to reset VPNMON-R2"
 fi
 return
 }
