@@ -2232,7 +2232,8 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
       logger -p 6 -t "${0##*/}" "Debug - Inbound Bandwidth: "$(nvram get qos_ibw)""
       logger -p 6 -t "${0##*/}" "Debug - QoS Overhead: "$(nvram get qos_overhead)""
       logger -p 6 -t "${0##*/}" "Debug - QoS ATM: "$(nvram get qos_atm)""
-      [[ "$(nvram get qos_obw)" != "0" ]] && [[ "$(nvram get qos_ibw)" != "0" ]] && logger -p 4 -st "${0##*/}" "WAN Switch - QoS Settings: Download Bandwidth: $(($(nvram get qos_ibw)/1024))Mbps Upload Bandwidth: $(($(nvram get qos_obw)/1024))Mbps"
+      [[ "$(nvram get qos_obw)" -gt "1024" ]] && logger -p 4 -st "${0##*/}" "WAN Switch - QoS Settings: Upload Bandwidth: $(($(nvram get qos_obw)/1024))Mbps" || logger -p 4 -st "${0##*/}" "WAN Switch - QoS Settings: Upload Bandwidth: $(nvram get qos_obw)Kbps"
+      [[ "$(nvram get qos_ibw)" -gt "1024" ]] && logger -p 4 -st "${0##*/}" "WAN Switch - QoS Settings: Download Bandwidth: $(($(nvram get qos_ibw)/1024))Mbps" || logger -p 4 -st "${0##*/}" "WAN Switch - QoS Settings: Download Bandwidth: $(nvram get qos_ibw)Kbps"
     elif [[ "$(nvram get qos_obw)" == "0" ]] && [[ "$(nvram get qos_ibw)" == "0" ]] >/dev/null;then
       logger -p 4 -st "${0##*/}" "WAN Switch - QoS is using Automatic Settings"
     fi
@@ -2661,17 +2662,21 @@ elif [ -f "$AIPROTECTION_EMAILCONFIG" ] || [ -f "$AMTM_EMAILCONFIG" ] >/dev/null
     logger -p 6 -t "${0##*/}" "Debug - QoS Enabled: $(nvram get qos_enable)"
     if [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
       echo "QoS Status: Enabled" >>"$TMPEMAILFILE"
-      logger -p 6 -t "${0##*/}" "Debug - QoS Outbound Bandwidth: $(nvram get qos_obw)"
-      logger -p 6 -t "${0##*/}" "Debug - QoS Inbound Bandwidth: $(nvram get qos_ibw)"
       if [[ ! -z "$(nvram get qos_obw)" ]] && [[ ! -z "$(nvram get qos_ibw)" ]] >/dev/null;then
-        echo "QoS Mode: Manual Settings" >>"$TMPEMAILFILE"
-        echo "QoS Download Bandwidth: $(($(nvram get qos_ibw)/1024))Mbps" >>"$TMPEMAILFILE"
-        echo "QoS Upload Bandwidth: $(($(nvram get qos_obw)/1024))Mbps" >>"$TMPEMAILFILE"
-        logger -p 6 -t "${0##*/}" "Debug - QoS WAN Packet Overhead: $(nvram get qos_overhead)"
-        echo "QoS WAN Packet Overhead: $(nvram get qos_overhead)" >>"$TMPEMAILFILE"
-      else
-        echo "QoS Mode: Automatic Settings" >>"$TMPEMAILFILE"
+        logger -p 6 -t "${0##*/}" "Debug - QoS Outbound Bandwidth: $(nvram get qos_obw)"
+        logger -p 6 -t "${0##*/}" "Debug - QoS Inbound Bandwidth: $(nvram get qos_ibw)"
+        if [[ "$(nvram get qos_obw)" == "0" ]] && [[ "$(nvram get qos_ibw)" == "0" ]] >/dev/null;then
+          echo "QoS Mode: Automatic Settings" >>"$TMPEMAILFILE"
+        else
+          echo "QoS Mode: Manual Settings" >>"$TMPEMAILFILE"
+          [[ "$(nvram get qos_ibw)" -gt "1024" ]] && echo "QoS Download Bandwidth: $(($(nvram get qos_ibw)/1024))Mbps" >>"$TMPEMAILFILE" || echo "QoS Download Bandwidth: $(nvram get qos_ibw)Kbps" >>"$TMPEMAILFILE"
+          [[ "$(nvram get qos_obw)" -gt "1024" ]] && echo "QoS Upload Bandwidth: $(($(nvram get qos_obw)/1024))Mbps" >>"$TMPEMAILFILE" || echo "QoS Upload Bandwidth: $(nvram get qos_obw)Kbps" >>"$TMPEMAILFILE"
+          logger -p 6 -t "${0##*/}" "Debug - QoS WAN Packet Overhead: $(nvram get qos_overhead)"
+          echo "QoS WAN Packet Overhead: $(nvram get qos_overhead)" >>"$TMPEMAILFILE"
+        fi
       fi
+    elif [[ "$(nvram get qos_enable)" == "0" ]] >/dev/null;then
+      echo "QoS Status: Disabled" >>"$TMPEMAILFILE"
     fi
   fi
   echo "----------------------------------------------------------------------------------------" >>"$TMPEMAILFILE"
