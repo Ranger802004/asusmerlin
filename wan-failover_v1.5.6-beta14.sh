@@ -1578,8 +1578,8 @@ while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
   pingwan1target &
   PINGWAN1PID=$!
   wait $PINGWAN0PID $PINGWAN1PID
-  WAN0PACKETLOSS="$(cat /tmp/wan0packetloss.tmp)"
-  WAN1PACKETLOSS="$(cat /tmp/wan1packetloss.tmp)"
+  { [ -z "$(nvram get wan0_ifname)" ] || [ -z "$(nvram get wan0_gw_ifname)" ] ;} && WAN0PACKETLOSS="100%" || WAN0PACKETLOSS="$(cat /tmp/wan0packetloss.tmp)"
+  { [ -z "$(nvram get wan1_ifname)" ] || [ -z "$(nvram get wan1_gw_ifname)" ] ;} && WAN1PACKETLOSS="100%" || WAN1PACKETLOSS="$(cat /tmp/wan1packetloss.tmp)"
   if [[ "$WAN0PACKETLOSS" == "0%" ]] && [[ "$WAN1PACKETLOSS" == "0%" ]] >/dev/null;then
     if tty >/dev/null 2>&1;then
       printf '\033[K%b\r' ""${BOLD}"$(date "+%D @ %T") - WAN0 Target: "${BLUE}""$WAN0TARGET" "${WHITE}"Packet Loss: "${GREEN}""$WAN0PACKETLOSS" "${WHITE}"WAN1 Target: "${BLUE}""$WAN1TARGET" "${WHITE}"Packet Loss: "${GREEN}""$WAN1PACKETLOSS""${NOCOLOR}""
