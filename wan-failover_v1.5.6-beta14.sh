@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/13/2022
-# Version: v1.5.6-beta14e
+# Date: 08/14/2022
+# Version: v1.5.6-beta14f
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="wan-failover"
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh"
-VERSION="v1.5.6-beta14e"
+VERSION="v1.5.6-beta14f"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
 LOCKFILE="/var/lock/wan-failover.lock"
@@ -577,6 +577,15 @@ for WANPREFIX in ${WANPREFIXES};do
       && logger -p 4 -t "${0##*/}" "Cleanup - Deleted IP Rule for "$TARGET" to monitor "${WANPREFIX}"" \
       || logger -p 2 -t "${0##*/}" "Cleanup - ***Error*** Unable to delete IP Rule for "$TARGET" to monitor "${WANPREFIX}""
     done
+  fi
+
+  # Delete WAN Route for Target IP
+  logger -p 6 -t "${0##*/}" "Debug - Checking "${WANPREFIX}" for Default Route in "$TABLE""
+  if [ ! -z "$(ip route list "$TARGET" via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)")" ] >/dev/null;then
+    logger -p 5 -t "${0##*/}" "Cleanup - Deleting route for "$TARGET" via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)""
+    ip route del $TARGET via $(nvram get ${WANPREFIX}_gateway) dev $(nvram get ${WANPREFIX}_gw_ifname) \
+    && logger -p 4 -t "${0##*/}" "Cleanup - Deleted route for "$TARGET" via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)"" \
+    || logger -p 2 -t "${0##*/}" "Cleanup - ***Error*** Unable to delete route for "$TARGET" via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)""
   fi
 
   # Delete Packet Loss Temp File
@@ -1152,37 +1161,62 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         && logger -p 4 -t "${0##*/}" "WAN Status - Added default route for ${WANPREFIX} Routing Table via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)"" \
         || { logger -p 2 -t "${0##*/}" "WAN Status - ***Error*** Unable to add default route for ${WANPREFIX} Routing Table via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)"" && sleep 1 && wanstatus ;}
       fi
-      # Check WAN IP Rule
-      logger -p 6 -t "${0##*/}" "Debug - Checking "${WANPREFIX}" for IP Rule to "$TARGET""
-      if [ -z "$(ip rule list from all iif lo to $TARGET lookup ${TABLE} priority "$PRIORITY")" ] >/dev/null;then
-        logger -p 5 -t "${0##*/}" "WAN Status - Adding IP Rule for "$TARGET" to monitor "${WANPREFIX}""
-        if [[ "$(nvram get model)" == "RT-AX88U" ]] >/dev/null;then
-          ip rule add from all iif lo to $TARGET table ${TABLE} priority "$PRIORITY" \
-          && logger -p 4 -t "${0##*/}" "WAN Status - Added IP Rule for "$TARGET" to monitor "${WANPREFIX}"" \
-          || { logger -p 2 -t "${0##*/}" "WAN Status - ***Error*** Unable to add IP Rule for "$TARGET" to monitor "${WANPREFIX}"" && sleep 1 && wanstatus ;}
-        else
-          ip rule add from all iif lo to $TARGET oif $(nvram get ${WANPREFIX}_gw_ifname) table ${TABLE} priority "$PRIORITY" \
-          && logger -p 4 -t "${0##*/}" "WAN Status - Added IP Rule for "$TARGET" to monitor "${WANPREFIX}"" \
-          || { logger -p 2 -t "${0##*/}" "WAN Status - ***Error*** Unable to add IP Rule for "$TARGET" to monitor "${WANPREFIX}"" && sleep 1 && wanstatus ;}
-        fi
-      fi
+
       # Check WAN Packet Loss
       logger -p 6 -t "${0##*/}" "Debug - Recursive Ping Check: "$RECURSIVEPINGCHECK""
       i=1
       while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null;do
-        logger -p 6 -t "${0##*/}" "Debug - "Checking ${WANPREFIX}" for packet loss via $TARGET - Attempt: "$i""
-        ping${WANPREFIX}target &
-        PINGWANPID=$!
-        wait $PINGWANPID
-        PACKETLOSS="$(cat /tmp/${WANPREFIX}packetloss.tmp)"
-        logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS"%"
+        # Determine IP Rule or Route for successful ping
+        pingpathsuccess=${pingpathsuccess:=0}
+        # Check WAN Target IP Rule specifying Outbound Interface
+        logger -p 6 -t "${0##*/}" "Debug - Checking "${WANPREFIX}" for IP Rule to "$TARGET""
+        if { [[ "$pingpathsuccess" == "0" ]] || [[ "$pingpathsuccess" == "1" ]] ;} && [ -z "$(ip rule list from all iif lo to $TARGET lookup ${TABLE} priority "$PRIORITY")" ] >/dev/null;then
+          logger -p 5 -t "${0##*/}" "WAN Status - Adding IP Rule for "$TARGET" to monitor "${WANPREFIX}""
+          ip rule add from all iif lo to $TARGET oif $(nvram get ${WANPREFIX}_gw_ifname) table ${TABLE} priority "$PRIORITY" \
+          && logger -p 4 -t "${0##*/}" "WAN Status - Added IP Rule for "$TARGET" to monitor "${WANPREFIX}"" \
+          || { logger -p 2 -t "${0##*/}" "WAN Status - ***Error*** Unable to add IP Rule for "$TARGET" to monitor "${WANPREFIX}"" && sleep 1 && wanstatus ;}
+          logger -p 6 -t "${0##*/}" "Debug - "Checking ${WANPREFIX}" for packet loss via $TARGET - Attempt: "$i""
+          ping${WANPREFIX}target &
+          PINGWANPID=$!
+          wait $PINGWANPID
+          PACKETLOSS="$(cat /tmp/${WANPREFIX}packetloss.tmp)"
+          logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS""
+          [[ "$PACKETLOSS" == "0%" ]] && pingpathsuccess=1
+        fi
+        # Check WAN Target IP Rule without specifying Outbound Interface
+        if { [[ "$pingpathsuccess" == "0" ]] || [[ "$pingpathsuccess" == "2" ]] ;} && [ -z "$(ip rule list from all iif lo to $TARGET lookup ${TABLE} priority "$PRIORITY")" ] >/dev/null;then
+          logger -p 5 -t "${0##*/}" "WAN Status - Adding IP Rule for "$TARGET" to monitor "${WANPREFIX}" without specifying Outbound Interface"
+          ip rule add from all iif lo to $TARGET table ${TABLE} priority "$PRIORITY" \
+          && logger -p 4 -t "${0##*/}" "WAN Status - Added IP Rule for "$TARGET" to monitor "${WANPREFIX}" without specifying Outbound Interface" \
+          || { logger -p 2 -t "${0##*/}" "WAN Status - ***Error*** Unable to add IP Rule for "$TARGET" to monitor "${WANPREFIX}" without specifying Outbound Interface" && sleep 1 && wanstatus ;}
+          ping${WANPREFIX}target &
+          PINGWANPID=$!
+          wait $PINGWANPID
+          PACKETLOSS="$(cat /tmp/${WANPREFIX}packetloss.tmp)"
+          logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS""
+          [[ "$PACKETLOSS" == "0%" ]] && pingpathsuccess=2 && logger -p 3 -t "${0##*/}" "WAN Status - ***Warning*** Compatibility issues with "$TARGET" may occur without specifying Outbound Interface"
+        fi
+        # Check WAN Route for Target IP
+        logger -p 6 -t "${0##*/}" "Debug - Checking "${WANPREFIX}" for Default Route in "$TABLE""
+        if { [[ "$pingpathsuccess" == "0" ]] || [[ "$pingpathsuccess" == "3" ]] ;} && [ -z "$(ip route list "$TARGET" via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)")" ] >/dev/null;then
+          logger -p 5 -t "${0##*/}" "WAN Status - Adding route for "$TARGET" via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)""
+          ip route add $TARGET via $(nvram get ${WANPREFIX}_gateway) dev $(nvram get ${WANPREFIX}_gw_ifname) \
+          && logger -p 4 -t "${0##*/}" "WAN Status - Added route for "$TARGET" via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)"" \
+          || { logger -p 2 -t "${0##*/}" "WAN Status - ***Error*** Unable to add route for "$TARGET" via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)"" && sleep 1 && wanstatus ;}
+          ping${WANPREFIX}target &
+          PINGWANPID=$!
+          wait $PINGWANPID
+          PACKETLOSS="$(cat /tmp/${WANPREFIX}packetloss.tmp)"
+          logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS""
+          [[ "$PACKETLOSS" == "0%" ]] && pingpathsuccess=3 && logger -p 3 -t "${0##*/}" "WAN Status - ***Warning*** Compatibility issues with "$TARGET" may occur with adding route via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)""
+        fi
+        logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Ping Path: "$pingpathsuccess""
+        # Determine WAN Status based on Packet Loss
         if { [[ "$PACKETLOSS" == "0%" ]] || [[ "$PACKETLOSS" != "100%" ]] ;} && [ ! -z "$PACKETLOSS" ] >/dev/null;then
           logger -p 5 -t "${0##*/}" "WAN Status - "${WANPREFIX}" has "$PACKETLOSS" packet loss"
           STATUS="CONNECTED"
           logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
-          if [[ "$(nvram get ${WANPREFIX}_state_t)" != "2" ]] >/dev/null;then
-            nvram set ${WANPREFIX}_state_t=2
-          fi
+          [[ "$(nvram get ${WANPREFIX}_state_t)" != "2" ]] && nvram set ${WANPREFIX}_state_t=2
           setwanstatus && break 1
         elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] && [[ "$PACKETLOSS" == "100%" ]] >/dev/null;then
           logger -p 2 -st "${0##*/}" "WAN Status - ${WANPREFIX} has $PACKETLOSS packet loss ***Verify $TARGET is a valid server for ICMP Echo Requests***"
@@ -1197,6 +1231,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
         else
           logger -p 2 -st "${0##*/}" "WAN Status - "${WANPREFIX}" has "$PACKETLOSS" packet loss"
           STATUS="DISCONNECTED"
+          pingpathsuccess=""
           logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
           if [[ "$i" -le "$RECURSIVEPINGCHECK" ]] >/dev/null;then
             i=$(($i+1))
@@ -1206,6 +1241,7 @@ elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" ==
           fi
         fi
       done
+      pingpathsuccess=""
       i=""
     fi
   done
@@ -2047,7 +2083,7 @@ while \
   elif { [[ "$(nvram get wan0_enable)" == "1" ]] && [[ "$(nvram get wan1_enable)" == "1" ]] ;} \
   && { { [[ "$(nvram get wan0_state_t)" == "2" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] && { [[ "$(nvram get wan0_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_ipaddr)" ] ;} && { [[ "$(nvram get wan0_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_gateway)" ] ;} ;} \
   && { [[ "$(nvram get wan1_state_t)" == "2" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] && { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_ipaddr)" ] ;} && { [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_gateway)" ] ;} ;} ;} >/dev/null;then
-    pingtargets || wanstatus
+    [[ "$pingpathsuccess" != "0" ]] && pingtargets
     wan0disabled=${wan0disabled:=$pingfailure0}
     wan1disabled=${wan1disabled:=$pingfailure1}
     [[ "$wandisabledloop" == "1" ]] && logger -p 5 -st "${0##*/}" "WAN Failover Disabled - Pinging "$WAN0TARGET" and "$WAN1TARGET""
@@ -2060,8 +2096,8 @@ while \
       wanstatus
     else
       email=0
-      [[ "$pingfailure0" == "1" ]] && service "restart_wan_if 0"
-      [[ "$pingfailure1" == "1" ]] && service "restart_wan_if 1"
+      [[ "$pingpathsuccess" != "0" ]] && [[ "$pingfailure0" == "1" ]] && service "restart_wan_if 0"
+      [[ "$pingpathsuccess" != "0" ]] && [[ "$pingfailure1" == "1" ]] && service "restart_wan_if 1"
       wandisabledloop=$(($wandisabledloop+1))
       sleep $WANDISABLEDSLEEPTIMER
       logger -p 6 -t "${0##*/}" "Debug - Returning to WAN Status to verify WAN IP Rules and Default Routes"
