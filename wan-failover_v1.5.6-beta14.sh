@@ -2132,6 +2132,9 @@ while \
       [[ "$pingfailure1" == "0" ]] && logger -p 4 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" is enabled and connected"
       [[ "$pingfailure0" != "$wan0disabled" ]] && wandisabledloop="" && wan0disabled=""
       [[ "$pingfailure1" != "$wan1disabled" ]] && wandisabledloop="" && wan1disabled=""
+      [[ "$pingfailure0" == "0" ]] && wan0disabled=""
+      [[ "$pingfailure1" == "0" ]] && wan1disabled=""
+      [[ "$pingfailure0" == "0" ]] && [[ "$pingfailure1" == "0" ]] && wandisabledloop=""
       wanstatus
     elif [[ "$wandisabledloop" == "1" ]] >/dev/null;then
       wandisabledloop=$(($wandisabledloop+1))
