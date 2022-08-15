@@ -1041,6 +1041,7 @@ fi
 
 # Debug Logging
 debuglog || return
+
 return
 }
 
@@ -2343,7 +2344,7 @@ done
   if [[ "$(nvram get "$ACTIVEWAN"_primary)" == "1" ]] && [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] >/dev/null;then
     logger -p 1 -st "${0##*/}" "WAN Switch - Switched $ACTIVEWAN to Primary WAN"
   else
-    debuglog || continue
+    debuglog || return
   fi
 return
 }
@@ -2851,60 +2852,41 @@ if [[ "$(nvram get log_level)" -ge "7" ]] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - WAN IPv6 Address: "$(nvram get ipv6_wan_addr)""
   logger -p 6 -t "${0##*/}" "Debug - Default Route: "$(ip route list default table main)""
   logger -p 6 -t "${0##*/}" "Debug - OpenVPN Server Instances Enabled: "$(nvram get vpn_serverx_start)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Enabled: "$(nvram get wan0_enable)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Routing Table Default Route: "$(ip route list default table "$WAN0ROUTETABLE")""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Target IP Rule: "$(ip rule list from all iif lo to "$WAN0TARGET" lookup "$WAN0ROUTETABLE")""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 IP Address: "$(nvram get wan0_ipaddr)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Real IP Address: "$(nvram get wan0_realip_ip)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Real IP Address State: "$(nvram get wan0_realip_state)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Gateway IP: "$(nvram get wan0_gateway)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Gateway Interface: "$(nvram get wan0_gw_ifname)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Interface: "$(nvram get wan0_ifname)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Automatic ISP DNS Enabled: "$(nvram get wan0_dnsenable_x)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Automatic ISP DNS Servers: "$(nvram get wan0_dns)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Manual DNS Server 1: "$(nvram get wan0_dns1_x)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Manual DNS Server 2: "$(nvram get wan0_dns2_x)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 State: "$(nvram get wan0_state_t)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Aux State: "$(nvram get wan0_auxstate_t)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Sb State: "$(nvram get wan0_sbstate_t)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Primary Status: "$(nvram get wan0_primary)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 USB Modem Status: "$(nvram get wan0_is_usb_modem_ready)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 UPnP Enabled: "$(nvram get wan0_upnp_enable)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 NAT Enabled: "$(nvram get wan0_nat_x)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Target IP Address: "$WAN0TARGET""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Routing Table: "$WAN0ROUTETABLE""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 IP Rule Priority: "$WAN0TARGETRULEPRIORITY""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Mark: "$WAN0MARK""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 Mask: "$WAN0MASK""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 From WAN Priority: "$FROMWAN0PRIORITY""
-  logger -p 6 -t "${0##*/}" "Debug - WAN0 To WAN Priority: "$TOWAN0PRIORITY""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Enabled: "$(nvram get wan1_enable)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Routing Table Default Route: "$(ip route list default table "$WAN1ROUTETABLE")""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Target IP Rule: "$(ip rule list from all iif lo to "$WAN1TARGET" lookup "$WAN1ROUTETABLE")""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 IP Address: "$(nvram get wan1_ipaddr)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Real IP Address: "$(nvram get wan1_realip_ip)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Real IP Address State: "$(nvram get wan1_realip_state)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Gateway IP: "$(nvram get wan1_gateway)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Gateway Interface: "$(nvram get wan1_gw_ifname)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Interface: "$(nvram get wan1_ifname)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Automatic ISP DNS Enabled: "$(nvram get wan1_dnsenable_x)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Automatic ISP DNS Servers: "$(nvram get wan1_dns)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Manual DNS Server 1: "$(nvram get wan1_dns1_x)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Manual DNS Server 2: "$(nvram get wan1_dns2_x)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 State: "$(nvram get wan1_state_t)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Aux State: "$(nvram get wan1_auxstate_t)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Sb State: "$(nvram get wan1_sbstate_t)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Primary Status: "$(nvram get wan1_primary)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 USB Modem Status: "$(nvram get wan1_is_usb_modem_ready)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 UPnP Enabled: "$(nvram get wan1_upnp_enable)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 NAT Enabled: "$(nvram get wan1_nat_x)""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Target IP Address: "$WAN1TARGET""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Routing Table: "$WAN1ROUTETABLE""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 IP Rule Priority: "$WAN1TARGETRULEPRIORITY""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Mark: "$WAN1MARK""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 Mask: "$WAN1MASK""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 From WAN Priority: "$FROMWAN1PRIORITY""
-  logger -p 6 -t "${0##*/}" "Debug - WAN1 To WAN Priority: "$TOWAN1PRIORITY""
+  for WANPREFIX in ${WANPREFIXES};do
+    # Getting WAN Parameters
+    getwanparameters || return
+
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Enabled: "$(nvram get ${WANPREFIX}_enable)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Routing Table Default Route: "$(ip route list default table "$TABLE")""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Ping Path: "$PINGPATH""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Target IP Rule: "$(ip rule list from all iif lo to "$TARGET" lookup "$TABLE")""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Target IP Route: "$(ip route list "$TARGET" via "$(nvram get ${WANPREFIX}_gateway)" dev "$(nvram get ${WANPREFIX}_gw_ifname)")""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" IP Address: "$(nvram get ${WANPREFIX}_ipaddr)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Real IP Address: "$(nvram get ${WANPREFIX}_realip_ip)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Real IP Address State: "$(nvram get ${WANPREFIX}_realip_state)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Gateway IP: "$(nvram get ${WANPREFIX}_gateway)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Gateway Interface: "$(nvram get ${WANPREFIX}_gw_ifname)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Interface: "$(nvram get ${WANPREFIX}_ifname)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Automatic ISP DNS Enabled: "$(nvram get ${WANPREFIX}_dnsenable_x)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Automatic ISP DNS Servers: "$(nvram get ${WANPREFIX}_dns)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Manual DNS Server 1: "$(nvram get ${WANPREFIX}_dns1_x)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Manual DNS Server 2: "$(nvram get ${WANPREFIX}_dns2_x)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" State: "$(nvram get ${WANPREFIX}_state_t)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Aux State: "$(nvram get ${WANPREFIX}_auxstate_t)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Sb State: "$(nvram get ${WANPREFIX}_sbstate_t)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Primary Status: "$(nvram get ${WANPREFIX}_primary)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" USB Modem Status: "$(nvram get ${WANPREFIX}_is_usb_modem_ready)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" UPnP Enabled: "$(nvram get ${WANPREFIX}_upnp_enable)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" NAT Enabled: "$(nvram get ${WANPREFIX}_nat_x)""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Target IP Address: "$TARGET""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Routing Table: "$TABLE""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" IP Rule Priority: "$PRIORITY""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Mark: "$MARK""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Mask: "$MASK""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" From WAN Priority: "$FROMWANPRIORITY""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" To WAN Priority: "$TOWANPRIORITY""
+    logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" OVPN WAN Priority: "$OVPNWANPRIORITY""
+  done
 fi
 return
 }
