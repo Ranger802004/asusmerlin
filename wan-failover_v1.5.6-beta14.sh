@@ -2083,7 +2083,7 @@ while \
   elif { [[ "$(nvram get wan0_enable)" == "1" ]] && [[ "$(nvram get wan1_enable)" == "1" ]] ;} \
   && { { [[ "$(nvram get wan0_state_t)" == "2" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] && { [[ "$(nvram get wan0_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_ipaddr)" ] ;} && { [[ "$(nvram get wan0_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_gateway)" ] ;} ;} \
   && { [[ "$(nvram get wan1_state_t)" == "2" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] && { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_ipaddr)" ] ;} && { [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_gateway)" ] ;} ;} ;} >/dev/null;then
-    [[ "$pingpathsuccess" != "0" ]] && pingtargets
+    pingtargets || wanstatus
     wan0disabled=${wan0disabled:=$pingfailure0}
     wan1disabled=${wan1disabled:=$pingfailure1}
     [[ "$wandisabledloop" == "1" ]] && logger -p 5 -st "${0##*/}" "WAN Failover Disabled - Pinging "$WAN0TARGET" and "$WAN1TARGET""
@@ -2096,8 +2096,8 @@ while \
       wanstatus
     else
       email=0
-      [[ "$pingpathsuccess" != "0" ]] && [[ "$pingfailure0" == "1" ]] && service "restart_wan_if 0"
-      [[ "$pingpathsuccess" != "0" ]] && [[ "$pingfailure1" == "1" ]] && service "restart_wan_if 1"
+      [[ "$pingfailure0" == "1" ]] && service "restart_wan_if 0"
+      [[ "$pingfailure1" == "1" ]] && service "restart_wan_if 1"
       wandisabledloop=$(($wandisabledloop+1))
       sleep $WANDISABLEDSLEEPTIMER
       logger -p 6 -t "${0##*/}" "Debug - Returning to WAN Status to verify WAN IP Rules and Default Routes"
