@@ -1949,6 +1949,7 @@ logger -p 6 -t "${0##*/}" "Debug - ***WAN0 Failover Monitor Loop Ended***"
 debuglog || return
 
 # Complete Failover if Primary WAN was changed by Router
+[[ "$(nvram get wan1_primary)" == "1" ]] && logger -p 6 -t "${0##*/}" "Debug - Router switched "$WAN1" to Primary WAN"
 [[ "$(nvram get wan1_primary)" == "1" ]] && WAN0STATUS=DISCONNECTED && SWITCHPRIMARY=0 && failover && email=0
 
 # Return to WAN Status
@@ -2041,6 +2042,7 @@ logger -p 6 -t "${0##*/}" "Debug - ***WAN0 Failback Monitor Loop Ended***"
 debuglog || return
 
 # Complete Failover if Primary WAN was changed by Router
+[[ "$(nvram get wan0_primary)" == "1" ]] && logger -p 6 -t "${0##*/}" "Debug - Router switched "$WAN0" to Primary WAN"
 [[ "$(nvram get wan0_primary)" == "1" ]] && WAN1STATUS=DISCONNECTED && SWITCHPRIMARY=0 && failover && email=0
 
 # Return to WAN Status
@@ -2267,7 +2269,7 @@ for WANPREFIX in ${WANPREFIXES};do
 done
 # Verify new Active WAN Gateway IP or IP Address are not 0.0.0.0
 if { { [[ "$(nvram get "$ACTIVEWAN"_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get "$ACTIVEWAN"_ipaddr)" ] ;} || { [[ "$(nvram get "$ACTIVEWAN"_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get "$ACTIVEWAN"_gateway)" ] ;} ;} >/dev/null;then
-  logger -p 1 -st "${0##*/}" "WAN Switch - "$ACTIVEWAN" is disconnected.  IP Address: "$(nvram get "$ACTIVEWAN"_ipaddr)" Gateway: "$(nvram get "$ACTIVEWAN"_gateway)""
+  logger -p 1 -st "${0##*/}" "WAN Switch - "$ACTIVEWAN" is disconnected.  IP Address: "$(nvram get "$ACTIVEWAN"_ipaddr)" Gateway IP Address: "$(nvram get "$ACTIVEWAN"_gateway)""
   return
 fi
 # Perform WAN Switch until Secondary WAN becomes Primary WAN
