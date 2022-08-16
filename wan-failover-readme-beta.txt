@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/07/2022
-# Version: v1.5.6-beta12
+# Date: 08/16/2022
+# Version: v1.5.6-beta14
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -33,7 +33,7 @@ Required Configuration: During installation or reconfiguration, the following se
   o	WAN1 QoS Upload Bandwidth: Value is in Mbps
 
 Optional Configuration: ***Options that can be adjusted in the configuration file***
-- To enable or disable email notifications, pass the command arguments "email enable" or "email disable", default mode is Enabled.  Example: "/jffs/scripts/wan-failover.sh email enable"  ***Email Notifications work with amtm or AIProtection Alert Preferences****
+- To enable or disable email notifications, execute the command arguments "email enable" or "email disable", default mode is Enabled.  Example: "/jffs/scripts/wan-failover.sh email enable"  ***Email Notifications work with amtm or AIProtection Alert Preferences****
 - WAN0_QOS_OVERHEAD: This will define WAN0 Packet Overhead when QoS is Enabled.  Default: 0 Bytes
 - WAN1_QOS_OVERHEAD: This will define WAN1 Packet Overhead when QoS is Enabled.  Default: 0 Bytes
 - WAN0_QOS_ATM: This will enable or disable Asynchronous Transfer Mode (ATM) for WAN0 when QoS is Enabled. Default: Disabled (0)
@@ -77,40 +77,51 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
-v1.5.6-beta12 - 08/07/2022
+v1.5.6-beta14 - 08/16/2022
+Installation:
+- During installation, if QoS is Enabled and set using Manual Settings, WAN0 QoS Settings will apply the values set from the router.
+- Fixed Cron Job deletion during Uninstallation.
+
+Enhancements:
 - General optimization
 - Added a confirmation prompt to Restart Mode.
-- Fixed visual bugs when running Restart Mode.
+- During WAN Status checks, WAN Failover will test different IP Rules / Routes to ensure router can properly ping a Target IP with correct interface.  Warning messages will log if a rule or route can cause potential conflicts with the IP using other services.
 - Load Balance Monitor now triggers Service Restart function during failover events.
-- YazFi trigger during service restart will no longer run process in the background to prevent issues with script execution of YazFi.
-- IP Rules should no longer create conflict with other scripts such as VPNMON.
 - Target IPs for both interfaces can now be the same the Target IP.
 - Added Recursive Ping Check feature. If packet loss is not 0% during a check, the Target IP Addresses will be checked again based on the number of iterations specified by this setting before determing a failure or packet loss. RECURSIVEPINGCHECK (Value is in # of iterations). Default: 1
-- Resolved issues that prevented 4G USB Devices from properly working in Failover Mode.
 - Moved WAN0_QOS_OVERHEAD, WAN1_QOS_OVERHEAD, WAN0_QOS_ATM, WAN1_QOS_ATM, BOOTDELAYTIMER, PACKETLOSSLOGGING and WANDISABLEDSLEEPTIMER to Optional Configuration and no longer are required to be set during Config or Installation.  They will be given Default values that can be modified in the Configuration file.
 - Created new Optional Configured Option to specify the ping packet size.  PACKETSIZE specifes the packet size in Bytes, Default: 56 Bytes.
-- Resolve issue where script would loop from WAN Status to Load Balance Monitor when an interface was disabled.
 - Load Balance Mode will now dynamically update resolv.conf (DNS) for Disconnected WAN Interfaces.
-- Fixed Cron Job deletion during Uninstallation.
-- Corrected issue with Failure Detected log not logging if a device was unplugged or powered off from the Router while in Failover Mode.
-- Modified Restart Mode logic to better detect PIDs of running instances of the script.
 - Created Alias for script as wan-failover to shorten length of commands used in console.
-- Fixed issue where if the USB Device is unplugged and plugged back in, script will now leave Disabled State to go back to WAN Status.
 - Enhanced WAN Disabled Logging, will relog every 5 minutes the condition causing the script to be in the Disabled State.
 - Added additional logging throughout script.
-- Email function will check if DDNS is enabled before attempting to use saved DDNS Hostname
 - Added cleanup function for when script exits to perform cleanup tasks.
 - Service Restarts now include restarting enabled OpenVPN Server Instances.
-- Target IP Rules will now compensate for the RT-AX88U however this can create conflicts if the Target IPs are the same or are used for other services/scripts.
-- Fixed issue in DNS Switch in Load Balance Mode where WAN1 was using the Status of WAN0.
 - Switch WAN Mode will now prompt for confirmation before switching.
+- Script will now reset VPNMON-R2 if it is installed and running during Failover.
+- Enhanced Ping Monitoring to improve failure/packet loss detection time as well as failure and restoration logging notifications.
+- An email notification will now be sent if the Primary or Secondary WAN fails or is disabled while in Failover Mode.
+- If IPv6 6in4 Service is being used, wan6 service will be restarted during failover events.
+- Updated Monitor Mode to dynamically search multiple locations for System Log Path such as if Scribe or Entware syslog-ng package is installed.
+- If QoS Settings are set to 0 for a WAN Interface, this will apply Automatic Settings for QoS when that WAN Interface becomes the Primary WAN.
+
+Fixes:
+- Fixed visual bugs when running Restart Mode.
+- YazFi trigger during service restart will no longer run process in the background to prevent issues with script execution of YazFi.
+- Resolved issues that prevented 4G USB Devices from properly working in Failover Mode.
+- Resolve issue where script would loop from WAN Status to Load Balance Monitor when an interface was disabled.
+- Corrected issue with Failure Detected log not logging if a device was unplugged or powered off from the Router while in Failover Mode.
+- Modified Restart Mode logic to better detect PIDs of running instances of the script.
+- Fixed issue where if the USB Device is unplugged and plugged back in, script will now leave Disabled State to go back to WAN Status.
+- Email function will check if DDNS is enabled before attempting to use saved DDNS Hostname
+- Fixed issue in DNS Switch in Load Balance Mode where WAN1 was using the Status of WAN0.
 - Fixed issue where Switch WAN Mode would fail due to missing Status parameters acquired in Run or Manual Mode.
 - Fixed issue where WAN Interface would not come out of Cold Standby during WAN Status Check.
-- Script will now reset VPNMON-R2 if it is installed and running during Failover
-- Enhanced Ping Monitoring to improve failure/packet loss detection time.
 - If an amtm email alert fails to send, an email attempt will be made via AIProtection Alerts if properly configured.
-- An email notification will now be sent if the Primary or Secondary WAN fails or is disabled while in Failover Mode.
 - Fixed issue in Load Balance Mode when a Disconnected WAN Interface would cause WAN Failover to error and crash when creating OpenVPN rules when OpenVPN Split Tunneling is Disabled.
+- Fixed issue where QoS settings would not apply during WAN Switch.
+- Fixed issue where if WAN1 was connected but failing ping, the script would loop back and forth from WAN Status to WAN Disabled.
+- Fixed issue where the Router firwmare would switch WAN instead of WAN Failover causing some settings to not be changed such as WAN IP, Gateway, DNS, and QoS Settings.
 
 v1.5.5 - 07/13/2022
 - General optimization of script logic
