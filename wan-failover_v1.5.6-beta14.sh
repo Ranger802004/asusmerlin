@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/15/2022
-# Version: v1.5.6-beta14h
+# Date: 08/16/2022
+# Version: v1.5.6-beta14i
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="wan-failover"
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh"
-VERSION="v1.5.6-beta14h"
+VERSION="v1.5.6-beta14i"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
 LOCKFILE="/var/lock/wan-failover.lock"
@@ -1948,8 +1948,8 @@ done
 logger -p 6 -t "${0##*/}" "Debug - ***WAN0 Failover Monitor Loop Ended***"
 debuglog || return
 
-# Send Email if Primary WAN Changed from Router and not WAN Failover
-[[ "$(nvram get wan1_primary)" == "1" ]] && WAN0STATUS=DISCONNECTED && sendemail && email=0
+# Complete Failover if Primary WAN was changed by Router
+[[ "$(nvram get wan1_primary)" == "1" ]] && WAN0STATUS=DISCONNECTED && SWITCHPRIMARY=0 && failover && email=0
 
 # Return to WAN Status
 wanstatus || return
@@ -2040,8 +2040,8 @@ done
 logger -p 6 -t "${0##*/}" "Debug - ***WAN0 Failback Monitor Loop Ended***"
 debuglog || return
 
-# Send Email if Primary WAN Changed from Router and not WAN Failover
-[[ "$(nvram get wan0_primary)" == "1" ]] && WAN1STATUS=DISCONNECTED && sendemail && email=0
+# Complete Failover if Primary WAN was changed by Router
+[[ "$(nvram get wan0_primary)" == "1" ]] && WAN1STATUS=DISCONNECTED && SWITCHPRIMARY=0 && failover && email=0
 
 # Return to WAN Status
 wanstatus || return
@@ -2127,6 +2127,8 @@ while \
     pingtargets || wanstatus
     wan0disabled=${wan0disabled:=$pingfailure0}
     wan1disabled=${wan1disabled:=$pingfailure1}
+    [[ "$wandisabledloop" == "1" ]] && [[ "$pingfailure0" == "1" ]] && service "restart_wan_if 0"
+    [[ "$wandisabledloop" == "1" ]] && [[ "$pingfailure1" == "1" ]] && service "restart_wan_if 1"
     if { [[ "$pingfailure0" != "$wan0disabled" ]] || [[ "$pingfailure1" != "$wan1disabled" ]] ;} || { [[ "$pingfailure0" == "0" ]] && [[ "$pingfailure1" == "0" ]] ;} >/dev/null;then
       email=1
       [[ "$pingfailure0" == "0" ]] && logger -p 4 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" is enabled and connected"
@@ -2249,15 +2251,17 @@ logger -p 6 -t "${0##*/}" "Debug - Function: switchwan"
 # Delay if NVRAM is not accessible
 nvramcheck || return
 
+SWITCHPRIMARY=${SWITCHPRIMARY:=1}
+
 # Determine Current Primary WAN and change it to the Inactive WAN
 for WANPREFIX in ${WANPREFIXES};do
   if [[ "$(nvram get ${WANPREFIX}_primary)" == "1" ]] >/dev/null;then
-    INACTIVEWAN="${WANPREFIX}"
-    logger -p 6 -t "${0##*/}" "Debug - Inactive WAN: "${WANPREFIX}""
+    [[ "$SWITCHPRIMARY" == "1" ]] && INACTIVEWAN="${WANPREFIX}" && logger -p 6 -t "${0##*/}" "Debug - Active WAN: "${WANPREFIX}""
+    [[ "$SWITCHPRIMARY" == "0" ]] && ACTIVEWAN="${WANPREFIX}" && logger -p 6 -t "${0##*/}" "Debug - Inactive WAN: "${WANPREFIX}""
     continue
   elif [[ "$(nvram get ${WANPREFIX}_primary)" == "0" ]] >/dev/null;then
-    ACTIVEWAN="${WANPREFIX}"
-    logger -p 6 -t "${0##*/}" "Debug - Active WAN: "${WANPREFIX}""
+    [[ "$SWITCHPRIMARY" == "0" ]] && INACTIVEWAN="${WANPREFIX}" && logger -p 6 -t "${0##*/}" "Debug - Active WAN: "${WANPREFIX}""
+    [[ "$SWITCHPRIMARY" == "1" ]] && ACTIVEWAN="${WANPREFIX}" && logger -p 6 -t "${0##*/}" "Debug - Inactive WAN: "${WANPREFIX}""
     continue
   fi
 done
@@ -2341,11 +2345,13 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
   fi
   sleep 1
 done
-  if [[ "$(nvram get "$ACTIVEWAN"_primary)" == "1" ]] && [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] >/dev/null;then
-    logger -p 1 -st "${0##*/}" "WAN Switch - Switched $ACTIVEWAN to Primary WAN"
-  else
-    debuglog || return
-  fi
+if [[ "$(nvram get "$ACTIVEWAN"_primary)" == "1" ]] && [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] >/dev/null;then
+  logger -p 1 -st "${0##*/}" "WAN Switch - Switched $ACTIVEWAN to Primary WAN"
+else
+  debuglog || return
+fi
+SWITCHPRIMARY=""
+
 return
 }
 
