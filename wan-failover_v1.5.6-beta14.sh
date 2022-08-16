@@ -1949,7 +1949,7 @@ logger -p 6 -t "${0##*/}" "Debug - ***WAN0 Failover Monitor Loop Ended***"
 debuglog || return
 
 # Send Email if Primary WAN Changed from Router and not WAN Failover
-[[ "$(nvram get wan1_primary)" == "1" ]] && sendemail && email=0
+[[ "$(nvram get wan1_primary)" == "1" ]] && WAN0STATUS=DISCONNECTED && sendemail && email=0
 
 # Return to WAN Status
 wanstatus || return
@@ -2041,7 +2041,7 @@ logger -p 6 -t "${0##*/}" "Debug - ***WAN0 Failback Monitor Loop Ended***"
 debuglog || return
 
 # Send Email if Primary WAN Changed from Router and not WAN Failover
-[[ "$(nvram get wan0_primary)" == "1" ]] && sendemail && email=0
+[[ "$(nvram get wan0_primary)" == "1" ]] && WAN1STATUS=DISCONNECTED && sendemail && email=0
 
 # Return to WAN Status
 wanstatus || return
