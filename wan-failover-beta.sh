@@ -20,7 +20,6 @@ WAN0="wan0"
 WAN1="wan1"
 NOCOLOR="\033[0m"
 BOLD="\033[1m"
-BLINK="\033[5m"
 RED="\033[31m"
 GREEN="\033[32m"
 YELLOW="\033[33m"
@@ -739,7 +738,7 @@ fi
 REMOTEVERSION="$(echo $(curl "$DOWNLOADPATH" | grep -v "grep" | grep -w "# Version:" | awk '{print $3}'))"
 if [[ "$VERSION" != "$REMOTEVERSION" ]] >/dev/null;then
   echo -e "${YELLOW}Script is out of date - Current Version: "$VERSION" Available Version: "$REMOTEVERSION"${NOCOLOR}"
-  [[ "$DEVMODE" == "1" ]] && echo -e "${RED}${BLINK}${BOLD}***Dev Mode is Enabled***${NOCOLOR}"
+  [[ "$DEVMODE" == "1" ]] && echo -e "${RED}${BOLD}***Dev Mode is Enabled***${NOCOLOR}"
   logger -p 3 -st "${0##*/}" "Script is out of date - Current Version: "$VERSION" Available Version: "$REMOTEVERSION""
   while true >/dev/null;do  
     [[ "$DEVMODE" == "0" ]] && read -p "Do you want to update to the latest production version? "$REMOTEVERSION" ***Enter Y for Yes or N for No*** " yn
