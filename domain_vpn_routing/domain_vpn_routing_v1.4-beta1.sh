@@ -2,8 +2,8 @@
 
 # Domain Name based VPN routing for ASUS Routers using Merlin Firmware v386.7
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/17/2022
-# Version: v1.4-beta1
+# Date: 08/19/2022
+# Version: v1.4-beta1a
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing.sh"
-VERSION="v1.4-beta1"
+VERSION="v1.4-beta1a"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
 POLICYDIR="/jffs/configs/domain_vpn_routing"
 SYSTEMLOG="/tmp/syslog.log"
@@ -305,7 +305,7 @@ elif [[ "$INTERFACE" == "$(nvram get wan0_gw_ifname)" ]] && [[ "$(nvram get wans
   ROUTETABLE=100
   RGW="2"
   PRIORITY="150"
-  logger -p 6 -t "${0##*/}" "Debug - Checking "${WANPREFIX}" for Default Route in "$TABLE""
+  logger -p 6 -t "${0##*/}" "Debug - Checking WAN0 for Default Route in Routing Table 100"
   if [ -z "$(ip route list default table 100 | grep -w "$(nvram get wan0_gw_ifname)")" ] >/dev/null;then
     logger -p 5 -t "${0##*/}" "Routing Director - Adding default route for WAN0 Routing Table via "$(nvram get wan0_gateway)" dev "$(nvram get wan0_gw_ifname)""
     ip route add default via $(nvram get wan0_gateway) dev $(nvram get wan0_gw_ifname) table 100 \
@@ -316,6 +316,7 @@ elif [[ "$INTERFACE" == "$(nvram get wan1_gw_ifname)" ]] && [[ "$(nvram get wans
   ROUTETABLE=200
   RGW="2"
   PRIORITY="150"
+  logger -p 6 -t "${0##*/}" "Debug - Checking WAN1 for Default Route in Routing Table 200"
   if [ -z "$(ip route list default table 200 | grep -w "$(nvram get wan1_gw_ifname)")" ] >/dev/null;then
     logger -p 5 -t "${0##*/}" "Routing Director - Adding default route for WAN1 Routing Table via "$(nvram get wan1_gateway)" dev "$(nvram get wan1_gw_ifname)""
     ip route add default via $(nvram get wan1_gateway) dev $(nvram get wan1_gw_ifname) table 200 \
