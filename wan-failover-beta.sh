@@ -737,9 +737,9 @@ fi
 # Determine if newer version is available
 REMOTEVERSION="$(echo $(curl "$DOWNLOADPATH" | grep -v "grep" | grep -w "# Version:" | awk '{print $3}'))"
 if [[ "$VERSION" != "$REMOTEVERSION" ]] >/dev/null;then
-  echo -e "${YELLOW}Script is out of date - Current Version: "$VERSION" Available Version: "$REMOTEVERSION"${NOCOLOR}"
-  [[ "$DEVMODE" == "1" ]] && echo -e "${RED}${BOLD}***Dev Mode is Enabled***${NOCOLOR}"
-  logger -p 3 -st "${0##*/}" "Script is out of date - Current Version: "$VERSION" Available Version: "$REMOTEVERSION""
+  [[ "$DEVMODE" == "1" ]] && echo -e "${RED}***Dev Mode is Enabled***${NOCOLOR}"
+  echo -e "${YELLOW}Script is out of date - Current Version: ${BLUE}"$VERSION"${YELLOW} Available Version: ${BLUE}"$REMOTEVERSION"${NOCOLOR}${NOCOLOR}"
+  logger -p 3 -t "${0##*/}" "Script is out of date - Current Version: "$VERSION" Available Version: "$REMOTEVERSION""
   while true >/dev/null;do  
     [[ "$DEVMODE" == "0" ]] && read -p "Do you want to update to the latest production version? "$REMOTEVERSION" ***Enter Y for Yes or N for No*** " yn
     [[ "$DEVMODE" == "1" ]] && read -p "Do you want to update to the latest beta version? "$REMOTEVERSION" ***Enter Y for Yes or N for No*** " yn
