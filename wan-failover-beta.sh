@@ -627,6 +627,7 @@ if [[ "${mode}" == "restart" ]] || [[ "${mode}" == "update" ]] || [[ "${mode}" =
     CURRENTSYSTEMUPTIME="$(awk -F "." '{print $1}' "/proc/uptime")"
     while [[ "$(date "+%S")" -lt "40" ]] || [[ "$(date "+%S")" -gt "45" ]] >/dev/null;do
       [[ "${mode}" == "config" ]] && break 1
+      [[ "${mode}" == "update" ]] && break 1
       if tty >/dev/null 2>&1;then
         WAITTIMER=$(($(awk -F "." '{print $1}' "/proc/uptime")-$CURRENTSYSTEMUPTIME))
         if [[ "$WAITTIMER" -lt "30" ]] >/dev/null;then
@@ -749,23 +750,22 @@ if [[ "$VERSION" != "$REMOTEVERSION" ]] >/dev/null;then
         * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
       esac
   done
-  /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 && sh $0 restart \
-  && logger -p 4 -st "${0##*/}" "Update - ${0##*/} has been updated to Version: "$REMOTEVERSION"" \
-  || logger -p 2 -st "${0##*/}" "Update - ***Error*** Unable to update to Version: "$REMOTEVERSION" ${0##*/}"
+  /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 && killscript \
+  && logger -p 4 -st "${0##*/}" "Update - ${0##*/} has been updated to version: "$REMOTEVERSION"" \
+  || logger -p 2 -st "${0##*/}" "Update - ***Error*** Unable to update to version: "$REMOTEVERSION" ${0##*/}"
 elif [[ "$VERSION" == "$REMOTEVERSION" ]] >/dev/null;then
   echo -e "${GREEN}Script is up to date - Version: "$VERSION"${NOCOLOR}"
   while true >/dev/null;do  
-  read -p "Script is up to date, do you want reinstall "${0##*/}" Version: "$VERSION"? ***Enter Y for Yes or N for No*** " yn
+  read -p "Script is up to date. Do you want to reinstall "${0##*/}" Version: "$VERSION"? ***Enter Y for Yes or N for No*** " yn
       case $yn in
         [Yy]* ) break;;
         [Nn]* ) exit;;
         * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
       esac
   done
-  /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 && sh $0 restart \
-  && logger -p 4 -st "${0##*/}" "Update - ${0##*/} has been reinstalled Version: "$VERSION"" \
-  || logger -p 2 -st "${0##*/}" "Update - ***Error*** Unable to reinstall Version: "$VERSION" ${0##*/}"
-
+  /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 && killscript \
+  && logger -p 4 -st "${0##*/}" "Update - ${0##*/} has reinstalled version: "$VERSION"" \
+  || logger -p 2 -st "${0##*/}" "Update - ***Error*** Unable to reinstall version: "$VERSION" ${0##*/}"
 fi
 }
 
