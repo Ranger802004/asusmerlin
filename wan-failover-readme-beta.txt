@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/16/2022
-# Version: v1.5.6-beta14
+# Date: 08/21/2022
+# Version: v1.5.7-beta1
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -13,7 +13,7 @@ Requirements:
 
 Installation:
 Install Command to run to install script:
-/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh install
+/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover-beta.sh" -o "/jffs/scripts/wan-failover.sh" && chmod 755 /jffs/scripts/wan-failover.sh && sh /jffs/scripts/wan-failover.sh install
 
 Updating:
 /jffs/scripts/wan-failover.sh update
@@ -27,10 +27,12 @@ Required Configuration: During installation or reconfiguration, the following se
 -	Ping Count:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected.   
 -	Ping Timeout:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.
 -	QoS Settings are configured for each WAN interface because both interfaces may not have the same bandwidth (download/upload speeds).  The script will automatically change these settings for each interface as they become the active WAN interface.  If QoS is disabled or QoS Automatic Settings are being used, these settings will not be applied.
-  o	WAN0 QoS Download Bandwidth:  Value is in Mbps
-  o	WAN1 QoS Download Bandwidth: Value is in Mbps
-  o	WAN0 QoS Upload Bandwidth: Value is in Mbps
-  o	WAN1 QoS Upload Bandwidth: Value is in Mbps
+  o	WAN0 QoS Enabled/Disabled
+    o	WAN0 QoS Upload Bandwidth: Value is in Mbps
+    o	WAN0 QoS Download Bandwidth:  Value is in Mbps
+  o	WAN1 QoS Enabled/Disabled
+    o	WAN1 QoS Download Bandwidth: Value is in Mbps
+    o	WAN1 QoS Upload Bandwidth: Value is in Mbps
 
 Optional Configuration: ***Options that can be adjusted in the configuration file***
 - To enable or disable email notifications, execute the command arguments "email enable" or "email disable", default mode is Enabled.  Example: "/jffs/scripts/wan-failover.sh email enable"  ***Email Notifications work with amtm or AIProtection Alert Preferences****
@@ -61,6 +63,10 @@ Optional Configuration: ***Options that can be adjusted in the configuration fil
 - OVPNWAN0PRIORITY: This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is 0 (Disabled). Default: 100
 - OVPNWAN1PRIORITY: This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is 0 (Disabled). Default: 200
 - RECURSIVEPINGCHECK: This defines how many times a WAN Interface has to fail target pings to be considered failed (Ping Count x RECURSIVEPINGCHECK), this setting is for circumstances where ICMP Echo / Response can be disrupted by ISP DDoS Prevention or other factors.  It is recommended to leave this setting default.  Default: 1 Iteration (1)
+- WAN0PACKETSIZE: This defines the Packet Size for pinging the WAN0 Target IP Address.  Default: 56 Bytes
+- WAN1PACKETSIZE: This defines the Packet Size for pinging the WAN1 Target IP Address.  Default: 56 Bytes
+- CUSTOMLOGPATH: This defines a Custom System Log path for Monitor Mode. Default: N/A
+- DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
 
 Run Modes:
 - Install Mode: Install the script and configuration files necessary. Add the command argument "install" to use this mode.
@@ -77,7 +83,23 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
-v1.5.6-beta14 - 08/16/2022
+v1.5.7-beta1 - 08/21/2022
+Installation:
+- Fixed during Uninstallation where Cleanup would error out due to not having configuration items loaded prior to deletion of configuration file.
+- Fixed text formatting for debug logging during installation when selecting WAN IP Address Targets.
+- If QoS is Disabled QoS Settings will Default to 0 instead of prompting for configuration.
+
+Enhancements:
+- Configuration Mode will instantly kill script and wait for it to be relaunched by Cron Job.
+- WAN0 and WAN1 can be specified to have QoS Enabled or Disabled during Failovers.
+- WAN0 and WAN1 Packet Size can be specified seperately in Configuration File.
+- Custom Log Path can be specified for Monitor Mode using CUSTOMLOGPATH setting in Configuration Settings.
+- Added Dev Mode to update to beta releases using Update Command
+
+Fixes:
+- Configuration Mode will no longer delete new or current IP rules/routes and will delete old ones before restarting script.
+
+v1.5.6 - 08/16/2022
 Installation:
 - During installation, if QoS is Enabled and set using Manual Settings, WAN0 QoS Settings will apply the values set from the router.
 - Fixed Cron Job deletion during Uninstallation.
