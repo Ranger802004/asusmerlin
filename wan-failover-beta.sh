@@ -2,7 +2,7 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/19/2022
+# Date: 08/21/2022
 # Version: v1.5.7-beta1
 
 # Cause the script to exit if errors are encountered
@@ -1126,11 +1126,8 @@ if [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "none" ]] >/dev/null;the
 elif [[ "$(nvram get wandog_enable)" != "0" ]] >/dev/null;then
   logger -p 2 -st "${0##*/}" "WAN Status - ASUS Factory Watchdog: Enabled"
   wandisabled
-# Check if both WAN Interfaces are Disabled
-elif [[ "$(nvram get wan0_enable)" == "0" ]] && [[ "$(nvram get wan1_enable)" == "0" ]] >/dev/null;then
-  wandisabled
 # Check if WAN Interfaces are Enabled and Connected
-elif [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan1_enable)" == "1" ]] >/dev/null;then
+else
   for WANPREFIX in ${WANPREFIXES};do
     # Getting WAN Parameters
     getwanparameters || return
@@ -2581,7 +2578,7 @@ if [[ "$(nvram get led_disable)" == "0" ]] >/dev/null;then
   SERVICES="${SERVICES} ${SERVICE}"
 fi
 # Check if QoS is Enabled
-if [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
+if [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - QoS is enabled"
   SERVICE="qos"
   SERVICES="${SERVICES} ${SERVICE}"
