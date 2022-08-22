@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/21/2022
-# Version: v1.5.7-beta1b
+# Date: 08/22/2022
+# Version: v1.5.7-beta1c
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v1.5.7-beta1b"
+VERSION="v1.5.7-beta1c"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
 LOCKFILE="/var/lock/wan-failover.lock"
@@ -549,6 +549,7 @@ logger -p 6 -t "${0##*/}" "Debug - Function: cleanup"
 
 for WANPREFIX in ${WANPREFIXES};do
   logger -p 6 -t "${0##*/}" "Debug - Setting parameters for "${WANPREFIX}""
+
   if [[ "${WANPREFIX}" == "$WAN0" ]] >/dev/null;then
     TARGET="$WAN0TARGET"
     TABLE="$WAN0ROUTETABLE"
@@ -867,37 +868,42 @@ logger -p 6 -t "${0##*/}" "Debug - Reading "$CONFIGFILE""
 
 # Check Configuration File for Missing Settings and Set Default if Missing
 logger -p 6 -t "${0##*/}" "Debug - Checking for missing configuration options"
-if [ -z "$(awk -F "=" '/WAN0TARGET/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
-  logger -p 6 -t "${0##*/}" "Debug - Setting WAN0TARGET Default: 8.8.8.8"
-  echo -e "WAN0TARGET=8.8.8.8" >> $CONFIGFILE
+if [ -z "$(sed -n '/\bWAN0TARGET=\b/p' "$CONFIGFILE")" ] >/dev/null;then
+  if [ ! -z "$(nvram get wandog_target)" ] >/dev/null;then
+    logger -p 6 -t "${0##*/}" "Debug - Setting WAN0TARGET Default: "$(nvram get wandog_target)""
+    echo -e "WAN0TARGET=$(nvram get wandog_target)" >> $CONFIGFILE
+  else
+    logger -p 6 -t "${0##*/}" "Debug - Setting WAN0TARGET Default: 8.8.8.8"
+    echo -e "WAN0TARGET=8.8.8.8" >> $CONFIGFILE
+  fi
 fi
-if [ -z "$(awk -F "=" '/WAN1TARGET/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1TARGET=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1TARGET Default: 8.8.4.4"
-  echo -e "WAN0TARGET=8.8.4.4" >> $CONFIGFILE
+  echo -e "WAN1TARGET=8.8.4.4" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/PINGCOUNT/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bPINGCOUNT=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting PINGCOUNT Default: 3 Seconds"
   echo -e "PINGCOUNT=3" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/PINGTIMEOUT/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bPINGTIMEOUT=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting PINGTIMEOUT Default: 1 Second"
   echo -e "PINGTIMEOUT=1" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN0PACKETSIZE/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0PACKETSIZE=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   PACKETSIZE=${PACKETSIZE:=56}
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN0PACKETSIZE Default: "$PACKETSIZE" Bytes"
   echo -e "WAN0PACKETSIZE=$PACKETSIZE" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN1PACKETSIZE/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1PACKETSIZE=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   PACKETSIZE=${PACKETSIZE:=56}
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1PACKETSIZE Default: "$PACKETSIZE" Bytes"
   echo -e "WAN1PACKETSIZE=$PACKETSIZE" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WANDISABLEDSLEEPTIMER/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWANDISABLEDSLEEPTIMER=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WANDISABLEDSLEEPTIMER Default: 10 Seconds"
   echo -e "WANDISABLEDSLEEPTIMER=10" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN0_QOS_ENABLE/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0_QOS_ENABLE=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   if [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - Setting WAN0_QOS_ENABLE Default: Enabled"
     echo -e "WAN0_QOS_ENABLE=1" >> $CONFIGFILE
@@ -906,7 +912,7 @@ if [ -z "$(awk -F "=" '/WAN0_QOS_ENABLE/ {print $1}' "$CONFIGFILE")" ] >/dev/nul
     echo -e "WAN0_QOS_ENABLE=0" >> $CONFIGFILE
   fi
 fi
-if [ -z "$(awk -F "=" '/WAN1_QOS_ENABLE/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1_QOS_ENABLE=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   if [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - Setting WAN1_QOS_ENABLE Default: Enabled"
     echo -e "WAN1_QOS_ENABLE=1" >> $CONFIGFILE
@@ -915,7 +921,7 @@ if [ -z "$(awk -F "=" '/WAN1_QOS_ENABLE/ {print $1}' "$CONFIGFILE")" ] >/dev/nul
     echo -e "WAN1_QOS_ENABLE=0" >> $CONFIGFILE
   fi
 fi
-if [ -z "$(awk -F "=" '/WAN0_QOS_IBW/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0_QOS_IBW=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   if [[ "$(nvram get qos_enable)" == "1" ]] && [[ "$(nvram get qos_ibw)" != "0" ]] >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - Setting WAN0_QOS_IBW Default: "$(nvram get qos_ibw)" Kbps"
     echo -e "WAN0_QOS_IBW=$(nvram get qos_ibw)" >> $CONFIGFILE
@@ -924,11 +930,11 @@ if [ -z "$(awk -F "=" '/WAN0_QOS_IBW/ {print $1}' "$CONFIGFILE")" ] >/dev/null;t
     echo -e "WAN0_QOS_IBW=0" >> $CONFIGFILE
   fi
 fi
-if [ -z "$(awk -F "=" '/WAN1_QOS_IBW/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1_QOS_IBW=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1_QOS_IBW Default: 0 Mbps"
   echo -e "WAN1_QOS_IBW=0" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN0_QOS_OBW/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0_QOS_OBW=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   if [[ "$(nvram get qos_enable)" == "1" ]] && [[ "$(nvram get qos_obw)" != "0" ]] >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - Setting WAN0_QOS_OBW Default: "$(nvram get qos_obw)" Kbps"
     echo -e "WAN0_QOS_OBW=$(nvram get qos_obw)" >> $CONFIGFILE
@@ -937,127 +943,126 @@ if [ -z "$(awk -F "=" '/WAN0_QOS_OBW/ {print $1}' "$CONFIGFILE")" ] >/dev/null;t
     echo -e "WAN0_QOS_IBW=0" >> $CONFIGFILE
   fi
 fi
-if [ -z "$(awk -F "=" '/WAN1_QOS_OBW/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1_QOS_OBW=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1_QOS_OBW Default: 0 Mbps"
   echo -e "WAN1_QOS_OBW=0" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN0_QOS_OVERHEAD/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0_QOS_OVERHEAD=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN0_QOS_OVERHEAD Default: 0 Bytes"
   echo -e "WAN0_QOS_OVERHEAD=0" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN1_QOS_OVERHEAD/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1_QOS_OVERHEAD=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1_QOS_OVERHEAD Default: 0 Bytes"
   echo -e "WAN1_QOS_OVERHEAD=0" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN0_QOS_ATM/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0_QOS_ATM=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN0_QOS_ATM Default: Disabled"
   echo -e "WAN0_QOS_ATM=0" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN1_QOS_ATM/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1_QOS_ATM=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1_QOS_ATM Default: Disabled"
   echo -e "WAN1_QOS_ATM=0" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/PACKETLOSSLOGGING/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bPACKETLOSSLOGGING=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting PACKETLOSSLOGGING Default: Enabled"
   echo -e "PACKETLOSSLOGGING=1" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/SENDEMAIL/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bSENDEMAIL=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting SENDEMAIL Default: Enabled"
   echo -e "SENDEMAIL=1" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/SKIPEMAILSYSTEMUPTIME/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bSKIPEMAILSYSTEMUPTIME=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting SKIPEMAILSYSTEMUPTIME Default: 180 Seconds"
   echo -e "SKIPEMAILSYSTEMUPTIME=180" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/EMAILTIMEOUT/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bEMAILTIMEOUT=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting OVPNWAN1PRIORITY Default: Priority 200"
   echo -e "EMAILTIMEOUT=30" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/BOOTDELAYTIMER/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bBOOTDELAYTIMER=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting BOOTDELAYTIMER Default: 0 Seconds"
   echo -e "BOOTDELAYTIMER=0" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/OVPNSPLITTUNNEL/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bOVPNSPLITTUNNEL=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting OVPNSPLITTUNNEL Default: Enabled"
   echo -e "OVPNSPLITTUNNEL=1" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN0ROUTETABLE/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0ROUTETABLE=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN0ROUTETABLE Default: Table 100"
   echo -e "WAN0ROUTETABLE=100" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN1ROUTETABLE/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1ROUTETABLE=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1ROUTETABLE Default: Table 200"
   echo -e "WAN1ROUTETABLE=200" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN0TARGETRULEPRIORITY/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0TARGETRULEPRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN0TARGETRULEPRIORITY Default: Priority 100"
   echo -e "WAN0TARGETRULEPRIORITY=100" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN1TARGETRULEPRIORITY/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1TARGETRULEPRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1TARGETRULEPRIORITY Default: Priority 100"
   echo -e "WAN1TARGETRULEPRIORITY=100" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN0MARK/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0MARK=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN0MARK Default: 0x80000000"
   echo -e "WAN0MARK=0x80000000" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN1MARK/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1MARK=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1MARK Default: 0x90000000"
   echo -e "WAN1MARK=0x90000000" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN0MASK/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN0MASK=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN0MASK Default: 0xf0000000"
   echo -e "WAN0MASK=0xf0000000" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/WAN1MASK/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bWAN1MASK=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting WAN1MASK Default: 0xf0000000"
   echo -e "WAN1MASK=0xf0000000" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/LBRULEPRIORITY/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bLBRULEPRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting LBRULEPRIORITY Default: Priority 150"
   echo -e "LBRULEPRIORITY=150" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/FROMWAN0PRIORITY/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bFROMWAN0PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting FROMWAN0PRIORITY Default: Priority 200"
   echo -e "FROMWAN0PRIORITY=200" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/TOWAN0PRIORITY/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bTOWAN0PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting TOWAN0PRIORITY Default: Priority 400"
   echo -e "TOWAN0PRIORITY=400" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/FROMWAN1PRIORITY/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bFROMWAN1PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting FROMWAN1PRIORITY Default: Priority 200"
   echo -e "FROMWAN1PRIORITY=200" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/TOWAN1PRIORITY/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bTOWAN1PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting TOWAN1PRIORITY Default: Priority 400"
   echo -e "TOWAN1PRIORITY=400" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/OVPNWAN0PRIORITY/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bOVPNWAN0PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting OVPNWAN0PRIORITY Default: Priority 100"
   echo -e "OVPNWAN0PRIORITY=100" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/OVPNWAN1PRIORITY/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bOVPNWAN1PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting OVPNWAN1PRIORITY Default: Priority 200"
   echo -e "OVPNWAN1PRIORITY=200" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/RECURSIVEPINGCHECK/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bRECURSIVEPINGCHECK=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Setting RECURSIVEPINGCHECK Default: 1 Iteration"
   echo -e "RECURSIVEPINGCHECK=1" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/DEVMODE/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bDEVMODE=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Creating DEVMODE Default: Disabled"
   echo -e "DEVMODE=0" >> $CONFIGFILE
 fi
-if [ -z "$(awk -F "=" '/CUSTOMLOGPATH/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
-  logger -p 6 -t "${0##*/}" "Debug - Creating CUSTOMLOGPATH Default: N/A"
-  echo -e "CUSTOMLOGPATH=" >> $CONFIGFILE
-fi
-if [ -z "$(awk -F "=" '/CHECKNVRAM/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+if [ -z "$(sed -n '/\bCHECKNVRAM=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Creating CHECKNVRAM Default: Enabled"
   echo -e "CHECKNVRAM=1" >> $CONFIGFILE
 fi
-
+if [ -z "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$CONFIGFILE")" ] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - Creating CUSTOMLOGPATH Default: N/A"
+  echo -e "CUSTOMLOGPATH=" >> $CONFIGFILE
+fi
 
 # Cleanup Config file of deprecated options
 DEPRECATEDOPTIONS='
@@ -1072,6 +1077,10 @@ for DEPRECATEDOPTION in ${DEPRECATEDOPTIONS};do
 if [ ! -z "$(awk -F "=" '/'${DEPRECATEDOPTION}'/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Removing deprecated option: "${DEPRECATEDOPTION}" from "$CONFIGFILE""
   sed -i '/^'${DEPRECATEDOPTION}'/d' $CONFIGFILE
+fi
+if [ ! -z "$(sed -n '/\b'${DEPRECATEDOPTION}'\b/p' "$CONFIGFILE")" ] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - Removing deprecated option: "${DEPRECATEDOPTION}" from "$CONFIGFILE""
+  sed -i '/\b'${DEPRECATEDOPTION}'\b/d' $CONFIGFILE
 fi
 done
 
@@ -2054,7 +2063,7 @@ debuglog || return
 
 # Complete Failover if Primary WAN was changed by Router
 [[ "$(nvram get wan1_primary)" == "1" ]] && logger -p 6 -t "${0##*/}" "Debug - Router switched "$WAN1" to Primary WAN"
-[[ "$(nvram get wan1_primary)" == "1" ]] && { WANSTATUSMODE=2 && setwanstatus ;} && SWITCHPRIMARY=0 && failover && email=0
+[[ "$(nvram get wan1_primary)" == "1" ]] && { WAN0STATUS=DISCONNECTED && WANSTATUSMODE=2 && setwanstatus ;} && SWITCHPRIMARY=0 && email=1 && failover && email=0
 
 # Return to WAN Status
 wanstatus || return
@@ -2122,7 +2131,7 @@ debuglog || return
 
 # Complete Failover if Primary WAN was changed by Router
 [[ "$(nvram get wan0_primary)" == "1" ]] && logger -p 6 -t "${0##*/}" "Debug - Router switched "$WAN0" to Primary WAN"
-[[ "$(nvram get wan0_primary)" == "1" ]] && { WANSTATUSMODE=2 && setwanstatus ;} && SWITCHPRIMARY=0 && failover && email=0
+[[ "$(nvram get wan0_primary)" == "1" ]] && { WAN1STATUS=DISCONNECTED && WANSTATUSMODE=2 && setwanstatus ;} && SWITCHPRIMARY=0 && email=1 && failover && email=0
 
 # Return to WAN Status
 wanstatus || return
