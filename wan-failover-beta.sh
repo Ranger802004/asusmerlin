@@ -3,7 +3,7 @@
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 08/21/2022
-# Version: v1.5.7-beta1
+# Version: v1.5.7-beta1b
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v1.5.7-beta1"
+VERSION="v1.5.7-beta1b"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
 LOCKFILE="/var/lock/wan-failover.lock"
@@ -174,13 +174,15 @@ systemcheck ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: systemcheck"
 
-#Get Log Level
+# Get Log Level
 logger -p 6 -t "${0##*/}" "Debug - Log Level: "$(nvram get log_level)""
 
-#Get PID
+# Get PID
 logger -p 5 -t "${0##*/}" "System Check - Process ID: "$$""
 
-nvramcheck || return
+# Check NVRAM
+CHECKNVRAM=${CHECKNVRAM:=1}
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
 # Check System Binaries Path
 systembinaries || return
@@ -1051,6 +1053,11 @@ if [ -z "$(awk -F "=" '/CUSTOMLOGPATH/ {print $1}' "$CONFIGFILE")" ] >/dev/null;
   logger -p 6 -t "${0##*/}" "Debug - Creating CUSTOMLOGPATH Default: N/A"
   echo -e "CUSTOMLOGPATH=" >> $CONFIGFILE
 fi
+if [ -z "$(awk -F "=" '/CHECKNVRAM/ {print $1}' "$CONFIGFILE")" ] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - Creating CHECKNVRAM Default: Enabled"
+  echo -e "CHECKNVRAM=1" >> $CONFIGFILE
+fi
+
 
 # Cleanup Config file of deprecated options
 DEPRECATEDOPTIONS='
@@ -1102,8 +1109,8 @@ wanstatus ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: wanstatus"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
 # Boot Delay Timer
 logger -p 6 -t "${0##*/}" "Debug - System Uptime: "$(awk -F "." '{print $1}' "/proc/uptime")" Seconds"
@@ -1143,17 +1150,17 @@ else
       logger -p 5 -t "${0##*/}" "WAN Status - ${WANPREFIX} enabled"
       # Check WAN Connection
       logger -p 6 -t "${0##*/}" "Debug - Checking "${WANPREFIX}" State"
-      if [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" != "0" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} >/dev/null;then
-        if [[ "$WANUSB" != "usb" ]] >/dev/null;then
+      if [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "1" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} >/dev/null;then
+        if [[ "$WANUSB" != "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "1" ]] >/dev/null;then
           logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": Cable Unplugged"
         elif [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "0" ]] >/dev/null;then
           logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": USB Unplugged"
-          restartservices
+          RESTARTSERVICESMODE=2 && restartservices
         fi
-        STATUS=DISCONNECTED
+        STATUS=UNPLUGGED
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
         setwanstatus && continue
-      elif { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "0" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] && [ ! -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} ;} && { [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" != "6" ]] ;} >/dev/null;then
+      elif { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" != "1" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] && [ ! -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} ;} && { [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" != "6" ]] ;} >/dev/null;then
         logger -p 1 -st "${0##*/}" "WAN Status - Restarting "${WANPREFIX}""
         WANSUFFIX="$(echo "${WANPREFIX}" | awk -F "wan" '{print $2}')"
         service "restart_wan_if "$WANSUFFIX"" &
@@ -1162,21 +1169,21 @@ else
         while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$RESTARTTIMEOUT" ]] >/dev/null;do
           if [[ "$(nvram get "${WANPREFIX}"_state_t)" == "6" ]] >/dev/null;then
             continue
-          elif  [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] || [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" != "0" ]] >/dev/null;then
+          elif  [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] || [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "1" ]] >/dev/null;then
             break
           else
             sleep 1
           fi
         done
         logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Post-Restart State: "$(nvram get ${WANPREFIX}_state_t)""
-        if { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" == "0" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] && [ ! -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} ;} && { [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" != "6" ]] ;} >/dev/null;then
+        if { [[ "$(nvram get "${WANPREFIX}"_auxstate_t)" != "1" ]] || { [[ "$WANUSB" == "usb" ]] && { [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] && [ ! -z "$(nvram get "${WANPREFIX}"_ifname)" ] ;} ;} ;} && { [[ "$(nvram get "${WANPREFIX}"_state_t)" != "2" ]] && [[ "$(nvram get "${WANPREFIX}"_state_t)" != "6" ]] ;} >/dev/null;then
           logger -p 1 -st "${0##*/}" "WAN Status - "${WANPREFIX}": Disconnected"
           STATUS=DISCONNECTED
           logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Status: "$STATUS""
           setwanstatus && continue
         elif [[ "$(nvram get "${WANPREFIX}"_state_t)" == "2" ]] >/dev/null;then
           logger -p 4 -st "${0##*/}" "WAN Status - Successfully Restarted "${WANPREFIX}""
-          [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] && restartservices
+          [[ "$WANUSB" == "usb" ]] && [[ "$(nvram get "${WANPREFIX}"_is_usb_modem_ready)" == "1" ]] && RESTARTSERVICESMODE=2 && restartservices
           sleep 5
         else
           wanstatus
@@ -1326,19 +1333,31 @@ wandisabledloop=${wandisabledloop:=0}
 [[ "$wandisabledloop" == "0" ]] && wandisabledloop="" && wan0disabled="" && wan1disabled=""
 
 # Determine which function to go to based on Failover Mode and WAN Status
-if { [[ "$WAN0STATUS" == "DISABLED" ]] || [[ "$WAN0STATUS" == "DISCONNECTED" ]] ;} && { [[ "$WAN1STATUS" == "DISABLED" ]] || [[ "$WAN1STATUS" == "DISCONNECTED" ]] ;} >/dev/null;then
+if [[ "$WAN0STATUS" != "CONNECTED" ]] && [[ "$WAN1STATUS" != "CONNECTED" ]] >/dev/null;then
   wandisabled
-elif { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$WAN0STATUS" == "CONNECTED" ]] && { [[ "$WAN1STATUS" == "CONNECTED" ]] || [[ "$WAN1STATUS" == "DISABLED" ]] || [[ "$WAN1STATUS" == "DISCONNECTED" ]] ;} >/dev/null;then
-  [[ "$(nvram get wan0_primary)" != "1" ]] && { logger -p 6 -t "${0##*/}" "Debug - WAN0 is not Primary WAN" && failover && email=0 ;}
+elif { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$WAN0STATUS" == "CONNECTED" ]] >/dev/null;then
+  # Verify WAN Properties are synced with Primary WAN
+  [[ "$(nvram get wan0_primary)" == "1" ]] && SWITCHPRIMARY=0 && switchwan && switchdns && checkiprules
+  # Switch WAN to Primary WAN
+  [[ "$(nvram get wan0_primary)" != "1" ]] && { logger -p 6 -t "${0##*/}" "Debug - WAN0 is not Primary WAN" && failover ;}
+  # Send Email if Enabled
   [[ "$email" == "1" ]] && sendemail && email=0
-  [[ "$WAN1STATUS" == "CONNECTED" ]] && { logger -p 6 -t "${0##*/}" "Debug - WAN1 is Connected" && wan0failovermonitor ;}
-  [[ "$WAN1STATUS" == "DISCONNECTED" ]] && { logger -p 6 -t "${0##*/}" "Debug - WAN1 is Disconnected" && wandisabled ;}
-  [[ "$WAN1STATUS" == "DISABLED" ]] && { logger -p 6 -t "${0##*/}" "Debug - WAN1 is Disabled" && wandisabled ;}
-elif { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$WAN1STATUS" == "CONNECTED" ]] && { [[ "$WAN0STATUS" != "CONNECTED" ]] || [[ "$WAN0STATUS" == "DISABLED" ]] || [[ "$WAN0STATUS" == "DISCONNECTED" ]] ;} >/dev/null;then
+  # Determine which function to use based on Secondary WAN
+  [[ "$WAN1STATUS" == "CONNECTED" ]] && wan0failovermonitor
+  [[ "$WAN1STATUS" == "UNPLUGGED" ]] && wandisabled
+  [[ "$WAN1STATUS" == "DISCONNECTED" ]] && wandisabled
+  [[ "$WAN1STATUS" == "DISABLED" ]] && wandisabled
+elif { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$WAN1STATUS" == "CONNECTED" ]] >/dev/null;then
+  # Verify WAN Properties are synced with Primary WAN
+  [[ "$(nvram get wan1_primary)" == "1" ]] && SWITCHPRIMARY=0 && switchwan && switchdns && checkiprules
+  # Switch WAN to Primary WAN
   [[ "$(nvram get wan1_primary)" != "1" ]] && { logger -p 6 -t "${0##*/}" "Debug - WAN1 is not Primary WAN" && failover && email=0 ;}
+  # Send Email if Enabled
   [[ "$email" == "1" ]] && sendemail && email=0
-  [[ "$WAN0STATUS" == "DISCONNECTED" ]] && logger -p 6 -t "${0##*/}" "Debug - WAN1 is Disconnected" && { [ ! -z "$WAN0PACKETLOSS" ] && [[ "$WAN0PACKETLOSS" == "100%" ]] && wan0failbackmonitor || wandisabled ;}
-  [[ "$WAN0STATUS" == "DISABLED" ]] && { logger -p 6 -t "${0##*/}" "Debug - WAN0 is Disabled" && wandisabled ;}
+  # Determine which function to use based on Secondary WAN
+  [[ "$WAN0STATUS" == "UNPLUGGED" ]] && wandisabled
+  [[ "$WAN0STATUS" == "DISCONNECTED" ]] && { [ ! -z "$WAN0PACKETLOSS" ] && [[ "$WAN0PACKETLOSS" == "100%" ]] && wan0failbackmonitor || wandisabled ;}
+  [[ "$WAN0STATUS" == "DISABLED" ]] && wandisabled
 elif [[ "$(nvram get wans_mode)" == "lb" ]] >/dev/null;then
   lbmonitor
 else
@@ -1351,15 +1370,15 @@ checkiprules ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: checkiprules"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
 for WANPREFIX in ${WANPREFIXES};do
   # Getting WAN Parameters
   getwanparameters || return
 
   # Check Rules if Status is Connected
-  if [[ "$STATUS" == "CONNECTED" ]] || { [[ "$(nvram get ${WANPREFIX}_enable)" == "1" ]] && { [[ "$(nvram get ${WANPREFIX}_state_t)" == "2" ]] || [[ "$(nvram get ${WANPREFIX}_auxstate_t)" == "0" ]] ;} ;} >/dev/null;then
+  if [[ "$STATUS" == "CONNECTED" ]] || { [[ "$(nvram get ${WANPREFIX}_enable)" == "1" ]] && { [[ "$(nvram get ${WANPREFIX}_state_t)" == "2" ]] || [[ "$(nvram get ${WANPREFIX}_auxstate_t)" != "1" ]] ;} ;} >/dev/null;then
     # Create WAN NAT Rules
     # Create VSERVER Rule if Web Access is Enabled for Adminstration GUI.
     if [[ "$(nvram get misc_http_x)" == "1" ]] >/dev/null;then
@@ -1558,7 +1577,7 @@ for WANPREFIX in ${WANPREFIXES};do
       fi
 
     # Check Rules if Status is Disconnected
-    elif [[ "$STATUS" == "DISCONNECTED" ]] >/dev/null;then
+    elif [[ "$STATUS" != "CONNECTED" ]] >/dev/null;then
       # Create fwmark IP Rules
       logger -p 6 -t "${0##*/}" "Debug - Checking fwmark IP Rules"
       if [ ! -z "$(ip rule list from all fwmark "$MARK"/"$MASK" lookup "$TABLE" priority "$LBRULEPRIORITY")" ] >/dev/null;then
@@ -1620,14 +1639,21 @@ if [[ "${WANPREFIX}" == "$WAN0" ]] >/dev/null;then
   FROMWANPRIORITY="$FROMWAN0PRIORITY"
   TOWANPRIORITY="$TOWAN0PRIORITY"
   OVPNWANPRIORITY="$OVPNWAN0PRIORITY"
-  [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get ${WANPREFIX}_primary)" == "1" ]] && WAN0STATUS=${WAN0STATUS:=CONNECTED}
-  [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get ${WANPREFIX}_primary)" == "0" ]] && WAN0STATUS=${WAN0STATUS:=DISCONNECTED}
-  STATUS="$WAN0STATUS"
   WAN_QOS_ENABLE="$WAN0_QOS_ENABLE"
   WAN_QOS_OBW="$WAN0_QOS_OBW"
   WAN_QOS_IBW="$WAN0_QOS_IBW"
   WAN_QOS_OVERHEAD="$WAN0_QOS_OVERHEAD"
   WAN_QOS_ATM="$WAN0_QOS_ATM"
+  if [[ "$(nvram get wans_mode)" != "lb" ]] >/dev/null;then
+    [[ "$(nvram get wan0_primary)" == "1" ]] && WAN0STATUS=${WAN0STATUS:=CONNECTED}
+    [[ "$(nvram get wan0_primary)" == "0" ]] && WAN0STATUS=${WAN0STATUS:=DISCONNECTED}
+    [[ "$(nvram get wan0_primary)" == "0" ]] && [[ "$(nvram get wan0_auxstate_t)" == "1" ]] && WAN0STATUS=${WAN0STATUS:=UNPLUGGED}
+  elif [[ "$(nvram get wans_mode)" == "lb" ]] >/dev/null;then
+    [[ "$(nvram get wan0_state_t)" == "2" ]] && WAN0STATUS=${WAN0STATUS:=CONNECTED}
+    [[ "$(nvram get wan0_state_t)" != "2" ]] && WAN0STATUS=${WAN0STATUS:=DISCONNECTED}
+    [[ "$(nvram get wan0_auxstate_t)" == "1" ]] && WAN0STATUS=${WAN0STATUS:=UNPLUGGED}
+  fi
+  STATUS=${STATUS:="$WAN0STATUS"}
 elif [[ "${WANPREFIX}" == "$WAN1" ]] >/dev/null;then
   TARGET="$WAN1TARGET"
   TABLE="$WAN1ROUTETABLE"
@@ -1642,15 +1668,24 @@ elif [[ "${WANPREFIX}" == "$WAN1" ]] >/dev/null;then
   FROMWANPRIORITY="$FROMWAN1PRIORITY"
   TOWANPRIORITY="$TOWAN1PRIORITY"
   OVPNWANPRIORITY="$OVPNWAN1PRIORITY"
-  [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get ${WANPREFIX}_primary)" == "1" ]] && WAN1STATUS=${WAN1STATUS:=CONNECTED}
-  [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get ${WANPREFIX}_primary)" == "0" ]] && WAN1STATUS=${WAN1STATUS:=DISCONNECTED}
-  STATUS="$WAN1STATUS"
   WAN_QOS_ENABLE="$WAN1_QOS_ENABLE"
   WAN_QOS_OBW="$WAN1_QOS_OBW"
   WAN_QOS_IBW="$WAN1_QOS_IBW"
   WAN_QOS_OVERHEAD="$WAN1_QOS_OVERHEAD"
   WAN_QOS_ATM="$WAN1_QOS_ATM"
+  if [[ "$(nvram get wans_mode)" != "lb" ]] >/dev/null;then
+    [[ "$(nvram get wan1_primary)" == "1" ]] && WAN1STATUS=${WAN1STATUS:=CONNECTED}
+    [[ "$(nvram get wan1_primary)" == "0" ]] && WAN1STATUS=${WAN1STATUS:=DISCONNECTED}
+    [[ "$(nvram get wan1_primary)" == "0" ]] && [[ "$(nvram get wan1_auxstate_t)" == "1" ]] && WAN1STATUS=${WAN1STATUS:=UNPLUGGED}
+  elif [[ "$(nvram get wans_mode)" == "lb" ]] >/dev/null;then
+    [[ "$(nvram get wan1_state_t)" == "2" ]] && WAN1STATUS=${WAN1STATUS:=CONNECTED}
+    [[ "$(nvram get wan1_state_t)" != "2" ]] && WAN1STATUS=${WAN1STATUS:=DISCONNECTED}
+    [[ "$(nvram get wan1_auxstate_t)" == "1" ]] && WAN1STATUS=${WAN1STATUS:=UNPLUGGED}
+  fi
+  STATUS=${STATUS:="$WAN1STATUS"}
 fi
+
+return
 }
 
 # Set WAN Status
@@ -1658,13 +1693,33 @@ setwanstatus ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: setwanstatus"
 
-if [[ "${WANPREFIX}" == "$WAN0" ]] >/dev/null;then
-  WAN0STATUS="$STATUS"
-  WAN0PINGPATH="$PINGPATH"
-elif [[ "${WANPREFIX}" == "$WAN1" ]] >/dev/null;then
-  WAN1STATUS="$STATUS"
-  WAN1PINGPATH="$PINGPATH"
+# Set WANS Status Mode
+WANSTATUSMODE=${WANSTATUSMODE:=1}
+logger -p 6 -t "${0##*/}" "Debug - WAN Status Mode: "$WANSTATUSMODE""
+
+if [[ "$WANSTATUSMODE" == "1" ]] >/dev/null;then
+  if [[ "${WANPREFIX}" == "$WAN0" ]] >/dev/null;then
+    WAN0STATUS="$STATUS"
+    WAN0PINGPATH="$PINGPATH"
+    logger -p 6 -t "${0##*/}" "Debug - WAN0 Status: "$WAN0STATUS""
+  elif [[ "${WANPREFIX}" == "$WAN1" ]] >/dev/null;then
+    WAN1STATUS="$STATUS"
+    WAN1PINGPATH="$PINGPATH"
+    logger -p 6 -t "${0##*/}" "Debug - WAN1 Status: "$WAN1STATUS""
+  fi
+STATUS=""
 fi
+
+if [[ "$WANSTATUSMODE" == "2" ]] >/dev/null;then
+  [[ "$(nvram get wan0_enable)" == "1" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] && { [[ "$(nvram get wan0_state_t)" != "2" ]] || [[ "$WAN0PACKETLOSS" == "100%" ]] ;} && WAN0STATUS=DISCONNECTED && email=1
+  [[ "$(nvram get wan0_enable)" == "1" ]] && [[ "$(nvram get wan0_auxstate_t)" != "0" ]] && WAN0STATUS=UNPLUGGED && email=1
+  [[ "$(nvram get wan0_enable)" == "0" ]] && WAN0STATUS=DISABLED && email=1
+  [[ "$(nvram get wan1_enable)" == "1" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] && { [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$WAN1PACKETLOSS" == "100%" ]] ;} && WAN1STATUS=DISCONNECTED && email=1
+  [[ "$(nvram get wan1_enable)" == "1" ]] && [[ "$(nvram get wan1_auxstate_t)" != "0" ]] && WAN1STATUS=UNPLUGGED && email=1
+  [[ "$(nvram get wan1_enable)" == "0" ]] && WAN1STATUS=DISABLED && email=1
+fi
+
+WANSTATUSMODE=""
 return
 }
 
@@ -1769,11 +1824,17 @@ failover ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: failover"
 
+# Disable Email Notification if Mode is Switch WAN
+[[ "${mode}" == "switchwan" ]] && email=0
+
+# Set Status for Email Notification On if Unset
+email=${email:=1}
+
 [[ "$(nvram get wans_mode)" != "lb" ]] && switchwan || return
 switchdns || return
 restartservices || return
 checkiprules || return
-[[ "${mode}" != "switchwan" ]] && sendemail || return
+[[ "$email" == "1" ]] && { sendemail && email=0 ;} || return
 return
 }
 
@@ -1782,19 +1843,13 @@ lbmonitor ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: lbmonitor"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
-if [[ "$WAN0STATUS" == "CONNECTED" ]] >/dev/null;then
-  logger -p 4 -st "${0##*/}" "Load Balance Monitor - Monitoring "$WAN0" via "$WAN0TARGET" for Packet Loss"
-elif [[ "$WAN0STATUS" != "CONNECTED" ]] >/dev/null;then
-  logger -p 3 -st "${0##*/}" "Load Balance Monitor - Monitoring "$WAN0" via "$WAN0TARGET" for Restoration"
-fi
-if [[ "$WAN1STATUS" == "CONNECTED" ]] >/dev/null;then
-  logger -p 4 -st "${0##*/}" "Load Balance Monitor - Monitoring "$WAN1" via "$WAN1TARGET" for Packet Loss"
-elif [[ "$WAN1STATUS" != "CONNECTED" ]] >/dev/null;then
-  logger -p 3 -st "${0##*/}" "Load Balance Monitor - Monitoring "$WAN1" via "$WAN1TARGET" for Restoration"
-fi
+[[ "$WAN0STATUS" == "CONNECTED" ]] && logger -p 4 -st "${0##*/}" "Load Balance Monitor - Monitoring "$WAN0" via "$WAN0TARGET" for Packet Loss"
+[[ "$WAN0STATUS" != "CONNECTED" ]] && logger -p 3 -st "${0##*/}" "Load Balance Monitor - Monitoring "$WAN0" via "$WAN0TARGET" for Restoration"
+[[ "$WAN1STATUS" == "CONNECTED" ]] && logger -p 4 -st "${0##*/}" "Load Balance Monitor - Monitoring "$WAN1" via "$WAN1TARGET" for Packet Loss"
+[[ "$WAN1STATUS" != "CONNECTED" ]] && logger -p 3 -st "${0##*/}" "Load Balance Monitor - Monitoring "$WAN1" via "$WAN1TARGET" for Restoration"
 while { [[ "$(nvram get wans_mode)" == "lb" ]] && [[ "$(nvram get wan0_enable)" == "1" ]] && [[ "$(nvram get wan1_enable)" == "1" ]] ;} >/dev/null;do
   pingtargets || wanstatus
   if { { [ -z "$(ip rule list from all iif lo to "$WAN0TARGET" lookup "$WAN0ROUTETABLE")" ] && [[ "$(nvram get wan0_state_t)" == "2" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} && { { [[ "$(nvram get wan0_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_ipaddr)" ] ;} || { [[ "$(nvram get wan0_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_gateway)" ] ;} ;} ;} \
@@ -1930,28 +1985,23 @@ wan0failovermonitor ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: wan0failovermonitor"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
 logger -p 4 -st "${0##*/}" "WAN0 Failover Monitor - Monitoring "$WAN0" via $WAN0TARGET for Failure"
 logger -p 4 -st "${0##*/}" "WAN0 Failover Monitor - Monitoring "$WAN1" via $WAN1TARGET for Failure"
-while { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$(nvram get wan0_primary)" == "1" ]] >/dev/null;do
+while [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get wan0_primary)" == "1" ]] >/dev/null;do
   pingtargets || wanstatus
   if { { [[ "$WAN0PINGPATH" -le "2" ]] && [ -z "$(ip rule list from all iif lo to "$WAN0TARGET" lookup "$WAN0ROUTETABLE")" ] && [[ "$(nvram get wan0_enable)" == "1" ]] && [[ "$(nvram get wan0_state_t)" == "2" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} && { { [[ "$(nvram get wan0_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_ipaddr)" ] ;} || { [[ "$(nvram get wan0_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_gateway)" ] ;} ;} ;} \
   || { { [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan0_gateway)" != "$(ip route list default table "$WAN0ROUTETABLE" | awk '{print $3}')" ]] && [[ "$(nvram get wan0_gw_ifname)" != "$(ip route list default table "$WAN0ROUTETABLE" | awk '{print $5}')" ]] && { { [[ "$(nvram get wan0_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_ipaddr)" ] ;} || { [[ "$(nvram get wan0_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_gateway)" ] ;} ;} ;} ;} >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - WAN0 Target IP Rule Missing or Default Route for $WAN0ROUTETABLE is invalid"
-    [[ "$(nvram get wan0_auxstate_t)" != "0" ]] && WAN0STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan0_state_t)" != "2" ]] && WAN0STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan0_enable)" == "0" ]] && WAN0STATUS=DISABLED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_auxstate_t)" != "0" ]] && WAN1STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_state_t)" != "2" ]] && WAN1STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_enable)" == "0" ]] && WAN1STATUS=DISABLED && [[ "$email" == "0" ]] && email=1
+    WANSTATUSMODE=2 && setwanstatus
     [[ "$(nvram get wan1_primary)" == "1" ]] && email=1
     if [[ "$WAN0PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan0_enable)" == "1" ]] && { [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} ;} >/dev/null;then
       break
     elif [[ "$WAN1PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan0_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} >/dev/null;then
       failover || return
-      [[ "$email" == "1" ]] && email=0
+      email=0
       wanstatus || return && break
     else
       break
@@ -1959,18 +2009,13 @@ while { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" ==
   elif { { [[ "$WAN1PINGPATH" -le "2" ]] && [ -z "$(ip rule list from all iif lo to "$WAN1TARGET" lookup "$WAN1ROUTETABLE")" ] && [[ "$(nvram get wan1_enable)" == "1" ]] && [[ "$(nvram get wan1_state_t)" == "2" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} && { { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_ipaddr)" ] ;} || { [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_gateway)" ] ;} ;} ;} \
   || { { [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan1_gateway)" != "$(ip route list default table "$WAN1ROUTETABLE" | awk '{print $3}')" ]] && [[ "$(nvram get wan1_gw_ifname)" != "$(ip route list default table "$WAN1ROUTETABLE" | awk '{print $5}')" ]] && { { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_ipaddr)" ] ;} || { [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_gateway)" ] ;} ;} ;} ;} >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - WAN1 Target IP Rule Missing or Default Route for $WAN1ROUTETABLE is invalid"
-    [[ "$(nvram get wan0_auxstate_t)" != "0" ]] && WAN0STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan0_state_t)" != "2" ]] && WAN0STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan0_enable)" == "0" ]] && WAN0STATUS=DISABLED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_auxstate_t)" != "0" ]] && WAN1STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_state_t)" != "2" ]] && WAN1STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_enable)" == "0" ]] && WAN1STATUS=DISABLED && [[ "$email" == "0" ]] && email=1
+    WANSTATUSMODE=2 && setwanstatus
     [[ "$(nvram get wan1_primary)" == "1" ]] && email=1
     if [[ "$WAN0PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan0_enable)" == "1" ]] && { [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} ;} >/dev/null;then
       break
     elif [[ "$WAN1PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan0_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} >/dev/null;then
       failover || return
-      [[ "$email" == "1" ]] && email=0
+      email=0
       wanstatus || return && break
     else
       break
@@ -1982,23 +2027,23 @@ while { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" ==
     continue
   elif { [[ "$WAN0PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan0_enable)" == "0" ]] || [[ "$(nvram get wan0_state_t)" != "2" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && { [[ "$(nvram get wan0_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan0_ifname)" ] || [[ "$(nvram get link_wan)" == "0" ]] ;} ;} ;} \
   && { [[ "$(nvram get wan1_enable)" == "1" ]] && { [[ "$WAN1PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} ;} >/dev/null;then
-    [[ "$(nvram get wan0_enable)" == "0" ]] && WAN0STATUS=DISABLED || WAN0STATUS=DISCONNECTED
+    WANSTATUSMODE=2 && setwanstatus
     WAN1STATUS=CONNECTED
     logger -p 6 -t "${0##*/}" "Debug - WAN0: $WAN0STATUS"
     logger -p 6 -t "${0##*/}" "Debug - WAN1: $WAN1STATUS"
     failover || return
-    [[ "$email" == "1" ]] && email=0
+    email=0
     wanstatus || return && break
   elif { [[ "$WAN0PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan0_state_t)" == "2" ]] ;} \
   && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && { [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan1_ifname)" ] || [[ "$(nvram get link_wan1)" == "0" ]] ;} ;} ;} >/dev/null;then
-    [[ "$email" != "1" ]] && email=1
+    email=1
     break
   elif { [[ "$WAN0PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan0_enable)" == "0" ]] || [[ "$(nvram get wan0_state_t)" != "2" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && { [[ "$(nvram get wan0_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan0_ifname)" ] || [[ "$(nvram get link_wan)" == "0" ]] ;} ;} ;} \
   && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && { [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan1_ifname)" ] || [[ "$(nvram get link_wan1)" == "0" ]] ;} ;} ;} >/dev/null;then
-    [[ "$email" == "1" ]] && email=0
+    email=0
     break
   elif { [[ "$WAN0PACKETLOSS" != "0%" ]] || [[ "$WAN0PACKETLOSS" != "100%" ]] ;} && { [[ "$WAN1PACKETLOSS" != "0%" ]] || [[ "$WAN1PACKETLOSS" != "100%" ]] ;} >/dev/null;then
-    [[ "$email" == "1" ]] && email=0
+    email=0
     continue
   fi
 done
@@ -2009,7 +2054,7 @@ debuglog || return
 
 # Complete Failover if Primary WAN was changed by Router
 [[ "$(nvram get wan1_primary)" == "1" ]] && logger -p 6 -t "${0##*/}" "Debug - Router switched "$WAN1" to Primary WAN"
-[[ "$(nvram get wan1_primary)" == "1" ]] && WAN0STATUS=DISCONNECTED && SWITCHPRIMARY=0 && failover && email=0
+[[ "$(nvram get wan1_primary)" == "1" ]] && { WANSTATUSMODE=2 && setwanstatus ;} && SWITCHPRIMARY=0 && failover && email=0
 
 # Return to WAN Status
 wanstatus || return
@@ -2020,37 +2065,27 @@ wan0failbackmonitor ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: wan0failbackmonitor"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
 logger -p 4 -st "${0##*/}" "WAN0 Failback Monitor - Monitoring "$WAN1" via $WAN1TARGET for Failure"
 logger -p 3 -st "${0##*/}" "WAN0 Failback Monitor - Monitoring "$WAN0" via $WAN0TARGET for Restoration"
-while { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$(nvram get wan1_primary)" == "1" ]] >/dev/null;do
+while [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get wan1_primary)" == "1" ]] >/dev/null;do
   pingtargets || wanstatus
   if { { [[ "$WAN0PINGPATH" -le "2" ]] && [ -z "$(ip rule list from all iif lo to "$WAN0TARGET" lookup "$WAN0ROUTETABLE")" ] && [[ "$(nvram get wan0_enable)" == "1" ]] && [[ "$(nvram get wan0_state_t)" == "2" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} && { { [[ "$(nvram get wan0_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_ipaddr)" ] ;} || { [[ "$(nvram get wan0_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_gateway)" ] ;} ;} ;} \
   || { { [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan0_gateway)" != "$(ip route list default table "$WAN0ROUTETABLE" | awk '{print $3}')" ]] && [[ "$(nvram get wan0_gw_ifname)" != "$(ip route list default table "$WAN0ROUTETABLE" | awk '{print $5}')" ]] && { { [[ "$(nvram get wan0_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_ipaddr)" ] ;} || { [[ "$(nvram get wan0_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan0_gateway)" ] ;} ;} ;} ;} >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - WAN0 Target IP Rule Missing or Default Route for $WAN0ROUTETABLE is invalid"
-    [[ "$(nvram get wan0_auxstate_t)" != "0" ]] && WAN0STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan0_state_t)" != "2" ]] && WAN0STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan0_enable)" == "0" ]] && WAN0STATUS=DISABLED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_auxstate_t)" != "0" ]] && WAN1STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_state_t)" != "2" ]] && WAN1STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_enable)" == "0" ]] && WAN1STATUS=DISABLED && [[ "$email" == "0" ]] && email=1
+    WANSTATUSMODE=2 && setwanstatus
     [[ "$(nvram get wan0_primary)" == "1" ]] && email=1
     break
   elif { { [[ "$WAN1PINGPATH" -le "2" ]] && [ -z "$(ip rule list from all iif lo to "$WAN1TARGET" lookup "$WAN1ROUTETABLE")" ] && [[ "$(nvram get wan1_enable)" == "1" ]] && [[ "$(nvram get wan1_state_t)" == "2" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} && { { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_ipaddr)" ] ;} || { [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_gateway)" ] ;} ;} ;} \
   || { { [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} && { [[ "$(nvram get wan1_gateway)" != "$(ip route list default table "$WAN1ROUTETABLE" | awk '{print $3}')" ]] && [[ "$(nvram get wan1_gw_ifname)" != "$(ip route list default table "$WAN1ROUTETABLE" | awk '{print $5}')" ]] && { { [[ "$(nvram get wan1_ipaddr)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_ipaddr)" ] ;} || { [[ "$(nvram get wan1_gateway)" != "0.0.0.0" ]] && [ ! -z "$(nvram get wan1_gateway)" ] ;} ;} ;} ;} >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - WAN1 Target IP Rule Missing or Default Route for $WAN1ROUTETABLE is invalid"
-    [[ "$(nvram get wan0_auxstate_t)" != "0" ]] && WAN0STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan0_state_t)" != "2" ]] && WAN0STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan0_enable)" == "0" ]] && WAN0STATUS=DISABLED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_auxstate_t)" != "0" ]] && WAN1STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_state_t)" != "2" ]] && WAN1STATUS=DISCONNECTED && [[ "$email" == "0" ]] && email=1
-    [[ "$(nvram get wan1_enable)" == "0" ]] && WAN1STATUS=DISABLED && [[ "$email" == "0" ]] && email=1
+    WANSTATUSMODE=2 && setwanstatus
     [[ "$(nvram get wan0_primary)" == "1" ]] && email=1
     if [[ "$WAN0PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan0_enable)" == "1" ]] && { [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] ;} ;} >/dev/null;then
       failover || return
-      [[ "$email" == "1" ]] && email=0
+      email=0
       wanstatus || return && break
     elif [[ "$WAN1PACKETLOSS" == "0%" ]] || { [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} >/dev/null;then
       break
@@ -2059,39 +2094,24 @@ while { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" ==
     fi
   elif { [[ "$(nvram get wan0_enable)" == "1" ]] && { [[ "$WAN0PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] ;} ;} \
   && { [[ "$(nvram get wan1_enable)" == "1" ]] && { [[ "$WAN1PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan1_state_t)" == "2" ]] || [[ "$(nvram get wan1_auxstate_t)" == "0" ]] ;} ;} >/dev/null;then
-    if [[ "$(nvram get wan1_state_t)" != "2" ]] >/dev/null;then
-      nvram set wan1_state_t=2
-    fi
+    [[ "$(nvram get wan1_state_t)" != "2" ]] && nvram set wan1_state_t=2
     [[ "$email" == "1" ]] && email=0
     continue
   elif [[ "$WAN0PACKETLOSS" == "0%" ]] \
   || { { [[ "$WAN0PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan0_enable)" == "1" ]] || [[ "$(nvram get wan0_state_t)" == "2" ]] || [[ "$(nvram get wan0_auxstate_t)" == "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && { [[ "$(nvram get wan0_is_usb_modem_ready)" == "1" ]] || [ ! -z "$(nvram get wan0_ifname)" ] || [[ "$(nvram get link_wan)" == "1" ]] ;} ;} ;} \
   && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && { [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan1_ifname)" ] || [[ "$(nvram get link_wan1)" == "0" ]] ;} ;} ;} ;} >/dev/null;then
-    if [[ "$(nvram get wan0_enable)" == "1" ]] && { [[ "$WAN0PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan0_state_t)" == "2" ]] ;} >/dev/null;then
-      WAN0STATUS=CONNECTED
-    elif [[ "$(nvram get wan0_enable)" == "0" ]] >/dev/null;then
-      WAN0STATUS=DISABLED
-    else
-      WAN0STATUS=DISCONNECTED
-    fi
-    if [[ "$(nvram get wan1_enable)" == "1" ]] && { [[ "$WAN1PACKETLOSS" == "0%" ]] || [[ "$(nvram get wan1_state_t)" == "2" ]] ;} >/dev/null;then
-      WAN1STATUS=CONNECTED
-    elif [[ "$(nvram get wan1_enable)" == "0" ]] >/dev/null;then
-      WAN1STATUS=DISABLED
-    else
-      WAN1STATUS=DISCONNECTED
-    fi
+    WANSTATUSMODE=2 && setwanstatus
     logger -p 6 -t "${0##*/}" "Debug - WAN0: $WAN0STATUS"
     logger -p 6 -t "${0##*/}" "Debug - WAN1: $WAN1STATUS"
     failover || return
-    [[ "$email" == "1" ]] && email=0
+    email=0
     wanstatus || return && break
   elif { [[ "$WAN0PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan0_enable)" == "0" ]] || [[ "$(nvram get wan0_state_t)" != "2" ]] || [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $1}')" == "usb" ]] && { [[ "$(nvram get wan0_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan0_ifname)" ] || [[ "$(nvram get link_wan)" == "0" ]] ;} ;} ;} \
   && { [[ "$WAN1PACKETLOSS" == "100%" ]] || [[ "$(nvram get wan1_enable)" == "0" ]] || [[ "$(nvram get wan1_state_t)" != "2" ]] || [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "usb" ]] && { [[ "$(nvram get wan1_is_usb_modem_ready)" == "0" ]] || [ -z "$(nvram get wan1_ifname)" ] || [[ "$(nvram get link_wan1)" == "0" ]] ;} ;} ;} >/dev/null;then
-    [[ "$email" == "1" ]] && email=0
+    email=0
     break
   elif { [[ "$WAN0PACKETLOSS" != "0%" ]] || [[ "$WAN0PACKETLOSS" != "100%" ]] ;} && { [[ "$WAN1PACKETLOSS" != "0%" ]] || [[ "$WAN1PACKETLOSS" != "100%" ]] ;} >/dev/null;then
-    [[ "$email" == "1" ]] && email=0
+    email=0
     continue
   fi
 done
@@ -2102,7 +2122,7 @@ debuglog || return
 
 # Complete Failover if Primary WAN was changed by Router
 [[ "$(nvram get wan0_primary)" == "1" ]] && logger -p 6 -t "${0##*/}" "Debug - Router switched "$WAN0" to Primary WAN"
-[[ "$(nvram get wan0_primary)" == "1" ]] && WAN1STATUS=DISCONNECTED && SWITCHPRIMARY=0 && failover && email=0
+[[ "$(nvram get wan0_primary)" == "1" ]] && { WANSTATUSMODE=2 && setwanstatus ;} && SWITCHPRIMARY=0 && failover && email=0
 
 # Return to WAN Status
 wanstatus || return
@@ -2113,8 +2133,8 @@ wandisabled ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: wandisabled"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
 wandisabledloop=${wandisabledloop:=1}
 [[ "$wandisabledloop" == "1" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - WAN Failover is currently disabled.  ***Review Logs***"
@@ -2126,12 +2146,12 @@ while \
     DISABLEDSTARTLOOPTIME="$(awk -F "." '{print $1}' "/proc/uptime")"
   fi
   # WAN Disabled if both interfaces do not have an IP Address or are unplugged
-  if { [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_ipaddr)" ] ;} || { [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_gateway)" ] ;} ;} \
-  && { [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_ipaddr)" ] ;} || { [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_gateway)" ] ;} ;} >/dev/null;then
-    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan0_auxstate_t)" != "0" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" is unplugged"
+  if { [[ "$(nvram get wan0_auxstate_t)" == "1" ]] || { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_ipaddr)" ] ;} || { [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_gateway)" ] ;} ;} \
+  && { [[ "$(nvram get wan1_auxstate_t)" == "1" ]] || { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_ipaddr)" ] ;} || { [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_gateway)" ] ;} ;} >/dev/null;then
+    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan0_auxstate_t)" == "1" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" is unplugged"
     [[ "$wandisabledloop" == "1" ]] && { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_ipaddr)" ] ;} && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" does not have a valid IP: "$(nvram get wan0_ipaddr)""
     [[ "$wandisabledloop" == "1" ]] && { [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_gateway)" ] ;} && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" does not have a valid Gateway IP Address: "$(nvram get wan0_gateway)""
-    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan1_auxstate_t)" != "0" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" is unplugged"
+    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan1_auxstate_t)" == "1" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" is unplugged"
     [[ "$wandisabledloop" == "1" ]] && { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_ipaddr)" ] ;} && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" does not have a valid IP: "$(nvram get wan1_ipaddr)""
     [[ "$wandisabledloop" == "1" ]] && { [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_gateway)" ] ;} && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" does not have a valid Gateway IP Address: "$(nvram get wan1_gateway)""
     wandisabledloop=$(($wandisabledloop+1))
@@ -2153,9 +2173,9 @@ while \
     break
   # WAN Disabled if WAN0 does not have have an IP and WAN1 is Primary - Failover Mode
   elif { { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$(nvram get wan1_primary)" == "1" ]] ;} \
-  && { [[ "$(nvram get wan0_auxstate_t)" != "0" ]] || { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_ipaddr)" ] ;} || { [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_gateway)" ] ;} ;} >/dev/null;then
+  && { [[ "$(nvram get wan0_auxstate_t)" == "1" ]] || { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_ipaddr)" ] ;} || { [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_gateway)" ] ;} ;} >/dev/null;then
     [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan1_primary)" == "1" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - Failover Mode: "$WAN1" is Primary"
-    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan0_auxstate_t)" != "0" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" is unplugged"
+    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan0_auxstate_t)" == "1" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" is unplugged"
     [[ "$wandisabledloop" == "1" ]] && { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_ipaddr)" ] ;} && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" does not have a valid IP: "$(nvram get wan0_ipaddr)""
     [[ "$wandisabledloop" == "1" ]] && { [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_gateway)" ] ;} && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN0" does not have a valid Gateway IP Address: "$(nvram get wan0_gateway)""
     wandisabledloop=$(($wandisabledloop+1))
@@ -2163,9 +2183,9 @@ while \
     continue
   # WAN Disabled if WAN1 does not have have an IP and WAN0 is Primary - Failover Mode
   elif { { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$(nvram get wan0_primary)" == "1" ]] ;} \
-  && { [[ "$(nvram get wan1_auxstate_t)" != "0" ]] || { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_ipaddr)" ] ;} || { [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_gateway)" ] ;} ;} >/dev/null;then
+  && { [[ "$(nvram get wan1_auxstate_t)" == "1" ]] || { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_ipaddr)" ] ;} || { [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_gateway)" ] ;} ;} >/dev/null;then
     [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan0_primary)" == "1" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - Failover Mode: "$WAN0" is Primary"
-    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan1_auxstate_t)" != "0" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" is unplugged"
+    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan1_auxstate_t)" == "1" ]] && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" is unplugged"
     [[ "$wandisabledloop" == "1" ]] && { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_ipaddr)" ] ;} && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" does not have a valid IP: "$(nvram get wan1_ipaddr)""
     [[ "$wandisabledloop" == "1" ]] && { [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_gateway)" ] ;} && logger -p 2 -st "${0##*/}" "WAN Failover Disabled - "$WAN1" does not have a valid Gateway IP Address: "$(nvram get wan1_gateway)""
     wandisabledloop=$(($wandisabledloop+1))
@@ -2283,6 +2303,13 @@ while \
     wandisabledloop=$(($wandisabledloop+1))
     sleep $WANDISABLEDSLEEPTIMER
     continue
+  elif { [[ "$(nvram get wan0_enable)" == "1" ]] && [[ "$(nvram get wan0_auxstate_t)" == "0" ]] && [[ "$(nvram get wan0_state_t)" != "2" ]] ;} \
+  || { [[ "$(nvram get wan1_enable)" == "1" ]] && [[ "$(nvram get wan1_auxstate_t)" == "0" ]] && [[ "$(nvram get wan1_state_t)" != "2" ]] ;} >/dev/null;then
+    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan0_state_t)" != "2" ]] && logger -p 1 -st "${0##*/}" "WAN Failover Disabled - Restarting "$WAN0"" && service "restart_wan_if 0"
+    [[ "$wandisabledloop" == "1" ]] && [[ "$(nvram get wan1_state_t)" != "2" ]] && logger -p 1 -st "${0##*/}" "WAN Failover Disabled - Restarting "$WAN1"" && service "restart_wan_if 1"
+    wandisabledloop=$(($wandisabledloop+1))
+    sleep $WANDISABLEDSLEEPTIMER
+    continue
   else
     wandisabledloop=$(($wandisabledloop+1))
     sleep $WANDISABLEDSLEEPTIMER
@@ -2309,8 +2336,8 @@ switchwan ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: switchwan"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
 SWITCHPRIMARY=${SWITCHPRIMARY:=1}
 
@@ -2337,7 +2364,7 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
 && { [[ "$(nvram get "$ACTIVEWAN"_ipaddr)" == "$(nvram get wan_ipaddr)" ]] && [[ "$(nvram get "$ACTIVEWAN"_gateway)" == "$(nvram get wan_gateway)" ]] && [[ "$(nvram get "$ACTIVEWAN"_gw_ifname)" == "$(nvram get wan_gw_ifname)" ]] ;} >/dev/null;do
   # Change Primary WAN
   if [[ "$(nvram get "$ACTIVEWAN"_primary)" != "1" ]] && [[ "$(nvram get "$INACTIVEWAN"_primary)" != "0" ]] >/dev/null;then
-    logger -p 1 -st "${0##*/}" "WAN Switch - Switching $ACTIVEWAN to Primary WAN"
+    [[ "$SWITCHPRIMARY" == "1" ]] && logger -p 1 -st "${0##*/}" "WAN Switch - Switching $ACTIVEWAN to Primary WAN"
     nvram set "$ACTIVEWAN"_primary=1 ; nvram set "$INACTIVEWAN"_primary=0
   fi
   # Change WAN IP Address
@@ -2364,14 +2391,14 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
   fi
   
   # Delete Old Default Route
-  if [ ! -z "$(ip route list default | grep -e "$(nvram get "$INACTIVEWAN"_gw_ifname)")" ] >/dev/null;then
+  if [ ! -z "$(ip route list default via "$(nvram get "$INACTIVEWAN"_gateway)" dev "$(nvram get "$INACTIVEWAN"_gw_ifname)")" ] >/dev/null;then
     logger -p 5 -st "${0##*/}" "WAN Switch - Deleting default route via "$(nvram get "$INACTIVEWAN"_gateway)" dev "$(nvram get "$INACTIVEWAN"_gw_ifname)""
     ip route del default \
     && logger -p 4 -st "${0##*/}" "WAN Switch - Deleted default route via "$(nvram get "$INACTIVEWAN"_gateway)" dev "$(nvram get "$INACTIVEWAN"_gw_ifname)"" \
     || logger -p 2 -st "${0##*/}" "WAN Switch - ***Error*** Unable to delete default route via "$(nvram get "$INACTIVEWAN"_gateway)" dev "$(nvram get "$INACTIVEWAN"_gw_ifname)""
   fi
   # Add New Default Route
-  if [ -z "$(ip route list default | grep -e "$(nvram get "$ACTIVEWAN"_gw_ifname)")" ] >/dev/null;then
+  if [ -z "$(ip route list default via "$(nvram get "$ACTIVEWAN"_gateway)" dev "$(nvram get "$ACTIVEWAN"_gw_ifname)")" ] >/dev/null;then
     logger -p 5 -st "${0##*/}" "WAN Switch - Adding default route via "$(nvram get "$ACTIVEWAN"_gateway)" dev "$(nvram get "$ACTIVEWAN"_gw_ifname)""
     ip route add default via $(nvram get "$ACTIVEWAN"_gateway) dev $(nvram get "$ACTIVEWAN"_gw_ifname) \
     && logger -p 4 -st "${0##*/}" "WAN Switch - Added default route via "$(nvram get "$ACTIVEWAN"_gateway)" dev "$(nvram get "$ACTIVEWAN"_gw_ifname)"" \
@@ -2405,9 +2432,11 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
       logger -p 6 -t "${0##*/}" "Debug - QoS ATM: "$(nvram get qos_atm)""
       if [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
         { [[ "$(nvram get qos_obw)" != "0" ]] && [[ "$(nvram get qos_ibw)" != "0" ]] ;} && logger -p 4 -st "${0##*/}" "WAN Switch - Applied Manual QoS Bandwidth Settings"
-        [[ "$(nvram get qos_obw)" -gt "1024" ]] && logger -p 4 -st "${0##*/}" "WAN Switch - QoS Settings: Upload Bandwidth: $(($(nvram get qos_obw)/1024))Mbps" || logger -p 4 -st "${0##*/}" "WAN Switch - QoS Settings: Upload Bandwidth: $(nvram get qos_obw)Kbps"
-        [[ "$(nvram get qos_ibw)" -gt "1024" ]] && logger -p 4 -st "${0##*/}" "WAN Switch - QoS Settings: Download Bandwidth: $(($(nvram get qos_ibw)/1024))Mbps" || logger -p 4 -st "${0##*/}" "WAN Switch - QoS Settings: Download Bandwidth: $(nvram get qos_ibw)Kbps"
-        { [[ "$(nvram get qos_obw)" == "0" ]] && [[ "$(nvram get qos_ibw)" == "0" ]] ;} && logger -p 4 -st "${0##*/}" "WAN Switch - QoS is using Automatic Settings"
+        [[ "$(nvram get qos_obw)" -gt "1024" ]] && logger -p 4 -st "${0##*/}" "WAN Switch - QoS - Upload Bandwidth: $(($(nvram get qos_obw)/1024))Mbps" \
+        || [[ "$(nvram get qos_obw)" != "0" ]] && logger -p 4 -st "${0##*/}" "WAN Switch - QoS - Upload Bandwidth: $(nvram get qos_obw)Kbps"
+        [[ "$(nvram get qos_ibw)" -gt "1024" ]] && logger -p 4 -st "${0##*/}" "WAN Switch - QoS - Download Bandwidth: $(($(nvram get qos_ibw)/1024))Mbps" \
+        || [[ "$(nvram get qos_ibw)" != "0" ]] && logger -p 4 -st "${0##*/}" "WAN Switch - QoS - Download Bandwidth: $(nvram get qos_ibw)Kbps"
+        { [[ "$(nvram get qos_obw)" == "0" ]] && [[ "$(nvram get qos_ibw)" == "0" ]] ;} && logger -p 4 -st "${0##*/}" "WAN Switch - QoS - Automatic Settings"
       elif [[ "$(nvram get qos_enable)" == "0" ]] >/dev/null;then
         logger -p 6 -t "${0##*/}" "Debug - QoS is Disabled"
       fi
@@ -2417,7 +2446,7 @@ until { [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] && [[ "$(nvram get "$
   sleep 1
 done
 if [[ "$(nvram get "$ACTIVEWAN"_primary)" == "1" ]] && [[ "$(nvram get "$INACTIVEWAN"_primary)" == "0" ]] >/dev/null;then
-  logger -p 1 -st "${0##*/}" "WAN Switch - Switched $ACTIVEWAN to Primary WAN"
+  [[ "$SWITCHPRIMARY" == "1" ]] && logger -p 1 -st "${0##*/}" "WAN Switch - Switched $ACTIVEWAN to Primary WAN"
 else
   debuglog || return
 fi
@@ -2431,8 +2460,8 @@ switchdns ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: switchdns"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
 # Check if AdGuard is Running or AdGuard Local is Enabled
 if [ ! -z "$(pidof AdGuardHome)" ] || { [ -f "/opt/etc/AdGuardHome/.config" ] && [ ! -z "$(awk -F "=" '/ADGUARD_LOCAL/ {print $2}' "/opt/etc/AdGuardHome/.config" | sed -e 's/^"//' -e 's/"$//' | grep -w ^"YES")" ] ;} >/dev/null;then
@@ -2447,7 +2476,7 @@ for WANPREFIX in ${WANPREFIXES};do
 
   # Switch DNS
   # Check DNS if Status is Connected or Primary WAN
-  if { [[ "$STATUS" == "CONNECTED" ]] && [[ "$(nvram get wans_mode)" == "lb" ]] ;} || { { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$(nvram get ${WANPREFIX}_primary)" == "1" ]] ;} >/dev/null;then
+  if { [[ "$STATUS" == "CONNECTED" ]] && [[ "$(nvram get wans_mode)" == "lb" ]] ;} || { [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get ${WANPREFIX}_primary)" == "1" ]] ;} >/dev/null;then
     # Change Manual DNS Settings
     if [[ "$(nvram get ${WANPREFIX}_dnsenable_x)" == "0" ]] >/dev/null;then
       logger -p 6 -t "${0##*/}" "Debug - Manual DNS Settings for ${WANPREFIX}"
@@ -2508,7 +2537,7 @@ for WANPREFIX in ${WANPREFIXES};do
       fi
     fi
   # Check DNS if Status is Disconnected or not Primary WAN
-  elif { [[ "$STATUS" == "DISCONNECTED" ]] && [[ "$(nvram get wans_mode)" == "lb" ]] ;} || { { [[ "$(nvram get wans_mode)" == "fo" ]] || [[ "$(nvram get wans_mode)" == "fb" ]] ;} && [[ "$(nvram get ${WANPREFIX}_primary)" == "0" ]] ;} >/dev/null;then
+  elif { [[ "$STATUS" != "CONNECTED" ]] && [[ "$(nvram get wans_mode)" == "lb" ]] ;} || { [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get ${WANPREFIX}_primary)" == "0" ]] ;} >/dev/null;then
     # Remove Manual DNS Settings
     if [[ "$(nvram get ${WANPREFIX}_dnsenable_x)" == "0" ]] >/dev/null;then
       # Remove Manual DNS1 Server
@@ -2553,45 +2582,49 @@ restartservices ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: restartservices"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
+
+# Set Restart Services Mode to Default if not Specified
+RESTARTSERVICESMODE=${RESTARTSERVICESMODE:=1}
+logger -p 6 -t "${0##*/}" "Debug - Restart Services Mode: "$RESTARTSERVICESMODE""
 
 # Check for services that need to be restarted:
 logger -p 6 -t "${0##*/}" "Debug - Checking which services need to be restarted"
 SERVICES=""
 # Check if dnsmasq is running
-if [ ! -z "$(pidof dnsmasq)" ] >/dev/null;then
+if [[ "$RESTARTSERVICESMODE" == "1" ]] && [ ! -z "$(pidof dnsmasq)" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Dnsmasq is running"
   SERVICE="dnsmasq"
   SERVICES="${SERVICES} ${SERVICE}"
 fi
 # Check if Firewall is Enabled
-if [[ "$(nvram get fw_enable_x)" == "1" ]] >/dev/null;then
+if [[ "$RESTARTSERVICESMODE" == "1" ]] && [[ "$(nvram get fw_enable_x)" == "1" ]] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Firewall is enabled"
   SERVICE="firewall"
   SERVICES="${SERVICES} ${SERVICE}"
 fi
 # Check if LEDs are Disabled
-if [[ "$(nvram get led_disable)" == "0" ]] >/dev/null;then
+if [[ "$RESTARTSERVICESMODE" == "1" ]] && [[ "$(nvram get led_disable)" == "0" ]] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - LEDs are enabled"
   SERVICE="leds"
   SERVICES="${SERVICES} ${SERVICE}"
 fi
 # Check if QoS is Enabled
-if [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
+if [[ "$RESTARTSERVICESMODE" == "1" ]] && [[ "$(nvram get wans_mode)" != "lb" ]] && [[ "$(nvram get qos_enable)" == "1" ]] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - QoS is enabled"
   SERVICE="qos"
   SERVICES="${SERVICES} ${SERVICE}"
 fi
 # Check if IPv6 is using a 6in4 tunnel
-if [[ "$(nvram get ipv6_service)" == "6in4" ]] >/dev/null;then
+if [[ "$RESTARTSERVICESMODE" == "1" ]] && [[ "$(nvram get ipv6_service)" == "6in4" ]] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - IPv6 6in4 is enabled"
   SERVICE="wan6"
   SERVICES="${SERVICES} ${SERVICE}"
 fi
 
 # Restart Services
-if [ ! -z "$SERVICES" ] >/dev/null;then
+if [[ "$RESTARTSERVICESMODE" == "1" ]] && [ ! -z "$SERVICES" ] >/dev/null;then
   for SERVICE in ${SERVICES};do
     logger -p 5 -st "${0##*/}" "Service Restart - Restarting "$SERVICE" service"
     service restart_"$SERVICE" \
@@ -2601,27 +2634,9 @@ if [ ! -z "$SERVICES" ] >/dev/null;then
 SERVICES=""
 fi
 
-# Restart OpenVPN Server Instances
-OVPNSERVERS="
-1
-2
-"
-
-logger -p 6 -t "${0##*/}" "Debug - Checking if OpenVPN Server instances exist and are enabled"
-for OVPNSERVER in ${OVPNSERVERS};do
-  if [ ! -z "$(nvram get vpn_serverx_start | grep -o "$OVPNSERVER")" ] >/dev/null;then
-    # Restart OVPN Server Instance
-    logger -p 5 -st "${0##*/}" "Service Restart - Restarting OpenVPN Server "$OVPNSERVER""
-    service restart_vpnserver"$OVPNSERVER" \
-    && { logger -p 4 -st "${0##*/}" "Service Restart - Restarted OpenVPN Server "$OVPNSERVER"" && continue ;} \
-    || { logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to restart OpenVPN Server "$OVPNSERVER"" && continue ;}
-    sleep 1
-  fi
-done
-
 # Execute YazFi Check
 logger -p 6 -t "${0##*/}" "Debug - Checking if YazFi is installed and scheduled in Cron Jobs"
-if [ ! -z "$(cru l | grep -w "YazFi")" ] && [ -f "/jffs/scripts/YazFi" ] >/dev/null;then
+if [[ "$RESTARTSERVICESMODE" == "1" ]] && [ ! -z "$(cru l | grep -w "YazFi")" ] && [ -f "/jffs/scripts/YazFi" ] >/dev/null;then
   logger -p 5 -st "${0##*/}" "Service Restart - Executing YazFi Check"
   sh /jffs/scripts/YazFi check \
   && logger -p 4 -st "${0##*/}" "Service Restart - Executed YazFi Check" \
@@ -2630,12 +2645,35 @@ fi
 
 # Reset VPNMON-R2
 logger -p 6 -t "${0##*/}" "Debug - Checking if VPNMON-R2 is installed, configured, and running"
-if [ ! -z "$(pidof vpnmon-r2.sh)" ] && [ -f "/jffs/scripts/vpnmon-r2.sh" ] && [ -f "/jffs/addons/vpnmon-r2.d/vpnmon-r2.cfg" ] >/dev/null;then
+if [[ "$RESTARTSERVICESMODE" == "1" ]] && [ ! -z "$(pidof vpnmon-r2.sh)" ] && [ -f "/jffs/scripts/vpnmon-r2.sh" ] && [ -f "/jffs/addons/vpnmon-r2.d/vpnmon-r2.cfg" ] >/dev/null;then
   logger -p 5 -st "${0##*/}" "Service Restart - Resetting VPNMON-R2"
   $(sh /jffs/scripts/vpnmon-r2.sh -reset &)\
   && logger -p 4 -st "${0##*/}" "Service Restart - Reset VPNMON-R2" \
   || logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to reset VPNMON-R2"
 fi
+
+# Restart OpenVPN Server Instances
+if [[ "$RESTARTSERVICESMODE" == "1" ]] || [[ "$RESTARTSERVICESMODE" == "2" ]] >/dev/null;then
+OVPNSERVERS="
+1
+2
+"
+
+  logger -p 6 -t "${0##*/}" "Debug - Checking if OpenVPN Server instances exist and are enabled"
+  for OVPNSERVER in ${OVPNSERVERS};do
+    if [ ! -z "$(nvram get vpn_serverx_start | grep -o "$OVPNSERVER")" ] >/dev/null;then
+      # Restart OVPN Server Instance
+      logger -p 5 -st "${0##*/}" "Service Restart - Restarting OpenVPN Server "$OVPNSERVER""
+      service restart_vpnserver"$OVPNSERVER" \
+      && { logger -p 4 -st "${0##*/}" "Service Restart - Restarted OpenVPN Server "$OVPNSERVER"" && continue ;} \
+      || { logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to restart OpenVPN Server "$OVPNSERVER"" && continue ;}
+      sleep 1
+    fi
+  done
+fi
+
+RESTARTSERVICESMODE=""
+
 return
 }
 
@@ -2644,8 +2682,8 @@ sendemail ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: sendemail"
 
-# Delay if NVRAM is not accessible
-nvramcheck || return
+# Check NVRAM
+[[ "$CHECKNVRAM" == "1" ]] && { nvramcheck || return ;}
 
 #Email Variables
 AIPROTECTION_EMAILCONFIG="/etc/email/email.conf"
@@ -2766,16 +2804,16 @@ elif [ -f "$AIPROTECTION_EMAILCONFIG" ] || [ -f "$AMTM_EMAILCONFIG" ] >/dev/null
 
     # Determine Primary WAN for WAN IP Address, Gateway IP Address and Interface
     for WANPREFIX in ${WANPREFIXES};do
-      [[ "$(nvram get ${WANPREFIX}_primary)"" != "1" ]] && continue
-      logger -p 6 -t "${0##*/}" "Debug - Primary WAN: $(nvram get ${WANPREFIX}_primary)"
+      [[ "$(nvram get ${WANPREFIX}_primary)" != "1" ]] && continue
+      logger -p 6 -t "${0##*/}" "Debug - Primary WAN: "$(nvram get ${WANPREFIX}_primary)""
       echo "Primary WAN: ${WANPREFIX}" >>"$TMPEMAILFILE"
-      logger -p 6 -t "${0##*/}" "Debug - WAN IPv4 Address: $(nvram get ${WANPREFIX}_ipaddr)"
+      logger -p 6 -t "${0##*/}" "Debug - WAN IPv4 Address: "$(nvram get ${WANPREFIX}_ipaddr)""
       echo "WAN IPv4 Address: $(nvram get ${WANPREFIX}_ipaddr)" >>"$TMPEMAILFILE"
-      logger -p 6 -t "${0##*/}" "Debug - WAN Gateway IP Address: $(nvram get ${WANPREFIX}_gateway)"
+      logger -p 6 -t "${0##*/}" "Debug - WAN Gateway IP Address: "$(nvram get ${WANPREFIX}_gateway)""
       echo "WAN Gateway IP Address: $(nvram get ${WANPREFIX}_gateway)" >>"$TMPEMAILFILE"
-      logger -p 6 -t "${0##*/}" "Debug - WAN Interface: $(nvram get ${WANPREFIX}_gw_ifname)"
+      logger -p 6 -t "${0##*/}" "Debug - WAN Interface: "$(nvram get ${WANPREFIX}_gw_ifname)""
       echo "WAN Interface: $(nvram get ${WANPREFIX}_gw_ifname)" >>"$TMPEMAILFILE"
-      [[ "$(nvram get ${WANPREFIX}_primary)"" == "1" ]] && break
+      [[ "$(nvram get ${WANPREFIX}_primary)" == "1" ]] && break
     done
     [ ! -z "$(nvram get ipv6_wan_addr)" ] && logger -p 6 -t "${0##*/}" "Debug - IPv6 IP Address: "$(nvram get ipv6_wan_addr)"" && echo "WAN IPv6 Address: $(nvram get ipv6_wan_addr)" >>"$TMPEMAILFILE"
 
@@ -2786,7 +2824,7 @@ elif [ -f "$AIPROTECTION_EMAILCONFIG" ] || [ -f "$AMTM_EMAILCONFIG" ] >/dev/null
     else
       logger -p 6 -t "${0##*/}" "Debug - Checking for Automatic or Manual DNS Settings. WAN DNS Enable: $(nvram get wan_dnsenable_x)"
       for WANPREFIX in ${WANPREFIXES};do
-        [[ "$(nvram get ${WANPREFIX}_primary)"" != "1" ]] && continue
+        [[ "$(nvram get ${WANPREFIX}_primary)" != "1" ]] && continue
         if [[ "$(nvram get ${WANPREFIX}_dnsenable_x)" == "0" ]] >/dev/null;then
           logger -p 6 -t "${0##*/}" "Debug - Manual DNS Server 1: $(nvram get ${WANPREFIX}_dns1_x)"
           [ ! -z "$(nvram get ${WANPREFIX}_dns1_x)" ] && echo "DNS Server 1: $(nvram get ${WANPREFIX}_dns1_x)" >>"$TMPEMAILFILE"
@@ -2797,7 +2835,7 @@ elif [ -f "$AIPROTECTION_EMAILCONFIG" ] || [ -f "$AMTM_EMAILCONFIG" ] >/dev/null
           [ ! -z "$(nvram get ${WANPREFIX}_dns | awk '{print $1}')" ] && echo "DNS Server 1: $(nvram get ${WANPREFIX}_dns | awk '{print $1}')" >>"$TMPEMAILFILE"
           [ ! -z "$(nvram get ${WANPREFIX}_dns | awk '{print $2}')" ] && echo "DNS Server 2: $(nvram get ${WANPREFIX}_dns | awk '{print $2}')" >>"$TMPEMAILFILE"
         fi
-        [[ "$(nvram get ${WANPREFIX}_primary)"" == "1" ]] && break
+        [[ "$(nvram get ${WANPREFIX}_primary)" == "1" ]] && break
       done
     fi
     logger -p 6 -t "${0##*/}" "Debug - QoS Enabled Status: $(nvram get qos_enable)"
@@ -2860,7 +2898,11 @@ return
 # Delay if NVRAM is not accessible
 nvramcheck ()
 {
+CHECKNVRAM=${CHECKNVRAM:=1}
+[[ "$CHECKNVRAM" == "0" ]] && return
+
 logger -p 6 -t "${0##*/}" "Debug - Function: nvramcheck"
+
 if [ -z "$(nvram get model)" ] >/dev/null;then
   logger -p 1 -st "${0##*/}" "***NVRAM Inaccessible***"
   NVRAMTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+5))"
