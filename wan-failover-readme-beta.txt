@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 08/21/2022
-# Version: v1.5.7-beta1
+# Version: v1.5.7-beta1b
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -67,6 +67,7 @@ Optional Configuration: ***Options that can be adjusted in the configuration fil
 - WAN1PACKETSIZE: This defines the Packet Size for pinging the WAN1 Target IP Address.  Default: 56 Bytes
 - CUSTOMLOGPATH: This defines a Custom System Log path for Monitor Mode. Default: N/A
 - DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
+- CHECKNVRAM: THis defines if the Script is set to perform NVRAM checks before pefroming key functions.  Default: Enabled
 
 Run Modes:
 - Install Mode: Install the script and configuration files necessary. Add the command argument "install" to use this mode.
@@ -83,7 +84,7 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
-v1.5.7-beta1 - 08/21/2022
+v1.5.7-beta1b - 08/21/2022
 Installation:
 - Fixed during Uninstallation where Cleanup would error out due to not having configuration items loaded prior to deletion of configuration file.
 - Fixed text formatting for debug logging during installation when selecting WAN IP Address Targets.
@@ -95,9 +96,15 @@ Enhancements:
 - WAN0 and WAN1 Packet Size can be specified seperately in Configuration File.
 - Custom Log Path can be specified for Monitor Mode using CUSTOMLOGPATH setting in Configuration Settings.
 - Added Dev Mode to update to beta releases using Update Command
+- Service Restarts triggered by USB Modem failure events when it is not the Primary WAN will only restart OpenVPN Server instances.
+- Added Configuration Option CHECKNVRAM to Enable or Disable NVRAM Checks due to only certain routers needing this check such as the RT-AC86U.
+- New Status UNPLUGGED for when a WAN interface connection is not physically present.
 
 Fixes:
 - Configuration Mode will no longer delete new or current IP rules/routes and will delete old ones before restarting script.
+- Switch WAN function will now properly check Default IP Routes for deletion and creation.
+- Load Balance Mode will now properly get default WAN Status before performing checks
+- Emails not generating when some scenarios of Secondary WAN failure occur in Failover Mode.
 
 v1.5.6 - 08/16/2022
 Installation:
