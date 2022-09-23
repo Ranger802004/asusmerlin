@@ -84,11 +84,12 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
-v1.5.7-beta2 - 08/29/2022
+v1.5.7-beta3 - 09/22/2022
 Installation:
 - Fixed during Uninstallation where Cleanup would error out due to not having configuration items loaded prior to deletion of configuration file.
 - Fixed text formatting for debug logging during installation when selecting WAN IP Address Targets.
 - If QoS is Disabled QoS Settings will Default to 0 instead of prompting for configuration.
+- WAN Interface will now be restarted before configuration if it doesn't have a valid IP Address or Gateway IP.
 
 Enhancements:
 - Configuration Mode will instantly kill script and wait for it to be relaunched by Cron Job.
@@ -107,6 +108,7 @@ Fixes:
 - Load Balance Mode will now properly get default WAN Status before performing checks
 - Emails not generating when some scenarios of Secondary WAN failure occur in Failover Mode.
 - Fixed issue where missing configuration items weren't checked with option name exact matches as well as for removing deprecated options.
+- WAN Interface restart will occur in WAN Status if a previously configured Ping Path has been established and Packet Loss is not 0%
 
 v1.5.6 - 08/16/2022
 Installation:
