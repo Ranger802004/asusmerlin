@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/03/2022
-# Version: v1.5.7-beta2a
+# Date: 09/22/2022
+# Version: v1.5.7-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v1.5.7-beta2a"
+VERSION="v1.5.7-beta3"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
 LOCKFILE="/var/lock/wan-failover.lock"
@@ -101,9 +101,10 @@ elif [[ "${mode}" == "restart" ]] >/dev/null;then
     logger -p 6 -t "${0##*/}" "Debug - Script Mode: "${mode}""
   fi
   killscript
-elif [[ "${mode}" == "monitor" ]] >/dev/null;then
+elif [[ "${mode}" == "monitor" ]] || [[ "${mode}" == "capture" ]] >/dev/null;then
   if tty >/dev/null 2>&1;then
-    echo -e ""${BOLD}"${GREEN}${0##*/} - Monitor Mode${NOCOLOR}"
+    [[ "${mode}" == "monitor" ]] && echo -e ""${BOLD}"${GREEN}${0##*/} - Monitor Mode${NOCOLOR}"
+    [[ "${mode}" == "capture" ]] && echo -e ""${BOLD}"${GREEN}${0##*/} - Capture Mode${NOCOLOR}"
   fi
   trap 'exit' EXIT HUP INT QUIT TERM
   logger -p 6 -t "${0##*/}" "Debug - Trap set to kill background process on exit"
@@ -265,6 +266,7 @@ logger -p 6 -t "${0##*/}" "Debug - Function: Install"
 if [[ "${mode}" == "install" ]] >/dev/null;then
   read -n 1 -s -r -p "Press any key to continue to install..."
 fi
+
 if [[ "${mode}" == "install" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
   if [[ "${mode}" == "install" ]] >/dev/null;then
     # Check if JFFS Custom Scripts is enabled during installation
@@ -308,6 +310,24 @@ if [[ "${mode}" == "install" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
   elif [[ "${mode}" == "config" ]] && [ ! -f $CONFIGFILE ] >/dev/null;then
     echo -e "${RED}$CONFIGFILE doesn't exist, please run Install Mode...${NOCOLOR}"
     logger -p 3 -t "${0##*/}" "Configuration - $CONFIGFILE doesn't exist, please run Install Mode"
+  fi
+
+  # Restart WAN0 if no IP Address or Gateway IP is Assigned
+  if { { [[ "$(nvram get wan0_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_ipaddr)" ] ;} \
+  || { [[ "$(nvram get wan0_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan0_gateway)" ] ;} ;} >/dev/null;then
+    service "restart_wan_if 0"
+    while [[ "$(nvram get wan0_state_t)" == "6" ]] && [[ "$(nvram get wan0_state_t)" != "2" ]] >/dev/null;do
+      sleep 1
+    done
+  fi
+
+  # Restart WAN1 if no IP Address or Gateway IP is Assigned
+  if { { [[ "$(nvram get wan1_ipaddr)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_ipaddr)" ] ;} \
+  || { [[ "$(nvram get wan1_gateway)" == "0.0.0.0" ]] || [ -z "$(nvram get wan1_gateway)" ] ;} ;} >/dev/null;then
+    service "restart_wan_if 1"
+    while [[ "$(nvram get wan1_state_t)" == "6" ]] && [[ "$(nvram get wan1_state_t)" != "2" ]] >/dev/null;do
+      sleep 1
+    done
   fi
 
   # User Input for Custom Variables
@@ -858,7 +878,8 @@ if [[ "$systemlogset" == "0" ]] >/dev/null;then
   logger -p 2 -t "${0##*/}" "Monitor - ***Unable to locate System Log Path***"
   exit
 elif [[ "$systemlogset" == "1" ]] >/dev/null;then
-  tail -F $SYSLOG | grep -w "${0##*/}" 2>/dev/null && { systemlogset=0 && exit ;} || echo -e "${RED}***Unable to load Monitor Mode***${NOCOLOR}"
+[[ "$mode" == "monitor" ]] && { tail -F $SYSLOG | grep -w "${0##*/}" 2>/dev/null && { systemlogset=0 && exit ;} || echo -e "${RED}***Unable to load Monitor Mode***${NOCOLOR}" ;}
+[[ "$mode" == "capture" ]] && echo -e "${RED}***Capture Mode is still in Development***${NOCOLOR}" && exit
 fi
 }
 
@@ -1237,6 +1258,7 @@ else
           wait $PINGWANPID
           PACKETLOSS="$(cat /tmp/${WANPREFIX}packetloss.tmp)"
           logger -p 6 -t "${0##*/}" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS""
+          [[ "$PINGPATH" != "0" ]] && [[ "$PACKETLOSS" != "0%" ]] && WANSUFFIX="$(echo "${WANPREFIX}" | awk -F "wan" '{print $2}')" && service "restart_wan_if "$WANSUFFIX""
           [[ "$PACKETLOSS" == "0%" ]] && PINGPATH=1
           [[ "$PINGPATH" == "0" ]] && [[ "$PACKETLOSS" != "0%" ]] && ip rule del from all iif lo to $TARGET oif $(nvram get ${WANPREFIX}_gw_ifname) table ${TABLE} priority "$PRIORITY"
         fi
