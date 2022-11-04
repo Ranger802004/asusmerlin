@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 11/2/2022
-# Version: v1.5.7
+# Date: 11/4/2022
+# Version: v1.6.0-beta1
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -67,9 +67,10 @@ Optional Configuration: ***Options that can be adjusted in the configuration fil
 - WAN1PACKETSIZE: This defines the Packet Size for pinging the WAN1 Target IP Address.  Default: 56 Bytes
 - CUSTOMLOGPATH: This defines a Custom System Log path for Monitor Mode. Default: N/A
 - DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
-- CHECKNVRAM: THis defines if the Script is set to perform NVRAM checks before pefroming key functions.  Default: Enabled
+- CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Enabled
 
 Run Modes:
+- Menu Mode: SSH User Interface for WAN Failover, access by executing script without any arguments.
 - Install Mode: Install the script and configuration files necessary. Add the command argument "install" to use this mode.
 - Uninstall Mode: Uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
 - Run Mode: Execute the script in the background via Cron Job. Add the command argument "run" to use this mode.
@@ -84,6 +85,10 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
+v1.6.0-beta1 - 11/4/2022
+Enhancements:
+- Added SSH User Interface
+
 v1.5.7 - 11/2/2022
 Installation:
 - Fixed during Uninstallation where Cleanup would error out due to not having configuration items loaded prior to deletion of configuration file.
