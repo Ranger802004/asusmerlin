@@ -2,8 +2,8 @@
 
 # Domain Name based VPN routing for ASUS Routers using Merlin Firmware v386.7
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/19/2022
-# Version: v1.4-beta1a
+# Date: 12/29/2022
+# Version: v1.4-beta1c
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 DOWNLOADPATH="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing.sh"
-VERSION="v1.4-beta1a"
+VERSION="v1.4-beta1c"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
 POLICYDIR="/jffs/configs/domain_vpn_routing"
 SYSTEMLOG="/tmp/syslog.log"
@@ -297,7 +297,7 @@ elif [[ "$INTERFACE" == "tun22" ]] >/dev/null;then
   ROUTETABLE=main
   RGW="0"
   PRIORITY="0"
-elif [[ "$INTERFACE" == "$(nvram get wan_gw_ifname)" ]] && [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "none" ]] >/dev/null;then
+elif [[ "$INTERFACE" == "$(nvram get wan0_gw_ifname)" ]] && [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "none" ]] >/dev/null;then
   ROUTETABLE=main
   RGW="2"
   PRIORITY="150"
@@ -364,7 +364,7 @@ INTERFACES=""
   done
 
   if [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "none" ]] >/dev/null;then
-    INTERFACES="${INTERFACES} $(nvram get wan_gw_ifname)"
+    INTERFACES="${INTERFACES} $(nvram get wan0_gw_ifname)"
   elif [[ "$(nvram get wans_dualwan | awk '{print $2}')" != "none" ]] >/dev/null;then
     INTERFACES="${INTERFACES} $(nvram get wan0_gw_ifname)"
     INTERFACES="${INTERFACES} $(nvram get wan1_gw_ifname)"
@@ -508,7 +508,7 @@ INTERFACES=""
   done
 
   if [[ "$(nvram get wans_dualwan | awk '{print $2}')" == "none" ]] >/dev/null;then
-    INTERFACES="${INTERFACES} $(nvram get wan_gw_ifname)"
+    INTERFACES="${INTERFACES} $(nvram get wan0_gw_ifname)"
   elif [[ "$(nvram get wans_dualwan | awk '{print $2}')" != "none" ]] >/dev/null;then
     INTERFACES="${INTERFACES} $(nvram get wan0_gw_ifname)"
     INTERFACES="${INTERFACES} $(nvram get wan1_gw_ifname)"
@@ -1029,7 +1029,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 
   # Create IPv6 Routes
   for IPV6 in ${IPV6S};do
-    if [ -z "$(ip -6 route list $IPV6 dev $INTERFACE)" ] >/dev/null;then
+    if [ -z "$(ip -6 route list "$IPV6" dev "$INTERFACE")" ] >/dev/null;then
       [[ "$VERBOSELOGGING" == "1" ]] && logger -t "${0##*/}" "Query Policy - Adding route for "$IPV6" dev "$INTERFACE""
       ip -6 route add $IPV6 dev $INTERFACE \
       && { [[ "$VERBOSELOGGING" == "1" ]] && logger -t "${0##*/}" "Query Policy - Route added for "$IPV6" dev "$INTERFACE"" ;} \
@@ -1040,7 +1040,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   if [[ "$RGW" == "0" ]] >/dev/null;then
     # Create IPv4 Routes
     for IPV4 in ${IPV4S};do
-      if [ -z "$(ip route list $IPV4 dev $INTERFACE table $ROUTETABLE)" ] >/dev/null;then
+      if [ -z "$(ip route list "$IPV4" dev "$INTERFACE" table "$ROUTETABLE")" ] >/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] && logger -t "${0##*/}" "Query Policy - Adding route for "$IPV4" dev "$INTERFACE" table "$ROUTETABLE""
         ip route add $IPV4 dev $INTERFACE table $ROUTETABLE \
         && { [[ "$VERBOSELOGGING" == "1" ]] && logger -t "${0##*/}" "Query Policy - Route added for "$IPV4" dev "$INTERFACE" table "$ROUTETABLE"" ;} \
@@ -1050,7 +1050,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   elif [[ "$RGW" != "0" ]] >/dev/null;then
     # Create IPv4 Rules
     for IPV4 in ${IPV4S}; do
-      if [ -z "$(ip rule list from all to $IPV4 lookup $ROUTETABLE priority "$PRIORITY")" ] >/dev/null;then
+      if [ -z "$(ip rule list from all to "$IPV4" lookup "$ROUTETABLE" priority "$PRIORITY")" ] >/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] && logger -st "${0##*/}" "Query Policy - Adding IP Rule for "$IPV4" table "$ROUTETABLE" priority "$PRIORITY""
         ip rule add from all to $IPV4 table $ROUTETABLE priority $PRIORITY \
         && { [[ "$VERBOSELOGGING" == "1" ]] && logger -t "${0##*/}" "Query Policy - Added IP Rule for "$IPV4" table "$ROUTETABLE" priority "$PRIORITY"" ;} \
