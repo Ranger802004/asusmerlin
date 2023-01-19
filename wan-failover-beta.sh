@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 12/28/2022
-# Version: v1.6.0
+# Date: 1/18/2023
+# Version: v1.6.1-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v1.6.0"
+VERSION="v1.6.1-beta1"
 README="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover-readme-beta.txt"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -118,6 +118,7 @@ elif [[ "${mode}" == "cron" ]] >/dev/null;then
     echo -e ""${BOLD}"${YELLOW}${0##*/} - Cron Job Mode${NOCOLOR}"
   fi
   logger -p 6 -t "${0##*/}" "Debug - Script Mode: "${mode}""
+  setvariables || return
   cronjob
 elif [[ "${mode}" == "switchwan" ]] >/dev/null;then
   if tty >/dev/null 2>&1;then
@@ -129,12 +130,16 @@ elif [[ "${mode}" == "switchwan" ]] >/dev/null;then
     return
   elif [[ "$(nvram get wans_mode)" != "lb" ]] >/dev/null;then
     while [[ "${mode}" == "switchwan" ]] >/dev/null;do
-      read -p "Are you sure you want to switch Primary WAN? ***Enter Y for Yes or N for No***" yn
-      case $yn in
-        [Yy]* ) break;;
-        [Nn]* ) return;;
-        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-      esac
+      if tty >/dev/null 2>&1;then
+        read -p "Are you sure you want to switch Primary WAN? ***Enter Y for Yes or N for No***" yn
+        case $yn in
+          [Yy]* ) break;;
+          [Nn]* ) return;;
+          * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+        esac
+      else
+        break
+      fi
     done
     systembinaries || return
     setvariables || return
@@ -242,7 +247,7 @@ menu () {
 		;;
 		'5')
                         [ ! -f "$CONFIGFILE" ] && echo -e "${RED}WAN Failover currently has no configuration file present{$NOCOLOR}"
-                        [ -f "$CONFIGFILE" ] && . $CONFIGFILE
+                        [ -f "$CONFIGFILE" ] && { setvariables || return ;}
                         printf "\n  ${BOLD}Failover Monitoring Settings:${NOCOLOR}\n"
                         printf "  (1)  Configure WAN0 Target           WAN0 Target: ${BLUE}$WAN0TARGET${NOCOLOR}\n"
                         printf "  (2)  Configure WAN1 Target           WAN1 Target: ${BLUE}$WAN1TARGET${NOCOLOR}\n"
@@ -269,11 +274,16 @@ menu () {
                         printf "  (20) Configure WAN Disabled Timer    WAN Disabled Timer: ${BLUE}$WANDISABLEDSLEEPTIMER Seconds${NOCOLOR}\n"
                         printf "  (21) Configure Email Boot Delay      Email Boot Delay: ${BLUE}$SKIPEMAILSYSTEMUPTIME Seconds${NOCOLOR}\n"
                         printf "  (22) Configure Email Timeout         Email Timeout: ${BLUE}$EMAILTIMEOUT Seconds${NOCOLOR}\n"
+                        printf "  (23) Configure Cron Job              Cron Job: " && { [[ "$SCHEDULECRONJOB" == "1" ]] && printf "${GREEN}Enabled${NOCOLOR}" || printf "Disabled" ;} && printf "\n"
                         printf "\n  ${BOLD}Load Balance Mode Settings:${NOCOLOR}\n"
-                        printf "  (23) Configure LB Rule Priority      Load Balance Rule Priority: ${BLUE}$LBRULEPRIORITY${NOCOLOR}\n"
-                        printf "  (24) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-                        printf "  (25) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${BLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
-                        printf "  (26) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${BLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
+                        printf "  (24) Configure LB Rule Priority      Load Balance Rule Priority: ${BLUE}$LBRULEPRIORITY${NOCOLOR}\n"
+                        printf "  (25) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+                        printf "  (26) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${BLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
+                        printf "  (27) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${BLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
+                        printf "  (28) Configure WAN0 FWMark           WAN0 FWMark: ${BLUE}$WAN0MARK${NOCOLOR}\n"
+                        printf "  (29) Configure WAN1 FWMark           WAN1 FWMark: ${BLUE}$WAN1MARK${NOCOLOR}\n"
+                        printf "  (30) Configure WAN0 Mask             WAN0 Mask: ${BLUE}$WAN0MASK${NOCOLOR}\n"
+                        printf "  (31) Configure WAN1 Mask             WAN1 Mask: ${BLUE}$WAN1MASK${NOCOLOR}\n"
 
 	                printf "\n  (e)  Main Menu                       Return to Main Menu\n"
                         printf "\nMake a selection: "
@@ -613,7 +623,19 @@ menu () {
                                            NEWVARIABLES="${NEWVARIABLES} EMAILTIMEOUT=|$SETEMAILTIMEOUT"
                                            [[ "$RESTARTREQUIRED" == "0" ]] && RESTARTREQUIRED=1
                                  ;;
-		                 '23')      # LBRULEPRIORITY
+		                 '23')      # SCHEDULECRONJOB
+
+                                           while true >/dev/null;do
+                                             read -p "Do you want to enable Cron Job? This defines if the script will create the Cron Job: ***Enter Y for Yes or N for No***" yn
+                                             case $yn in
+                                               [Yy]* ) SCHEDULECRONJOB=1; break;;
+                                               [Nn]* ) SCHEDULECRONJOB=0; break;;
+                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+                                             esac
+                                           done
+                                           NEWVARIABLES="${NEWVARIABLES} SCHEDULECRONJOB=|$SCHEDULECRONJOB"
+                                 ;;
+		                 '24')      # LBRULEPRIORITY
 
                                            while true >/dev/null;do
                                              read -p "Configure Load Balance Rule Priority - This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change: " value
@@ -625,7 +647,7 @@ menu () {
                                            NEWVARIABLES="${NEWVARIABLES} LBRULEPRIORITY=|$SETLBRULEPRIORITY"
                                            [[ "$RESTARTREQUIRED" == "0" ]] && RESTARTREQUIRED=1
                                  ;;
-		                 '24')      # OVPNSPLITTUNNEL
+		                 '25')      # OVPNSPLITTUNNEL
 
                                            while true >/dev/null;do
                                              read -p "Do you want to enable OpenVPN Split Tunneling? This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode: ***Enter Y for Yes or N for No***" yn
@@ -638,7 +660,7 @@ menu () {
                                            NEWVARIABLES="${NEWVARIABLES} OVPNSPLITTUNNEL=|$SETOVPNSPLITTUNNEL"
                                            [[ "$RESTARTREQUIRED" == "0" ]] && RESTARTREQUIRED=1
                                  ;;
-		                 '25')      # OVPNWAN0PRIORITY
+		                 '26')      # OVPNWAN0PRIORITY
 
                                            while true >/dev/null;do
                                              read -p "Configure OpenVPN WAN0 Priority - This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is Disabled: " value
@@ -650,7 +672,7 @@ menu () {
                                            NEWVARIABLES="${NEWVARIABLES} OVPNWAN0PRIORITY=|$SETOVPNWAN0PRIORITY"
                                            [[ "$RESTARTREQUIRED" == "0" ]] && RESTARTREQUIRED=1
                                  ;;
-		                 '26')      # OVPNWAN1PRIORITY
+		                 '27')      # OVPNWAN1PRIORITY
 
                                            while true >/dev/null;do
                                              read -p "Configure OpenVPN WAN1 Priority - This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is Disabled: " value
@@ -662,6 +684,55 @@ menu () {
                                            NEWVARIABLES="${NEWVARIABLES} OVPNWAN1PRIORITY=|$SETOVPNWAN1PRIORITY"
                                            [[ "$RESTARTREQUIRED" == "0" ]] && RESTARTREQUIRED=1
                                  ;;
+		                 '28')      # WAN0MARK
+
+                                           while true >/dev/null;do
+                                             read -p "Configure WAN0 FWMark - This defines the WAN0 FWMark for Load Balance Mode: " value
+                                             case $value in
+                                               [0123456789xf]* ) SETWAN0MARK=$value; break;;
+                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+                                             esac
+                                           done
+                                           NEWVARIABLES="${NEWVARIABLES} WAN0MARK=|$SETWAN0MARK"
+                                           [[ "$RESTARTREQUIRED" == "0" ]] && RESTARTREQUIRED=1
+                                 ;;
+		                 '29')      # WAN1MARK
+
+                                           while true >/dev/null;do
+                                             read -p "Configure WAN1 FWMark - This defines the WAN1 FWMark for Load Balance Mode: " value
+                                             case $value in
+                                               [0123456789xf]* ) SETWAN1MARK=$value; break;;
+                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+                                             esac
+                                           done
+                                           NEWVARIABLES="${NEWVARIABLES} WAN1MARK=|$SETWAN1MARK"
+                                           [[ "$RESTARTREQUIRED" == "0" ]] && RESTARTREQUIRED=1
+                                 ;;
+		                 '30')      # WAN0MASK
+
+                                           while true >/dev/null;do
+                                             read -p "Configure WAN0 Mask - This defines the WAN0 Mask for Load Balance Mode: " value
+                                             case $value in
+                                               [0123456789xf]* ) SETWAN0MASK=$value; break;;
+                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+                                             esac
+                                           done
+                                           NEWVARIABLES="${NEWVARIABLES} WAN0MASK=|$SETWAN0MASK"
+                                           [[ "$RESTARTREQUIRED" == "0" ]] && RESTARTREQUIRED=1
+                                 ;;
+		                 '31')      # WAN1MASK
+
+                                           while true >/dev/null;do
+                                             read -p "Configure WAN1 Mask - This defines the WAN1 Mask for Load Balance Mode: " value
+                                             case $value in
+                                               [0123456789xf]* ) SETWAN1MASK=$value; break;;
+                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+                                             esac
+                                           done
+                                           NEWVARIABLES="${NEWVARIABLES} WAN1MASK=|$SETWAN1MASK"
+                                           [[ "$RESTARTREQUIRED" == "0" ]] && RESTARTREQUIRED=1
+                                 ;;
+
 
 	      	                 'e'|'E'|'exit'|'menu')
                                  clear
@@ -779,6 +850,7 @@ logger -p 5 -t "${0##*/}" "System Check - Version: "$VERSION""
 FWVERSIONS='
 386.5
 386.7
+386.9
 388.1
 '
 
@@ -829,7 +901,7 @@ if [ ! -f "$CONFIGFILE" ] >/dev/null;then
 fi
 
 # Turn off email notification for initial load of WAN Failover
-email=0
+email=${email:=0}
 return
 }
 
@@ -1134,6 +1206,18 @@ read -n 1 -s -r -p "Press any key to continue to uninstall..."
     logger -p 5 -t "${0##*/}" "Uninstall - Removed Alias for "$0" as wan-failover"
   fi
 
+  # Check for Config File
+  echo -e "${BLUE}${0##*/} - Uninstall: Deleting $0...${NOCOLOR}"
+  logger -p 5 -t "${0##*/}" "Uninstall - Deleting $0"
+  if [ -f $0 ] >/dev/null;then
+    rm -f $0
+    echo -e "${GREEN}${0##*/} - Uninstall: $0 deleted.${NOCOLOR}"
+    logger -p 5 -t "${0##*/}" "Uninstall - $0 deleted"
+  else
+    echo -e "${RED}${0##*/} - Uninstall: $0 doesn't exist.${NOCOLOR}"
+    logger -p 5 -t "${0##*/}" "Uninstall - $0 doesn't exist"
+  fi
+
   # Cleanup
   cleanup || continue
 
@@ -1378,6 +1462,7 @@ fi
 cronjob ()
 {
 logger -p 6 -t "${0##*/}" "Debug - Function: cronjob"
+
 # Lock Cron Job to ensure only one instance is ran at a time
   CRONLOCKFILE="/var/lock/wan-failover-cron.lock"
   exec 101>"$CRONLOCKFILE" || return
@@ -1385,7 +1470,7 @@ logger -p 6 -t "${0##*/}" "Debug - Function: cronjob"
   trap 'rm -f "$CRONLOCKFILE" || return' EXIT HUP INT QUIT TERM
 
 # Create Cron Job
-if [[ "${mode}" == "cron" ]] || [[ "${mode}" == "install" ]] || [[ "${mode}" == "restart" ]] || [[ "${mode}" == "update" ]] || [[ "${mode}" == "config" ]] >/dev/null;then
+if [[ "$SCHEDULECRONJOB" == "1" ]] && { [[ "${mode}" == "cron" ]] || [[ "${mode}" == "install" ]] || [[ "${mode}" == "restart" ]] || [[ "${mode}" == "update" ]] || [[ "${mode}" == "config" ]] ;} >/dev/null;then
   if [ -z "$(cru l | grep -w "$0" | grep -w "setup_wan_failover_run")" ] >/dev/null;then
     logger -p 5 -st "${0##*/}" "Cron - Creating Cron Job"
     $(cru a setup_wan_failover_run "*/1 * * * *" $0 run) \
@@ -1395,7 +1480,7 @@ if [[ "${mode}" == "cron" ]] || [[ "${mode}" == "install" ]] || [[ "${mode}" == 
     echo -e "${GREEN}Cron Job already scheduled...${NOCOLOR}"
   fi
 # Remove Cron Job
-elif [[ "${mode}" == "kill" ]] || [[ "${mode}" == "uninstall" ]] >/dev/null;then
+elif [[ "$SCHEDULECRONJOB" == "0" ]] || [[ "${mode}" == "kill" ]] || [[ "${mode}" == "uninstall" ]] >/dev/null;then
   if [ ! -z "$(cru l | grep -w "$0" | grep -w "setup_wan_failover_run")" ] >/dev/null;then
     logger -p 3 -st "${0##*/}" "Cron - Removing Cron Job"
     $(cru d setup_wan_failover_run) \
@@ -1674,12 +1759,16 @@ if [ -z "$(sed -n '/\bDEVMODE=\b/p' "$CONFIGFILE")" ] >/dev/null;then
   echo -e "DEVMODE=0" >> $CONFIGFILE
 fi
 if [ -z "$(sed -n '/\bCHECKNVRAM=\b/p' "$CONFIGFILE")" ] >/dev/null;then
-  logger -p 6 -t "${0##*/}" "Debug - Creating CHECKNVRAM Default: Enabled"
-  echo -e "CHECKNVRAM=1" >> $CONFIGFILE
+  logger -p 6 -t "${0##*/}" "Debug - Creating CHECKNVRAM Default: Disabled"
+  echo -e "CHECKNVRAM=0" >> $CONFIGFILE
 fi
 if [ -z "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$CONFIGFILE")" ] >/dev/null;then
   logger -p 6 -t "${0##*/}" "Debug - Creating CUSTOMLOGPATH Default: N/A"
   echo -e "CUSTOMLOGPATH=" >> $CONFIGFILE
+fi
+if [ -z "$(sed -n '/\bSCHEDULECRONJOB=\b/p' "$CONFIGFILE")" ] >/dev/null;then
+  logger -p 6 -t "${0##*/}" "Debug - Creating SCHEDULECRONJOB Default: Enabled"
+  echo -e "SCHEDULECRONJOB=1" >> $CONFIGFILE
 fi
 
 # Cleanup Config file of deprecated options
@@ -3295,15 +3384,6 @@ if [[ "$RESTARTSERVICESMODE" == "1" ]] && [ ! -z "$(cru l | grep -w "YazFi")" ] 
   sh /jffs/scripts/YazFi check \
   && logger -p 4 -st "${0##*/}" "Service Restart - Executed YazFi Check" \
   || logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to execute YazFi Check"
-fi
-
-# Reset VPNMON-R2
-logger -p 6 -t "${0##*/}" "Debug - Checking if VPNMON-R2 is installed, configured, and running"
-if [[ "$RESTARTSERVICESMODE" == "1" ]] && [ ! -z "$(pidof vpnmon-r2.sh)" ] && [ -f "/jffs/scripts/vpnmon-r2.sh" ] && [ -f "/jffs/addons/vpnmon-r2.d/vpnmon-r2.cfg" ] >/dev/null;then
-  logger -p 5 -st "${0##*/}" "Service Restart - Resetting VPNMON-R2"
-  $(sh /jffs/scripts/vpnmon-r2.sh -failover &)\
-  && logger -p 4 -st "${0##*/}" "Service Restart - Reset VPNMON-R2" \
-  || logger -p 2 -st "${0##*/}" "Service Restart - ***Error*** Unable to reset VPNMON-R2"
 fi
 
 # Restart OpenVPN Server Instances
