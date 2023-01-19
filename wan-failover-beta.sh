@@ -170,6 +170,7 @@ fi
 # Menu
 menu () {
         trap 'exit' EXIT HUP INT QUIT TERM
+        [ -f "$CONFIGFILE" ] && { setvariables || return ;}
 
 	clear
 	sed -n '2,6p' "${0}"		# Display Banner
