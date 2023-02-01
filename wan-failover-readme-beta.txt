@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 12/28/2022
-# Version: v1.6.0
+# Date: 01/31/2022
+# Version: v1.6.1-beta2
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -67,7 +67,8 @@ Optional Configuration: ***Options that can be adjusted in the configuration fil
 - WAN1PACKETSIZE: This defines the Packet Size for pinging the WAN1 Target IP Address.  Default: 56 Bytes
 - CUSTOMLOGPATH: This defines a Custom System Log path for Monitor Mode. Default: N/A
 - DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
-- CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Enabled
+- CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Disabled
+- SCHEDULECRONJOB: This defines control whether the Cron Job is scheduled or not for WAN Failover to run.  Default: Enabled
 
 Run Modes:
 - Menu Mode: SSH User Interface for WAN Failover, access by executing script without any arguments.
@@ -77,6 +78,7 @@ Run Modes:
 - Update Mode: Download and update to the latest version.  (v1.3.7 or higher)
 - Configuration Mode: Reconfiguration of WAN Failover to update or change settings. Add the command argument "config" to use this mode (v1.4.2 or higher)
 - Manual Mode: Execute the script in a command console. Add the command argument "manual" to use this mode.
+- Initiate Mode: Execute the script to only create Routing Table Rules, IP Rules, and IPTables Rules.
 - Switch WAN Mode: ***Failover Mode Only*** Manually switch Primary WAN. Add the command argument "switchwan" to use this mode.
 - Email Configuration Mode: Enable or disable email notifications using enable or disable parameter.  Add command argument "email enable" or "email disable".
 - Monitor Mode: Monitor the System Log file for the script. Add the command argument "monitor" to use this mode.
@@ -86,6 +88,24 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
+v1.6.1-beta2 - 01/24/2023
+Installation:
+- During uninstallation, the script will now delete the script file.  This change was necessary for AMTM integration
+
+Enhancements:
+- Added 386.9 to supported Firmware list
+- switchwan argument can now be ran in an unattended mode to passively allow failover that doesn't require User Verification to failover.
+- Added new Configuration Option: SCHEDULECRONJON.  Enabled by default, this will control whether the Cron Job is scheduled or not for WAN Failover to run.
+  This is configurable in the Config Menu under Option 23: Configure Cron Job
+- Added Load Balance Mode Settings to GUI Config Menu for WAN0 FWMark, WAN0 Mask, WAN1 FWMark, and WAN1 Mask.
+- Changed CHECKNVRAM Default to Disabled for performance optimization.  This feature should only be enabled on routers with issues accessing nvram.
+  Existing installations of WAN Failover will need this setting manually changed under Configuration Menu Option 12.
+- Added initiate command argument to only create Routing Table Rules, IP Rules, and IPTables Rules.
+
+Fixes:
+- Removed VPNMON-R2 integration.  VPNMON-R2 is now capable of detecting failover events and resetting itself without WAN Failover.
+- General optimization of script
+
 v1.6.0 - 12/28/2022
 Enhancements:
 - Added SSH User Interface
