@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="wan-failover"
 VERSION="v1.6.0"
-README="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover-readme-beta.txt"
+README="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/wan-failover-readme.txt"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
 LOCKFILE="/var/lock/wan-failover.lock"
