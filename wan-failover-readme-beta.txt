@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 01/31/2022
-# Version: v1.6.1-beta2
+# Date: 02/06/2022
+# Version: v1.6.1-beta3
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -88,7 +88,7 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
-v1.6.1-beta2 - 01/24/2023
+v1.6.1-beta3 - 02/06/2023
 Installation:
 - During uninstallation, the script will now delete the script file.  This change was necessary for AMTM integration
 
@@ -101,10 +101,14 @@ Enhancements:
 - Changed CHECKNVRAM Default to Disabled for performance optimization.  This feature should only be enabled on routers with issues accessing nvram.
   Existing installations of WAN Failover will need this setting manually changed under Configuration Menu Option 12.
 - Added initiate command argument to only create Routing Table Rules, IP Rules, and IPTables Rules.
+- Load Balance Monitor will now check IP Rules by default of every 15 minutes to make sure all rules are properly configured.  This will help resolve issues where the router adds improperly configured IPTables MANGLE rules.
+- Visual Enhancements with prompts.
 
 Fixes:
 - Removed VPNMON-R2 integration.  VPNMON-R2 is now capable of detecting failover events and resetting itself without WAN Failover.
 - General optimization of script
+- Resolved issue where some Failback emails were not being generated
+- Resolved issue where WAN Failover was logging that QoS settings were being applied and restarting services if the non-Primary WAN failed during monitoring
 
 v1.6.0 - 12/28/2022
 Enhancements:
