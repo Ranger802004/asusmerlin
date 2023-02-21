@@ -1681,7 +1681,7 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
     until [ -z "$(ps | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')" ] >/dev/null 2>&1;do
       PIDS="$(ps | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')"
       for PID in ${PIDS};do
-        [ ! -z "$(ps | grep -m 1 -o "${PID}")" ] \
+        [ ! -z "$(ps | grep -m 1 -o "${PID}")" ] >/dev/null 2>&1 \
         && logger -p 1 -st "$ALIAS" "Restart - Killing ${0##*/} Process ID: "${PID}"" \
           && { kill -9 ${PID} \
           && { logger -p 1 -st "$ALIAS" "Restart - Killed ${0##*/} Process ID: "${PID}"" && continue ;} \
@@ -1776,7 +1776,7 @@ elif [[ "$DEVMODE" == "1" ]] >/dev/null 2>&1;then
 fi
 
 # Determine if newer version is available
-REMOTEVERSION="$(echo $(curl "$DOWNLOADPATH" | grep -v "grep" | grep -w "# Version:" | awk '{print $3}'))"
+REMOTEVERSION="$(echo $(/usr/sbin/curl -s "$DOWNLOADPATH" | grep -v "grep" | grep -w "# Version:" | awk '{print $3}'))"
 if [[ "$VERSION" != "$REMOTEVERSION" ]] >/dev/null 2>&1;then
   [[ "$DEVMODE" == "1" ]] >/dev/null 2>&1 && echo -e "${RED}***Dev Mode is Enabled***${NOCOLOR}"
   echo -e "${YELLOW}Script is out of date - Current Version: ${BLUE}"$VERSION"${YELLOW} Available Version: ${BLUE}"$REMOTEVERSION"${NOCOLOR}${NOCOLOR}"
@@ -1793,22 +1793,31 @@ if [[ "$VERSION" != "$REMOTEVERSION" ]] >/dev/null 2>&1;then
       * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
     esac
   done
-  /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 && killscript \
+  { /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 && killscript ;} \
   && logger -p 4 -st "$ALIAS" "Update - ${0##*/} has been updated to version: "$REMOTEVERSION"" \
-  || logger -p 2 -st "$ALIAS" "Update - ***Error*** Unable to update to version: "$REMOTEVERSION" ${0##*/}"
+  || logger -p 2 -st "$ALIAS" "Update - ***Error*** Unable to update to version: "$REMOTEVERSION""
 elif [[ "$VERSION" == "$REMOTEVERSION" ]] >/dev/null 2>&1;then
-  echo -e "${GREEN}Script is up to date - Version: "$VERSION"${NOCOLOR}"
+  # Check Checksum of Script
+  REMOTECHECKSUM="$(/usr/sbin/curl -s $DOWNLOADPATH | md5sum | awk '{print $1}')"
+  if [[ "$CHECKSUM" == "$REMOTECHECKSUM" ]] >/dev/null 2>&1;then
+    echo -e "${GREEN}WAN Failover is up to date - Version: "$VERSION"${NOCOLOR}"
+  else
+    echo -e "${RED}***WAN Failover Checksum Failed*** ${NOCOLOR}"
+    echo -e "${RED}Local Checksum: "$CHECKSUM" ${NOCOLOR}"
+    echo -e "${GREEN}Remote Checksum: "$REMOTECHECKSUM" ${NOCOLOR}"
+  fi
   while true >/dev/null 2>&1;do  
-    read -p "Script is up to date. Do you want to reinstall "${0##*/}" Version: "$VERSION"? ***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
+    read -p "Do you want to reinstall "$ALIAS" Version: "$VERSION"? ***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
     case $yn in
       [Yy]* ) break;;
       [Nn]* ) return;;
       * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
     esac
   done
-  /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 && killscript \
-  && logger -p 4 -st "$ALIAS" "Update - ${0##*/} has reinstalled version: "$VERSION"" \
-  || logger -p 2 -st "$ALIAS" "Update - ***Error*** Unable to reinstall version: "$VERSION" ${0##*/}"
+  { /usr/sbin/curl -s "$DOWNLOADPATH" -o "$0" && chmod 755 $0 && killscript ;} \
+  && logger -p 4 -st "$ALIAS" "Update - $ALIAS has reinstalled version: "$VERSION"" \
+  || logger -p 2 -st "$ALIAS" "Update - ***Error*** Unable to reinstall version: "$VERSION""
+  [ ! -z "${REMOTECHECKSUM+x}" ] >/dev/null 2>&1 && unset REMOTECHECKSUM
 fi
 }
 
@@ -4256,7 +4265,7 @@ while \
   # Return to WAN Status if only WAN1 is Enabled and Connected but is not Primary WAN - Failover Mode
   elif [[ "$WANSMODE" != "lb" ]] >/dev/null 2>&1 \
   && { [[ "$WAN0ENABLE" == "0" ]] >/dev/null 2>&1 && [[ "$WAN1ENABLE" == "1" ]] \
-  && { [[ "$WAN1STATE" == "2" ]] >/dev/null 2>&1 &&  [[ "$WAN1AUXSTATE" == "0" ]] >/dev/null 2>&1 ;} && [[ "$WAN0PRIMARY" == "1" ]] >/dev/null 2>&1 ;};then
+  && { [[ "$WAN1STATE" == "2" ]] >/dev/null 2>&1 && [[ "$WAN1AUXSTATE" == "0" ]] >/dev/null 2>&1 ;} && [[ "$WAN0PRIMARY" == "1" ]] >/dev/null 2>&1 ;};then
     logger -p 3 -st "$ALIAS" "WAN Failover Disabled - Failover Mode: "$WAN1" is the only enabled WAN interface but is not Primary WAN"
     unset wandisabledloop
     [[ "$email" == "0" ]] >/dev/null 2>&1 && email=1
