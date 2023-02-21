@@ -646,20 +646,20 @@ menu ()
                                  ;;
 		                 '5')      # PINGTIMEMIN
                                            while true >/dev/null 2>&1;do  
-                                             read -p "Configure Minimum Ping Time - Value is in seconds: " value
+                                             read -p "Configure Minimum Ping Time - Value is in milliseconds: " value
                                              case $value in
                                                [0123456789]* ) SETPINGTIMEMIN=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in milliseconds***${NOCOLOR}"
                                              esac
                                            done
                                          NEWVARIABLES="${NEWVARIABLES} PINGTIMEMIN=|$SETPINGTIMEMIN"
                                  ;;
 		                 '6')      # PINGTIMEMAX
                                            while true >/dev/null 2>&1;do  
-                                             read -p "Configure Maximum Ping Time - Value is in seconds: " value
+                                             read -p "Configure Maximum Ping Time - Value is in milliseconds: " value
                                              case $value in
                                                [0123456789]* ) SETPINGTIMEMAX=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in milliseconds***${NOCOLOR}"
                                              esac
                                            done
                                          NEWVARIABLES="${NEWVARIABLES} PINGTIMEMAX=|$SETPINGTIMEMAX"
