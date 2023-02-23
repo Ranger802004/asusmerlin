@@ -86,7 +86,6 @@ Run Modes:
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
 
 Release Notes:
-v2.0.0-beta1 - 02/21/2023
 Installation:
 - Uninstallation will prompt if configuration file should be deleted or retained.
 - During uninstallation, the script will now delete the script file.  This change was necessary for AMTM integration
@@ -94,6 +93,7 @@ Installation:
 - Installation will alert and log if Router is not properly configured for WAN Failover to being operation.
 
 Enhancements:
+v2.0.0-beta2 - 02/23/2023
 - Added 386.9 to supported Firmware list
 - switchwan argument can now be ran in an unattended mode to passively allow failover that doesn't require User Verification to failover.
 - Added new Configuration Option: SCHEDULECRONJON.  Enabled by default, this will control whether the Cron Job is scheduled or not for WAN Failover to run.
@@ -106,11 +106,15 @@ Enhancements:
 - Visual Enhancements with prompts.
 - Optimization of script including reducing the number of NVRAM calls during script execution.
 - New Enhanced Status Console
+  - Access from Menu or Command Argument "status"
   - Built in Refresh Interval Added
   - Additional information included (Failover Status, Primary WAN, Gateway MAC Address, Ping Time, etc).
   - Added new configuration items PINGTIMEMIN (Ping Time will show green in Console), PINGTIMEMAX (Ping Time will show red in console), STATUSCHECK (Default interval between Status Console refreshes).
 - System Log Events will now show as "wan-failover" instead of "wan-failover.sh"
 - System Log Events for Failover Mode WAN Switches will dynamically be listed under "Failover" or "Failback" instead of "WAN Switch"
+- System Log Events will now log if Ping Time Maximum is reached for WAN0 or WAN1.
+- System Log Events will now log if an NVRAM Check Failure occured with CHECKNVRAM Enabled.
+- Email Notifications will now display if QoS ATM is enabled.
 
 Fixes:
 - Removed VPNMON-R2 integration.  VPNMON-R2 is now capable of detecting failover events and resetting itself without WAN Failover.
@@ -118,6 +122,8 @@ Fixes:
 - Resolved issue where WAN Failover was logging that QoS settings were being applied and restarting services if the non-Primary WAN failed during monitoring
 - Various fixes to improve reliability and integrity of script.
 - Monitor and Capture Mode will no longer show messages from tail command stating the file path has changed.
+- Fixed Restart Mode not killing all PIDs.
+- Added a check if WAN was changed by router firmware before making it to Failover function so it doesn't attempt to switch back Primary WAN to a down WAN interface.
 
 Deprecated:
 - Removed Configuration Mode, use Configuration Menu or Configuration File to change settings.
