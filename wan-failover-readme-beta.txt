@@ -83,7 +83,8 @@ Run Modes:
 - Capture Mode: Capture the System Log for WAN Failover events and generate a temporary file under /tmp/ named wan-failover-<DATESTAMP>.log.  Example: /tmp/wan-failover-2022-11-09-22:09:41-CST.log
 - Restart Mode: Restart the script if it is currently running.  Add the command argument "restart" to use this mode. (v1.5.5 or higher)
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
-- Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
+- Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the command argument "cron" to use this mode.
+- Status Console Mode: This will display the Status Console for WAN Failover.  Add the command argument "status" to use this mode.
 
 Release Notes:
 Installation:
