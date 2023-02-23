@@ -87,6 +87,7 @@ Run Modes:
 - Status Console Mode: This will display the Status Console for WAN Failover.  Add the command argument "status" to use this mode.
 
 Release Notes:
+v2.0.0-beta2 - 02/23/2023
 Installation:
 - Uninstallation will prompt if configuration file should be deleted or retained.
 - During uninstallation, the script will now delete the script file.  This change was necessary for AMTM integration
@@ -94,7 +95,6 @@ Installation:
 - Installation will alert and log if Router is not properly configured for WAN Failover to being operation.
 
 Enhancements:
-v2.0.0-beta2 - 02/23/2023
 - Added 386.9 to supported Firmware list
 - switchwan argument can now be ran in an unattended mode to passively allow failover that doesn't require User Verification to failover.
 - Added new Configuration Option: SCHEDULECRONJON.  Enabled by default, this will control whether the Cron Job is scheduled or not for WAN Failover to run.
