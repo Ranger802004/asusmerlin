@@ -3,7 +3,7 @@
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 2/23/2023
-# Version: v2.0.0-beta2
+# Version: v2.0.0-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.0-beta2"
+VERSION="v2.0.0-beta3"
 CHECKSUM="$(md5sum $0 | awk '{print $1}')"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
@@ -67,6 +67,8 @@ elif [[ "${mode}" == "status" ]] >/dev/null 2>&1;then
   else
     return
   fi
+elif [[ "${mode}" == "config" ]] >/dev/null 2>&1;then
+  config || return
 elif [[ "${mode}" == "install" ]] >/dev/null 2>&1;then
   if tty >/dev/null 2>&1;then
     echo -e ""${BOLD}"${BLUE}$ALIAS - Install Mode${NOCOLOR}"
@@ -80,7 +82,7 @@ elif [[ "${mode}" == "run" ]] >/dev/null 2>&1;then
   exec 100>"$LOCKFILE" || exit
   flock -x -n 100 || { if tty >/dev/null 2>&1;then echo -e "${RED}***$ALIAS is already running***${NOCOLOR}";fi && exit ;}
   logger -p 6 -t "$ALIAS" "Debug - Locked File: "$LOCKFILE""
-  trap 'cleanup && kill -9 "$$"' EXIT HUP INT QUIT TERM STOP
+  trap 'cleanup && kill -9 "$$"' KILL EXIT HUP INT QUIT TERM STOP
   logger -p 6 -t "$ALIAS" "Debug - Trap set to remove "$LOCKFILE" on exit"
   logger -p 6 -t "$ALIAS" "Debug - Script Mode: "${mode}""
   systemcheck || return
@@ -93,7 +95,7 @@ elif [[ "${mode}" == "manual" ]] >/dev/null 2>&1;then
   exec 100>"$LOCKFILE" || return
   flock -x -n 100 || { if tty >/dev/null 2>&1;then echo -e "${RED}***$ALIAS is already running***${NOCOLOR}";fi && exit ;}
   logger -p 6 -t "$ALIAS" "Debug - Locked File: "$LOCKFILE""
-  trap 'cleanup && kill -9 "$$"' EXIT HUP INT QUIT TERM STOP
+  trap 'cleanup && kill -9 "$$"' KILL EXIT HUP INT QUIT TERM STOP
   logger -p 6 -t "$ALIAS" "Debug - Trap set to remove "$LOCKFILE" on exit"
   logger -p 6 -t "$ALIAS" "Debug - Script Mode: "${mode}""
   systemcheck || return
@@ -182,6 +184,9 @@ fi
 # Menu
 menu ()
 {
+        # Set Mode back to Menu if Changed
+        [[ "$mode" != "menu" ]] >/dev/null 2>&1 && mode="menu"
+
         # Get Global WAN Parameters
         if [ -z "${globalwansync+x}" ] >/dev/null 2>&1;then
           GETWANMODE=2
@@ -235,6 +240,7 @@ menu ()
                         else
                           README=""$REPO"wan-failover-readme.txt"
                         fi
+                        clear
                         /usr/sbin/curl --connect-timeout 30 --max-time 30 --url $README --ssl-reqd || echo -e "${RED}***Unable to access Readme***${NOCOLOR}"
 		;;
 		'3')    # install
@@ -246,597 +252,7 @@ menu ()
 			uninstall
 		;;
 		'5')    # config
-                        # Check for configuration and load configuration
-                        if [ ! -f "$CONFIGFILE" ] >/dev/null 2>&1;then
-                          echo -e "${RED}WAN Failover currently has no configuration file present{$NOCOLOR}"
-                        elif [ -f "$CONFIGFILE" ] >/dev/null 2>&1;then
-                          setvariables || return
-                        fi
-                        printf "\n  ${BOLD}Failover Monitoring Settings:${NOCOLOR}\n"
-                        option=1
-                        printf "  ($option)  Configure WAN0 Target           WAN0 Target: ${BLUE}$WAN0TARGET${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option)  Configure WAN1 Target           WAN1 Target: ${BLUE}$WAN1TARGET${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option)  Configure Ping Count            Ping Count: ${BLUE}$PINGCOUNT${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option)  Configure Ping Timeout          Ping Timeout: ${BLUE}$PINGTIMEOUT${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option)  Configure Ping Time Min         Ping Time Minimum: ${GREEN}"$PINGTIMEMIN"ms${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option)  Configure Ping Time Max         Ping Time Maximum: ${RED}"$PINGTIMEMAX"ms${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "\n  ${BOLD}QoS Settings:${NOCOLOR}\n"
-                        printf "  ($option)  Configure WAN0                  WAN0 QoS: " && { [[ "$WAN0_QOS_ENABLE" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-                        option="$(($option+1))"
-                        printf "  ($option)  Configure WAN1                  WAN1 QoS: " && { [[ "$WAN1_QOS_ENABLE" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-                        option="$(($option+1))"
-                        printf "\n  ${BOLD}Optional Settings:${NOCOLOR}\n"
-                        printf "  ($option)  Configure Packet Loss Logging   Packet Loss Logging: " && { [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure Boot Delay Timer      Boot Delay Timer: ${BLUE}$BOOTDELAYTIMER Seconds${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure Email Notifications   Email Notifications: " && { [[ "$SENDEMAIL" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN0 Packet Size      WAN0 Packet Size: ${BLUE}$WAN0PACKETSIZE Bytes${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN1 Packet Size      WAN1 Packet Size: ${BLUE}$WAN1PACKETSIZE Bytes${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure NVRAM Checks          NVRAM Checks: " && { [[ "$CHECKNVRAM" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure Dev Mode              Dev Mode: " && { [[ "$DEVMODE" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "Disabled" ;} && printf "\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure Custom Log Path       Custom Log Path: " && { [ ! -z "$CUSTOMLOGPATH" ] >/dev/null 2>&1 && printf "${BLUE}$CUSTOMLOGPATH${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-                        option="$(($option+1))"
-                        printf "\n  ${BOLD}Advanced Settings:${NOCOLOR}  ${RED}***Recommended to leave default unless necessary to change***${NOCOLOR}\n"
-                        printf "  ($option) Configure WAN0 Route Table      WAN0 Route Table: ${BLUE}$WAN0ROUTETABLE${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN1 Route Table      WAN1 Route Table: ${BLUE}$WAN1ROUTETABLE${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN0 Target Priority  WAN0 Target Priority: ${BLUE}$WAN0TARGETRULEPRIORITY${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN1 Target Priority  WAN1 Target Priority: ${BLUE}$WAN1TARGETRULEPRIORITY${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure Recursive Ping Check  Recursive Ping Check: ${BLUE}$RECURSIVEPINGCHECK${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN Disabled Timer    WAN Disabled Timer: ${BLUE}$WANDISABLEDSLEEPTIMER Seconds${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure Email Boot Delay      Email Boot Delay: ${BLUE}$SKIPEMAILSYSTEMUPTIME Seconds${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure Email Timeout         Email Timeout: ${BLUE}$EMAILTIMEOUT Seconds${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure Cron Job              Cron Job: " && { [[ "$SCHEDULECRONJOB" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure Status Check          Status Check Interval: ${BLUE}$STATUSCHECK Seconds${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "\n  ${BOLD}Load Balance Mode Settings:${NOCOLOR}\n"
-                        printf "  ($option) Configure LB Rule Priority      Load Balance Rule Priority: ${BLUE}$LBRULEPRIORITY${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${BLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${BLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN0 FWMark           WAN0 FWMark: ${BLUE}$WAN0MARK${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN1 FWMark           WAN1 FWMark: ${BLUE}$WAN1MARK${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN0 Mask             WAN0 Mask: ${BLUE}$WAN0MASK${NOCOLOR}\n"
-                        option="$(($option+1))"
-                        printf "  ($option) Configure WAN1 Mask             WAN1 Mask: ${BLUE}$WAN1MASK${NOCOLOR}\n"
-
-	                printf "\n  (e)  Main Menu                       Return to Main Menu\n"
-                        printf "\nMake a selection: "
-
-                        # Set Variables for Configuration Menu
-                        [ -z "${NEWVARIABLES+x}" ] >/dev/null 2>&1 && NEWVARIABLES=""
-                        [ -z "${RESTARTREQUIRED+x}" ] >/dev/null 2>&1 && RESTARTREQUIRED="0"
-	                read -r configinput
-	                case "${configinput}" in
-		                 '1')      # WAN0TARGET
-                                           while true >/dev/null 2>&1;do  
-                                           read -p "Configure WAN0 Target IP Address - Will be routed via "$(nvram get wan0_gateway & nvramcheck)" dev "$(nvram get wan0_gw_ifname & nvramcheck)": " ip
-                                           if expr "$ip" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null 2>&1;then
-                                             for i in 1 2 3 4;do
-                                               if [ $(echo "$ip" | cut -d. -f$i) -gt "255" ] >/dev/null 2>&1;then
-                                                 echo -e "${RED}***"$ip" is an Invalid IP Address***${NOCOLOR}"
-                                                 logger -p 6 -t "$ALIAS" "Debug - WAN0 Target IP Address: "$ip" is an Invalid IP Address"
-                                                 break 1
-                                               elif [[ "$(nvram get wan0_gateway & nvramcheck)" == "$ip" ]] >/dev/null 2>&1;then
-                                                 echo -e "${RED}***"$ip" is the WAN0 Gateway IP Address***${NOCOLOR}"
-                                                 logger -p 6 -t "$ALIAS" "WAN0 Target IP Address: "$ip" is WAN0 Gateway IP Address"
-                                                 break 1
-                                               else
-                                                 SETWAN0TARGET=$ip
-                                                 logger -p 6 -t "$ALIAS" "Debug - WAN0 Target IP Address: "$ip""
-                                                 break 2
-                                               fi
-                                             done
-                                           else  
-                                             echo -e "${RED}***"$ip" is an Invalid IP Address***${NOCOLOR}"
-                                             logger -p 6 -t "$ALIAS" "Debug - WAN0 Target IP Address: "$ip" is an Invalid IP Address"
-                                           fi
-                                         done
-                                         NEWVARIABLES="${NEWVARIABLES} WAN0TARGET=|$SETWAN0TARGET"
-                                         [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '2')      # WAN1TARGET
-                                           while true >/dev/null 2>&1;do  
-                                           read -p "Configure WAN1 Target IP Address - Will be routed via "$(nvram get wan1_gateway & nvramcheck)" dev "$(nvram get wan1_gw_ifname & nvramcheck)": " ip
-                                           if expr "$ip" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null 2>&1;then
-                                             for i in 1 2 3 4;do
-                                               if [ $(echo "$ip" | cut -d. -f$i) -gt "255" ] >/dev/null 2>&1;then
-                                                 echo -e "${RED}***"$ip" is an Invalid IP Address***${NOCOLOR}"
-                                                 logger -p 6 -t "$ALIAS" "Debug - WAN1 Target IP Address: "$ip" is an Invalid IP Address"
-                                                 break 1
-                                               elif [[ "$(nvram get wan1_gateway & nvramcheck)" == "$ip" ]] >/dev/null 2>&1;then
-                                                 echo -e "${RED}***"$ip" is the WAN1 Gateway IP Address***${NOCOLOR}"
-                                                 logger -p 6 -t "$ALIAS" "WAN1 Target IP Address: "$ip" is WAN0 Gateway IP Address"
-                                                 break 1
-                                               else
-                                                 SETWAN1TARGET=$ip
-                                                 logger -p 6 -t "$ALIAS" "Debug - WAN1 Target IP Address: "$ip""
-                                                 break 2
-                                               fi
-                                             done
-                                           else  
-                                             echo -e "${RED}***"$ip" is an Invalid IP Address***${NOCOLOR}"
-                                             logger -p 6 -t "$ALIAS" "Debug - WAN1 Target IP Address: "$ip" is an Invalid IP Address"
-                                           fi
-                                         done
-                                         NEWVARIABLES="${NEWVARIABLES} WAN1TARGET=|$SETWAN1TARGET"
-                                         [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '3')      # PINGCOUNT
-                                           while true >/dev/null 2>&1;do  
-                                             read -p "Configure Ping Count - This is how many consecutive times a ping will fail before a WAN connection is considered disconnected: " value
-                                             case $value in
-                                               [0123456789]* ) SETPINGCOUNT=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter a valid number***${NOCOLOR}"
-                                             esac
-                                           done
-                                         NEWVARIABLES="${NEWVARIABLES} PINGCOUNT=|$SETPINGCOUNT"
-                                         [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '4')      # PINGTIMEOUT
-                                           while true >/dev/null 2>&1;do  
-                                             read -p "Configure Ping Timeout - Value is in seconds: " value
-                                             case $value in
-                                               [0123456789]* ) SETPINGTIMEOUT=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
-                                             esac
-                                           done
-                                         NEWVARIABLES="${NEWVARIABLES} PINGTIMEOUT=|$SETPINGTIMEOUT"
-                                         [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '5')      # PINGTIMEMIN
-                                           while true >/dev/null 2>&1;do  
-                                             read -p "Configure Minimum Ping Time - Value is in milliseconds: " value
-                                             case $value in
-                                               [0123456789]* ) SETPINGTIMEMIN=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in milliseconds***${NOCOLOR}"
-                                             esac
-                                           done
-                                         NEWVARIABLES="${NEWVARIABLES} PINGTIMEMIN=|$SETPINGTIMEMIN"
-                                 ;;
-		                 '6')      # PINGTIMEMAX
-                                           while true >/dev/null 2>&1;do  
-                                             read -p "Configure Maximum Ping Time - Value is in milliseconds: " value
-                                             case $value in
-                                               [0123456789]* ) SETPINGTIMEMAX=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in milliseconds***${NOCOLOR}"
-                                             esac
-                                           done
-                                         NEWVARIABLES="${NEWVARIABLES} PINGTIMEMAX=|$SETPINGTIMEMAX"
-                                 ;;
-		                 '7')      # WAN0_QOS_ENABLE
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Do you want to enable QoS for WAN0? ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SETWAN0_QOS_ENABLE=1;;
-                                               [Nn]* ) SETWAN0_QOS_ENABLE=0;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                             [[ "$SETWAN0_QOS_ENABLE" == "0" ]] >/dev/null 2>&1 && { SETWAN0_QOS_IBW=0 ; SETWAN0_QOS_OBW=0 ;} && break 1
-                                             read -p "Do you want to use Automatic QoS Settings for WAN0? ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SETWAN0_QOS_IBW=0;SETWAN0_QOS_OBW=0; break 1;;
-                                               [Nn]* ) ;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                             read -p "Configure WAN0 QoS Download Bandwidth - Value is in Mbps: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN0_QOS_IBW=$(($value*1024));;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
-                                             esac
-                                             read -p "Configure WAN0 QoS Upload Bandwidth - Value is in Mbps: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN0_QOS_OBW=$(($value*1024)); break 1;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN0_QOS_ENABLE=|$SETWAN0_QOS_ENABLE WAN0_QOS_IBW=|$SETWAN0_QOS_IBW WAN0_QOS_OBW=|$SETWAN0_QOS_OBW"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '8')      # WAN1_QOS_ENABLE
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Do you want to enable QoS for WAN1? ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SETWAN1_QOS_ENABLE=1;;
-                                               [Nn]* ) SETWAN1_QOS_ENABLE=0;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                             [[ "$SETWAN1_QOS_ENABLE" == "0" ]] >/dev/null 2>&1 && { SETWAN1_QOS_IBW=0 ; SETWAN1_QOS_OBW=0 ;} && break 1
-                                             read -p "Do you want to use Automatic QoS Settings for WAN1? ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SETWAN1_QOS_IBW=0;SETWAN1_QOS_OBW=0; break 1;;
-                                               [Nn]* ) ;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                             read -p "Configure WAN1 QoS Download Bandwidth - Value is in Mbps: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN1_QOS_IBW=$(($value*1024));;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
-                                             esac
-                                             read -p "Configure WAN1 QoS Upload Bandwidth - Value is in Mbps: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN1_QOS_OBW=$(($value*1024)); break 1;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN1_QOS_ENABLE=|$SETWAN1_QOS_ENABLE WAN1_QOS_IBW=|$SETWAN1_QOS_IBW WAN1_QOS_OBW=|$SETWAN1_QOS_OBW"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '9')      # PACKETLOSSLOGGING
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Do you want to enable Packet Loss Logging? ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SETPACKETLOSSLOGGING=1; break;;
-                                               [Nn]* ) SETPACKETLOSSLOGGING=0; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} PACKETLOSSLOGGING=|$SETPACKETLOSSLOGGING"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '10')      # BOOTDELAYTIMER
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure Boot Delay Timer - This will delay the script from executing until System Uptime reaches this time (seconds): " value
-                                             case $value in
-                                               [0123456789]* ) SETBOOTDELAYTIMER=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} BOOTDELAYTIMER=|$SETBOOTDELAYTIMER"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '11')      # SENDEMAIL
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Do you want to enable Email Notifications? ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SETSENDEMAIL=1; break;;
-                                               [Nn]* ) SETSENDEMAIL=0; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} SENDEMAIL=|$SETSENDEMAIL"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '12')      # WAN0PACKETSIZE
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN0 Packet Size - This defines the Packet Size (Bytes) for pinging the WAN0 Target IP Address: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN0PACKETSIZE=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in Bytes***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN0PACKETSIZE=|$SETWAN0PACKETSIZE"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '13')      # WAN1PACKETSIZE
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN1 Packet Size - This defines the Packet Size (Bytes) for pinging the WAN1 Target IP Address: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN1PACKETSIZE=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in Bytes***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN1PACKETSIZE=|$SETWAN1PACKETSIZE"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '14')      # CHECKNVRAM
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Do you want to enable NVRAM Checks? This defines if the Script is set to perform NVRAM checks before peforming key functions: ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SETCHECKNVRAM=1; break;;
-                                               [Nn]* ) SETCHECKNVRAM=0; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} CHECKNVRAM=|$SETCHECKNVRAM"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '15')      # DEVMODE
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Do you want to enable Developer Mode? This defines if the Script is set to Developer Mode where updates will apply beta releases: ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SETDEVMODE=1; break;;
-                                               [Nn]* ) SETDEVMODE=0; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} DEVMODE=|$SETDEVMODE"
-                                 ;;
-		                 '16')      # CUSTOMLOGPATH
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure Custom Log Path - This defines a Custom System Log path for Monitor/Capture Mode: " value
-                                             case $value in
-                                               [:.-_/0123456789abcdefghijklmnopqstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ]* ) SETCUSTOMLOGPATH=$value; break;;
-                                               "" ) SETCUSTOMLOGPATH=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} CUSTOMLOGPATH=|$SETCUSTOMLOGPATH"
-                                 ;;
-		                 '17')      # WAN0ROUTETABLE
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN0 Route Table - This defines the Routing Table for WAN0, it is recommended to leave this default unless necessary to change: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN0ROUTETABLE=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN0ROUTETABLE=|$SETWAN0ROUTETABLE"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '18')      # WAN1ROUTETABLE
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN1 Route Table - This defines the Routing Table for WAN1, it is recommended to leave this default unless necessary to change: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN1ROUTETABLE=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN1ROUTETABLE=|$SETWAN1ROUTETABLE"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '19')      # WAN0TARGETRULEPRIORITY
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN0 Target Rule Priority - This defines the IP Rule Priority for the WAN0 Target IP Address: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN0TARGETRULEPRIORITY=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN0TARGETRULEPRIORITY=|$SETWAN0TARGETRULEPRIORITY"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '20')      # WAN1TARGETRULEPRIORITY
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN1 Target Rule Priority - This defines the IP Rule Priority for the WAN1 Target IP Address: " value
-                                             case $value in
-                                               [0123456789]* ) SETWAN1TARGETRULEPRIORITY=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN1TARGETRULEPRIORITY=|$SETWAN1TARGETRULEPRIORITY"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '21')      # RECURSIVEPINGCHECK
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure Recursive Ping Check - This defines how many times a WAN Interface has to fail target pings to be considered failed (Ping Count x RECURSIVEPINGCHECK), this setting is for circumstances where ICMP Echo / Response can be disrupted by ISP DDoS Prevention or other factors.  It is recommended to leave this setting default: " value
-                                             case $value in
-                                               [0123456789]* ) SETRECURSIVEPINGCHECK=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} RECURSIVEPINGCHECK=|$SETRECURSIVEPINGCHECK"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '22')      # WANDISABLEDSLEEPTIMER
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN Disabled Sleep Timer - This is how many seconds the WAN Failover pauses and checks again if Dual WAN, Failover/Load Balance Mode, or WAN links are disabled/disconnected: " value
-                                             case $value in
-                                               [0123456789]* ) SETWANDISABLEDSLEEPTIMER=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WANDISABLEDSLEEPTIMER=|$SETWANDISABLEDSLEEPTIMER"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '23')      # SKIPEMAILSYSTEMUPTIME
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure Email Boot Delay Timer - This will delay sending emails while System Uptime is less than this time: " value
-                                             case $value in
-                                               [0123456789]* ) SETSKIPEMAILSYSTEMUPTIME=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} SKIPEMAILSYSTEMUPTIME=|$SETSKIPEMAILSYSTEMUPTIME"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '24')      # EMAILTIMEOUT
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure Email Timeout - This defines the timeout for sending an email after a Failover event: " value
-                                             case $value in
-                                               [0123456789]* ) SETEMAILTIMEOUT=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} EMAILTIMEOUT=|$SETEMAILTIMEOUT"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '25')      # SCHEDULECRONJOB
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Do you want to enable Cron Job? This defines if the script will create the Cron Job: ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SCHEDULECRONJOB=1; break;;
-                                               [Nn]* ) SCHEDULECRONJOB=0; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} SCHEDULECRONJOB=|$SCHEDULECRONJOB"
-                                 ;;
-		                 '26')      # STATUSCHECK
-                                           while true >/dev/null 2>&1;do  
-                                             read -p "Configure Status Check Interval - Value is in seconds: " value
-                                             case $value in
-                                               [0123456789]* ) SETSTATUSCHECK=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
-                                             esac
-                                           done
-                                         NEWVARIABLES="${NEWVARIABLES} STATUSCHECK=|$SETSTATUSCHECK"
-                                 ;;
-		                 '26')      # LBRULEPRIORITY
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure Load Balance Rule Priority - This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change: " value
-                                             case $value in
-                                               [0123456789]* ) SETLBRULEPRIORITY=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} LBRULEPRIORITY=|$SETLBRULEPRIORITY"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '27')      # OVPNSPLITTUNNEL
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Do you want to enable OpenVPN Split Tunneling? This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode: ***Enter Y for Yes or N for No***" yn
-                                             case $yn in
-                                               [Yy]* ) SETOVPNSPLITTUNNEL=1; break;;
-                                               [Nn]* ) SETOVPNSPLITTUNNEL=0; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} OVPNSPLITTUNNEL=|$SETOVPNSPLITTUNNEL"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '28')      # OVPNWAN0PRIORITY
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure OpenVPN WAN0 Priority - This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is Disabled: " value
-                                             case $value in
-                                               [0123456789]* ) SETOVPNWAN0PRIORITY=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} OVPNWAN0PRIORITY=|$SETOVPNWAN0PRIORITY"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '29')      # OVPNWAN1PRIORITY
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure OpenVPN WAN1 Priority - This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is Disabled: " value
-                                             case $value in
-                                               [0123456789]* ) SETOVPNWAN1PRIORITY=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} OVPNWAN1PRIORITY=|$SETOVPNWAN1PRIORITY"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '30')      # WAN0MARK
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN0 FWMark - This defines the WAN0 FWMark for Load Balance Mode: " value
-                                             case $value in
-                                               [0123456789xf]* ) SETWAN0MARK=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN0MARK=|$SETWAN0MARK"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '31')      # WAN1MARK
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN1 FWMark - This defines the WAN1 FWMark for Load Balance Mode: " value
-                                             case $value in
-                                               [0123456789xf]* ) SETWAN1MARK=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN1MARK=|$SETWAN1MARK"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '32')      # WAN0MASK
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN0 Mask - This defines the WAN0 Mask for Load Balance Mode: " value
-                                             case $value in
-                                               [0123456789xf]* ) SETWAN0MASK=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN0MASK=|$SETWAN0MASK"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-		                 '33')      # WAN1MASK
-
-                                           while true >/dev/null 2>&1;do
-                                             read -p "Configure WAN1 Mask - This defines the WAN1 Mask for Load Balance Mode: " value
-                                             case $value in
-                                               [0123456789xf]* ) SETWAN1MASK=$value; break;;
-                                               * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-                                             esac
-                                           done
-                                           NEWVARIABLES="${NEWVARIABLES} WAN1MASK=|$SETWAN1MASK"
-                                           [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
-                                 ;;
-
-
-	      	                 'e'|'E'|'exit'|'menu')
-                                 clear
-		                 menu
-                                 break
-		                 ;;
-
-
-                        esac
-
-                        # Configure Changed Setting in Configuration File
-                        if [ ! -z "$NEWVARIABLES" ] >/dev/null 2>&1;then
-                          for NEWVARIABLE in ${NEWVARIABLES};do
-                            if [ -z "$(cat $CONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')")" ] >/dev/null 2>&1 && [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" != "CUSTOMLOGPATH=" ]] >/dev/null 2>&1;then
-                              echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" >> $CONFIGFILE
-                              sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $CONFIGFILE
-                            elif [ ! -z "$(cat $CONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')")" ] >/dev/null 2>&1 && [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" != "CUSTOMLOGPATH=" ]] >/dev/null 2>&1;then
-                              sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $CONFIGFILE
-                            elif [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" == "CUSTOMLOGPATH=" ]] >/dev/null 2>&1;then
-                              [ ! -z "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1 && sed -i '/CUSTOMLOGPATH=/d' $CONFIGFILE
-                              echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')" >> $CONFIGFILE
-                            fi
-                          done
-                          [[ "$RESTARTREQUIRED" == "1" ]] >/dev/null 2>&1 && echo -e "${RED}***This change will require WAN Failover to restart to take effect***${NOCOLOR}"
-                        fi
-                        # Unset Variables
-                        [ ! -z "${NEWVARIABLES+x}" ] >/dev/null 2>&1 && unset NEWVARIABLES
-                        [ ! -z "${configinput+x}" ] >/dev/null 2>&1 && unset configinput
-                        [ ! -z "${value+x}" ] >/dev/null 2>&1 && unset value
-                        [ ! -z "${RESTARTREQUIRED+x}" ] >/dev/null 2>&1 && unset RESTARTREQUIRED
-	                PressEnter
-	                menu
+                    config || return
 		;;
 		'6')    # update
 			mode="update"
@@ -1048,7 +464,7 @@ while [ -z "${systemparameterssync+x}" ] >/dev/null 2>&1 || [[ "$systemparameter
     [ ! -z "$IPVERSION" ] >/dev/null 2>&1 || { unset IPVERSION && continue ;}
   fi
 
-  systemparameterssync=1
+ systemparameterssync=1
 done
 
 # Get Active System Parameters
@@ -1138,6 +554,19 @@ while [ -z "${activesystemsync+x}" ] >/dev/null 2>&1 || [[ "$activesystemsync" =
     DDNSHOSTNAME="$(nvram get ddns_hostname_x & nvramcheck)"
     [ ! -z "$DDNSHOSTNAME" ] >/dev/null 2>&1 || DDNSHOSTNAME="$zDDNSHOSTNAME"
   fi
+
+  # OVPNSERVERINSTANCES
+  if [ -z "${OVPNSERVERINSTANCES+x}" ] >/dev/null 2>&1 || [ -z "${zOVPNSERVERINSTANCES+x}" ] >/dev/null 2>&1;then
+    OVPNSERVERINSTANCES="$(nvram get nvram get vpn_serverx_start & nvramcheck)"
+    [ ! -z "$OVPNSERVERINSTANCES" ] >/dev/null 2>&1 \
+    && zOVPNSERVERINSTANCES="$OVPNSERVERINSTANCES" \
+    || { unset OVPNSERVERINSTANCES ; unset zOVPNSERVERINSTANCES && continue ;}
+  else
+    [[ "$zOVPNSERVERINSTANCES" != "$OVPNSERVERINSTANCES" ]] >/dev/null 2>&1 && zOVPNSERVERINSTANCES="$OVPNSERVERINSTANCES"
+    OVPNSERVERINSTANCES="$(nvram get nvram get vpn_serverx_start & nvramcheck)"
+    [ ! -z "$OVPNSERVERINSTANCES" ] >/dev/null 2>&1 || OVPNSERVERINSTANCES="$zOVPNSERVERINSTANCES"
+  fi
+
   activesystemsync=1
 done
 
@@ -1372,6 +801,12 @@ for WANPREFIX in ${WANPREFIXES};do
   fi
 done
 
+# Unset Variables
+[ ! -z "${TARGET+x}" ] >/dev/null 2>&1 && unset TARGET
+[ ! -z "${TABLE+x}" ] >/dev/null 2>&1 && unset TABLE
+[ ! -z "${GATEWAY+x}" ] >/dev/null 2>&1 && unset GATEWAY
+[ ! -z "${GWIFNAME+x}" ] >/dev/null 2>&1 && unset GWIFNAME
+
 # Remove Lock File
 logger -p 6 -t "$ALIAS" "Debug - Checking for Lock File: "$LOCKFILE""
 if [ -f "$LOCKFILE" ] >/dev/null 2>&1;then
@@ -1416,19 +851,19 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
   done
   # Determine PIDs to kill
   logger -p 6 -t "$ALIAS" "Debug - Selecting PIDs to kill"
-  PIDS="$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')"
+  PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
 
   # Schedule CronJob  
   logger -p 6 -t "$ALIAS" "Debug - Calling CronJob to be rescheduled"
   $(cronjob >/dev/null &) || return
 
   logger -p 6 -t "$ALIAS" "Debug - ***Checking if PIDs array is null*** Process ID: "$PIDS""
-  if [ ! -z "$PIDS" ] >/dev/null 2>&1;then
+  if [ ! -z "${PIDS+x}" ] >/dev/null 2>&1 && [ ! -z "$PIDS" ] >/dev/null 2>&1;then
     # Schedule kill for Old PIDs
     logger -p 1 -st "$ALIAS" "Restart - Restarting "$ALIAS" ***This can take up to approximately 1 minute***"
     logger -p 6 -t "$ALIAS" "Debug - Waiting to kill script until seconds into the minute are above 40 seconds or below 45 seconds"
     CURRENTSYSTEMUPTIME="$(awk -F "." '{print $1}' "/proc/uptime")"
-    while [[ "$(date "+%S")" -lt "40" ]] >/dev/null 2>&1 || [[ "$(date "+%S")" -gt "45" ]] >/dev/null 2>&1;do
+    while [[ "$(date "+%-S")" -gt "45" ]] >/dev/null 2>&1;do
       [[ "${mode}" == "update" ]] >/dev/null 2>&1 && break 1
       if tty >/dev/null 2>&1;then
         WAITTIMER=$(($(awk -F "." '{print $1}' "/proc/uptime")-$CURRENTSYSTEMUPTIME))
@@ -1446,21 +881,23 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
     [ ! -z "${WAITTIMER+X}" ] >/dev/null 2>&1 && unset WAITTIMER
 
     # Kill PIDs
-    until [ -z "$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')" ] >/dev/null 2>&1;do
-      PIDS="$(ps | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')"
+    PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+    until [ -z "$PIDS" ] >/dev/null 2>&1;do
+      [ -z "$PIDS" ] && break
       for PID in ${PIDS};do
-        [ ! -z "$(ps | grep -v "grep" | grep -w "${PID}" | awk '{print $1}')" ] \
+        echo "$PIDS"
+        [ ! -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' | grep -o "${PID}")" ] \
         && logger -p 1 -st "$ALIAS" "Restart - Killing "$ALIAS" Process ID: "${PID}"" \
           && { kill -9 ${PID} \
-          && { logger -p 1 -st "$ALIAS" "Restart - Killed "$ALIAS" Process ID: "${PID}"" && continue ;} \
-          || { [ -z "$(ps | grep -v "grep" | grep -w "${PID}" | awk '{print $1}')" ] >/dev/null 2>&1 && continue || logger -p 2 -st "$ALIAS" "Restart - ***Error*** Unable to kill "$ALIAS" Process ID: "${PID}"" ;} ;} \
-        || continue
+          && { PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 1 -st "$ALIAS" "Restart - Killed "$ALIAS" Process ID: "${PID}"" && continue ;} \
+          || { [ -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' | grep -o "${PID}")" ] >/dev/null 2>&1 && PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue || PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 2 -st "$ALIAS" "Restart - ***Error*** Unable to kill "$ALIAS" Process ID: "${PID}"" ;} ;} \
+        || PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue
       done
     done
     # Execute Cleanup
     . $CONFIGFILE
     cleanup || continue
-  elif [ -z "$PIDS" ] >/dev/null 2>&1;then
+  elif [ -z "${PIDS+x}" ] >/dev/null 2>&1 || [ -z "$PIDS" ] >/dev/null 2>&1;then
     # Log no PIDs found and return
     logger -p 2 -st "$ALIAS" "Restart - ***"$ALIAS" is not running*** No Process ID Detected"
     if tty >/dev/null 2>&1;then
@@ -1469,6 +906,7 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
       printf '\033[K'
     fi
   fi
+  [ ! -z "${PIDS+x}" ] >/dev/null 2>&1 && unset PIDS
 
   # Check for Restart from Cron Job
   RESTARTTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+120))"
@@ -1476,21 +914,21 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
   logger -p 6 -t "$ALIAS" "Debug - System Uptime: "$(awk -F "." '{print $1}' "/proc/uptime")" Seconds"
   logger -p 6 -t "$ALIAS" "Debug - Restart Timeout is in "$(($RESTARTTIMEOUT-$(awk -F "." '{print $1}' "/proc/uptime")))" Seconds"
   while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$RESTARTTIMEOUT" ]] >/dev/null 2>&1;do
-    PIDS="$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')"
-    if [ ! -z "$PIDS" ] >/dev/null 2>&1;then
-      break
-    elif [ -z "$PIDS" ] >/dev/null 2>&1;then
+    PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+    if [ -z "${PIDS+x}" ] >/dev/null 2>&1 || [ -z "$PIDS" ] >/dev/null 2>&1;then
       if tty >/dev/null 2>&1;then
         TIMEOUTTIMER=$(($RESTARTTIMEOUT-$(awk -F "." '{print $1}' "/proc/uptime")))
         if [[ "$TIMEOUTTIMER" -ge "60" ]] >/dev/null 2>&1;then
-          printf '\033[K%b\r' ""${BOLD}""${BLUE}"***Waiting for "$ALIAS" to restart from Cron Job*** Timeout: "${GREEN}""$TIMEOUTTIMER" Seconds"${NOCOLOR}""
+          printf '\033[K%b\r' ""${BOLD}""${BLUE}"***Waiting for "$ALIAS" to restart from Cron Job*** Timeout: "${GREEN}""$TIMEOUTTIMER" Seconds   "${NOCOLOR}""
         elif [[ "$TIMEOUTTIMER" -ge "30" ]] >/dev/null 2>&1;then
-          printf '\033[K%b\r' ""${BOLD}""${BLUE}"***Waiting for "$ALIAS" to restart from Cron Job*** Timeout: "${YELLOW}""$TIMEOUTTIMER" Seconds"${NOCOLOR}""
+          printf '\033[K%b\r' ""${BOLD}""${BLUE}"***Waiting for "$ALIAS" to restart from Cron Job*** Timeout: "${YELLOW}""$TIMEOUTTIMER" Seconds   "${NOCOLOR}""
         elif [[ "$TIMEOUTTIMER" -ge "0" ]] >/dev/null 2>&1;then
-          printf '\033[K%b\r' ""${BOLD}""${BLUE}"***Waiting for "$ALIAS" to restart from Cron Job*** Timeout: "${RED}""$TIMEOUTTIMER" Seconds"${NOCOLOR}""
+          printf '\033[K%b\r' ""${BOLD}""${BLUE}"***Waiting for "$ALIAS" to restart from Cron Job*** Timeout: "${RED}""$TIMEOUTTIMER" Seconds   "${NOCOLOR}""
         fi
       fi
       sleep 1
+    elif [ ! -z "${PIDS+x}" ] >/dev/null 2>&1 && [ ! -z "$PIDS" ] >/dev/null 2>&1;then
+      break
     fi
   done
   [ ! -z "${TIMEOUTTIMER+X}" ] >/dev/null 2>&1 && unset TIMEOUTTIMER
@@ -1499,16 +937,16 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
 
   # Check if script restarted
   logger -p 6 -t "$ALIAS" "Debug - Checking if "$ALIAS" restarted"
-  PIDS="$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')"
+  PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
   logger -p 6 -t "$ALIAS" "Debug - ***Checking if PIDs array is null*** Process ID(s): "$PIDS""
-  if [ ! -z "$PIDS" ] >/dev/null 2>&1;then
+  if [ ! -z "${PIDS+x}" ] >/dev/null 2>&1 && [ ! -z "$PIDS" ] >/dev/null 2>&1;then
     logger -p 1 -st "$ALIAS" "Restart - Successfully Restarted "$ALIAS" Process ID(s): "$PIDS""
     if tty >/dev/null 2>&1;then
       printf '\033[K%b' ""${BOLD}""${GREEN}"Successfully Restarted "$ALIAS" Process ID(s): "$(for PID in ${PIDS};do echo "${PID}\t";done)" "${NOCOLOR}"\r"
       sleep 10
       printf '\033[K'
     fi
-  elif [ -z "$PIDS" ] >/dev/null 2>&1;then
+  elif [ -z "${PIDS+x}" ] >/dev/null 2>&1 || [ -z "$PIDS" ] >/dev/null 2>&1;then
     logger -p 1 -st "$ALIAS" "Restart - Failed to restart "$ALIAS" ***Check Logs***"
     if tty >/dev/null 2>&1;then
       printf '\033[K%b\r\a' ""${BOLD}""${RED}"Failed to restart "$ALIAS" ***Check Logs***"${NOCOLOR}""
@@ -1702,222 +1140,225 @@ logger -p 6 -t "$ALIAS" "Debug - Reading "$CONFIGFILE""
 . $CONFIGFILE
 
 # Check Configuration File for Missing Settings and Set Default if Missing
-logger -p 6 -t "$ALIAS" "Debug - Checking for missing configuration options"
-WANDOGTARGET="$(nvram get wandog_target & nvramcheck)"
-QOSENABLE="$(nvram get qos_enable & nvramcheck)"
-QOSIBW="$(nvram get qos_ibw & nvramcheck)"
-QOSOBW="$(nvram get qos_obw & nvramcheck)"
-if [ -z "$(sed -n '/\bWAN0TARGET=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  if [ ! -z "$WANDOGTARGET" ] >/dev/null 2>&1;then
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0TARGET Default: "$WANDOGTARGET""
-    echo -e "WAN0TARGET=$WANDOGTARGET" >> $CONFIGFILE
-  else
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0TARGET Default: 8.8.8.8"
-    echo -e "WAN0TARGET=8.8.8.8" >> $CONFIGFILE
+[ -z "${configdefaultssync+x}" ] >/dev/null 2>&1 && configdefaultssync="0"
+
+if [[ "$configdefaultssync" == "0" ]] >/dev/null 2>&1;then
+  logger -p 6 -t "$ALIAS" "Debug - Checking for missing configuration options"
+  WANDOGTARGET="$(nvram get wandog_target & nvramcheck)"
+  QOSENABLE="$(nvram get qos_enable & nvramcheck)"
+  QOSIBW="$(nvram get qos_ibw & nvramcheck)"
+  QOSOBW="$(nvram get qos_obw & nvramcheck)"
+  if [ -z "$(sed -n '/\bWAN0TARGET=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    if [ ! -z "$WANDOGTARGET" ] >/dev/null 2>&1;then
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN0TARGET Default: "$WANDOGTARGET""
+      echo -e "WAN0TARGET=$WANDOGTARGET" >> $CONFIGFILE
+    else
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN0TARGET Default: 8.8.8.8"
+      echo -e "WAN0TARGET=8.8.8.8" >> $CONFIGFILE
+    fi
   fi
-fi
-if [ -z "$(sed -n '/\bWAN1TARGET=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1TARGET Default: 8.8.4.4"
-  echo -e "WAN1TARGET=8.8.4.4" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bPINGCOUNT=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting PINGCOUNT Default: 3 Seconds"
-  echo -e "PINGCOUNT=3" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bPINGTIMEOUT=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting PINGTIMEOUT Default: 1 Second"
-  echo -e "PINGTIMEOUT=1" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN0PACKETSIZE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  [ -z "${PACKETSIZE+x}" ] >/dev/null 2>&1 && PACKETSIZE="56"
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN0PACKETSIZE Default: "$PACKETSIZE" Bytes"
-  echo -e "WAN0PACKETSIZE=$PACKETSIZE" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN1PACKETSIZE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  [ -z "${PACKETSIZE+x}" ] >/dev/null 2>&1 && PACKETSIZE="56"
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1PACKETSIZE Default: "$PACKETSIZE" Bytes"
-  echo -e "WAN1PACKETSIZE=$PACKETSIZE" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWANDISABLEDSLEEPTIMER=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WANDISABLEDSLEEPTIMER Default: 10 Seconds"
-  echo -e "WANDISABLEDSLEEPTIMER=10" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN0_QOS_ENABLE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  if [[ "$QOSENABLE" == "1" ]] >/dev/null 2>&1;then
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_ENABLE Default: Enabled"
-    echo -e "WAN0_QOS_ENABLE=1" >> $CONFIGFILE
-  elif [[ "$QOSENABLE" == "0" ]] >/dev/null 2>&1;then
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_ENABLE Default: Disabled"
-    echo -e "WAN0_QOS_ENABLE=0" >> $CONFIGFILE
+  if [ -z "$(sed -n '/\bWAN1TARGET=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1TARGET Default: 8.8.4.4"
+    echo -e "WAN1TARGET=8.8.4.4" >> $CONFIGFILE
   fi
-fi
-if [ -z "$(sed -n '/\bWAN1_QOS_ENABLE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  if [[ "$QOSENABLE" == "1" ]] >/dev/null 2>&1;then
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_ENABLE Default: Enabled"
-    echo -e "WAN1_QOS_ENABLE=1" >> $CONFIGFILE
-  elif [[ "$QOSENABLE" == "0" ]] >/dev/null 2>&1;then
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_ENABLE Default: Disabled"
-    echo -e "WAN1_QOS_ENABLE=0" >> $CONFIGFILE
+  if [ -z "$(sed -n '/\bPINGCOUNT=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting PINGCOUNT Default: 3 Seconds"
+    echo -e "PINGCOUNT=3" >> $CONFIGFILE
   fi
-fi
-if [ -z "$(sed -n '/\bWAN0_QOS_IBW=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  if [[ "$QOSENABLE" == "1" ]] >/dev/null 2>&1 && [[ "$QOSIBW" != "0" ]] >/dev/null 2>&1;then
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_IBW Default: "$QOSIBW" Kbps"
-    echo -e "WAN0_QOS_IBW=$QOSIBW" >> $CONFIGFILE
-  else
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_IBW Default: 0 Kbps"
-    echo -e "WAN0_QOS_IBW=0" >> $CONFIGFILE
+  if [ -z "$(sed -n '/\bPINGTIMEOUT=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting PINGTIMEOUT Default: 1 Second"
+    echo -e "PINGTIMEOUT=1" >> $CONFIGFILE
   fi
-fi
-if [ -z "$(sed -n '/\bWAN1_QOS_IBW=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_IBW Default: 0 Mbps"
-  echo -e "WAN1_QOS_IBW=0" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN0_QOS_OBW=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  if [[ "$QOSENABLE" == "1" ]] >/dev/null 2>&1 && [[ "$QOSOBW" != "0" ]] >/dev/null 2>&1;then
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_OBW Default: "$QOSOBW" Kbps"
-    echo -e "WAN0_QOS_OBW=$QOSOBW" >> $CONFIGFILE
-  else
-    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_IBW Default: 0 Kbps"
-    echo -e "WAN0_QOS_IBW=0" >> $CONFIGFILE
+  if [ -z "$(sed -n '/\bWAN0PACKETSIZE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    [ -z "${PACKETSIZE+x}" ] >/dev/null 2>&1 && PACKETSIZE="56"
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0PACKETSIZE Default: "$PACKETSIZE" Bytes"
+    echo -e "WAN0PACKETSIZE=$PACKETSIZE" >> $CONFIGFILE
   fi
-fi
-if [ -z "$(sed -n '/\bWAN1_QOS_OBW=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_OBW Default: 0 Mbps"
-  echo -e "WAN1_QOS_OBW=0" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN0_QOS_OVERHEAD=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_OVERHEAD Default: 0 Bytes"
-  echo -e "WAN0_QOS_OVERHEAD=0" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN1_QOS_OVERHEAD=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_OVERHEAD Default: 0 Bytes"
-  echo -e "WAN1_QOS_OVERHEAD=0" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN0_QOS_ATM=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_ATM Default: Disabled"
-  echo -e "WAN0_QOS_ATM=0" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN1_QOS_ATM=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_ATM Default: Disabled"
-  echo -e "WAN1_QOS_ATM=0" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bPACKETLOSSLOGGING=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting PACKETLOSSLOGGING Default: Enabled"
-  echo -e "PACKETLOSSLOGGING=1" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bSENDEMAIL=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting SENDEMAIL Default: Enabled"
-  echo -e "SENDEMAIL=1" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bSKIPEMAILSYSTEMUPTIME=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting SKIPEMAILSYSTEMUPTIME Default: 180 Seconds"
-  echo -e "SKIPEMAILSYSTEMUPTIME=180" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bEMAILTIMEOUT=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting OVPNWAN1PRIORITY Default: Priority 200"
-  echo -e "EMAILTIMEOUT=30" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bBOOTDELAYTIMER=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting BOOTDELAYTIMER Default: 0 Seconds"
-  echo -e "BOOTDELAYTIMER=0" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bOVPNSPLITTUNNEL=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting OVPNSPLITTUNNEL Default: Enabled"
-  echo -e "OVPNSPLITTUNNEL=1" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN0ROUTETABLE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN0ROUTETABLE Default: Table 100"
-  echo -e "WAN0ROUTETABLE=100" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN1ROUTETABLE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1ROUTETABLE Default: Table 200"
-  echo -e "WAN1ROUTETABLE=200" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN0TARGETRULEPRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN0TARGETRULEPRIORITY Default: Priority 100"
-  echo -e "WAN0TARGETRULEPRIORITY=100" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN1TARGETRULEPRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1TARGETRULEPRIORITY Default: Priority 100"
-  echo -e "WAN1TARGETRULEPRIORITY=100" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN0MARK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN0MARK Default: 0x80000000"
-  echo -e "WAN0MARK=0x80000000" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN1MARK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1MARK Default: 0x90000000"
-  echo -e "WAN1MARK=0x90000000" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN0MASK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN0MASK Default: 0xf0000000"
-  echo -e "WAN0MASK=0xf0000000" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bWAN1MASK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting WAN1MASK Default: 0xf0000000"
-  echo -e "WAN1MASK=0xf0000000" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bLBRULEPRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting LBRULEPRIORITY Default: Priority 150"
-  echo -e "LBRULEPRIORITY=150" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bFROMWAN0PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting FROMWAN0PRIORITY Default: Priority 200"
-  echo -e "FROMWAN0PRIORITY=200" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bTOWAN0PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting TOWAN0PRIORITY Default: Priority 400"
-  echo -e "TOWAN0PRIORITY=400" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bFROMWAN1PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting FROMWAN1PRIORITY Default: Priority 200"
-  echo -e "FROMWAN1PRIORITY=200" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bTOWAN1PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting TOWAN1PRIORITY Default: Priority 400"
-  echo -e "TOWAN1PRIORITY=400" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bOVPNWAN0PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting OVPNWAN0PRIORITY Default: Priority 100"
-  echo -e "OVPNWAN0PRIORITY=100" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bOVPNWAN1PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting OVPNWAN1PRIORITY Default: Priority 200"
-  echo -e "OVPNWAN1PRIORITY=200" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bRECURSIVEPINGCHECK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting RECURSIVEPINGCHECK Default: 1 Iteration"
-  echo -e "RECURSIVEPINGCHECK=1" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bDEVMODE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Creating DEVMODE Default: Disabled"
-  echo -e "DEVMODE=0" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bCHECKNVRAM=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Creating CHECKNVRAM Default: Disabled"
-  echo -e "CHECKNVRAM=0" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Creating CUSTOMLOGPATH Default: N/A"
-  echo -e "CUSTOMLOGPATH=" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bSCHEDULECRONJOB=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Creating SCHEDULECRONJOB Default: Enabled"
-  echo -e "SCHEDULECRONJOB=1" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bSTATUSCHECK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Creating STATUSCHECK Default: 30"
-  echo -e "STATUSCHECK=30" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bPINGTIMEMIN=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Creating PINGTIMEMIN Default: 40"
-  echo -e "PINGTIMEMIN=40" >> $CONFIGFILE
-fi
-if [ -z "$(sed -n '/\bPINGTIMEMAX=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Creating PINGTIMEMAX Default: 80"
-  echo -e "PINGTIMEMAX=80" >> $CONFIGFILE
-fi
+  if [ -z "$(sed -n '/\bWAN1PACKETSIZE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    [ -z "${PACKETSIZE+x}" ] >/dev/null 2>&1 && PACKETSIZE="56"
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1PACKETSIZE Default: "$PACKETSIZE" Bytes"
+    echo -e "WAN1PACKETSIZE=$PACKETSIZE" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWANDISABLEDSLEEPTIMER=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WANDISABLEDSLEEPTIMER Default: 10 Seconds"
+    echo -e "WANDISABLEDSLEEPTIMER=10" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN0_QOS_ENABLE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    if [[ "$QOSENABLE" == "1" ]] >/dev/null 2>&1;then
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_ENABLE Default: Enabled"
+      echo -e "WAN0_QOS_ENABLE=1" >> $CONFIGFILE
+    elif [[ "$QOSENABLE" == "0" ]] >/dev/null 2>&1;then
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_ENABLE Default: Disabled"
+      echo -e "WAN0_QOS_ENABLE=0" >> $CONFIGFILE
+    fi
+  fi
+  if [ -z "$(sed -n '/\bWAN1_QOS_ENABLE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    if [[ "$QOSENABLE" == "1" ]] >/dev/null 2>&1;then
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_ENABLE Default: Enabled"
+      echo -e "WAN1_QOS_ENABLE=1" >> $CONFIGFILE
+    elif [[ "$QOSENABLE" == "0" ]] >/dev/null 2>&1;then
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_ENABLE Default: Disabled"
+      echo -e "WAN1_QOS_ENABLE=0" >> $CONFIGFILE
+    fi
+  fi
+  if [ -z "$(sed -n '/\bWAN0_QOS_IBW=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    if [[ "$QOSENABLE" == "1" ]] >/dev/null 2>&1 && [[ "$QOSIBW" != "0" ]] >/dev/null 2>&1;then
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_IBW Default: "$QOSIBW" Kbps"
+      echo -e "WAN0_QOS_IBW=$QOSIBW" >> $CONFIGFILE
+    else
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_IBW Default: 0 Kbps"
+      echo -e "WAN0_QOS_IBW=0" >> $CONFIGFILE
+    fi
+  fi
+  if [ -z "$(sed -n '/\bWAN1_QOS_IBW=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_IBW Default: 0 Mbps"
+    echo -e "WAN1_QOS_IBW=0" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN0_QOS_OBW=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    if [[ "$QOSENABLE" == "1" ]] >/dev/null 2>&1 && [[ "$QOSOBW" != "0" ]] >/dev/null 2>&1;then
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_OBW Default: "$QOSOBW" Kbps"
+      echo -e "WAN0_QOS_OBW=$QOSOBW" >> $CONFIGFILE
+    else
+      logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_IBW Default: 0 Kbps"
+      echo -e "WAN0_QOS_IBW=0" >> $CONFIGFILE
+    fi
+  fi
+  if [ -z "$(sed -n '/\bWAN1_QOS_OBW=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_OBW Default: 0 Mbps"
+    echo -e "WAN1_QOS_OBW=0" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN0_QOS_OVERHEAD=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_OVERHEAD Default: 0 Bytes"
+    echo -e "WAN0_QOS_OVERHEAD=0" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN1_QOS_OVERHEAD=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_OVERHEAD Default: 0 Bytes"
+    echo -e "WAN1_QOS_OVERHEAD=0" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN0_QOS_ATM=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0_QOS_ATM Default: Disabled"
+    echo -e "WAN0_QOS_ATM=0" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN1_QOS_ATM=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1_QOS_ATM Default: Disabled"
+    echo -e "WAN1_QOS_ATM=0" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bPACKETLOSSLOGGING=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting PACKETLOSSLOGGING Default: Enabled"
+    echo -e "PACKETLOSSLOGGING=1" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bSENDEMAIL=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting SENDEMAIL Default: Enabled"
+    echo -e "SENDEMAIL=1" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bSKIPEMAILSYSTEMUPTIME=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting SKIPEMAILSYSTEMUPTIME Default: 180 Seconds"
+    echo -e "SKIPEMAILSYSTEMUPTIME=180" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bEMAILTIMEOUT=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting OVPNWAN1PRIORITY Default: Priority 200"
+    echo -e "EMAILTIMEOUT=30" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bBOOTDELAYTIMER=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting BOOTDELAYTIMER Default: 0 Seconds"
+    echo -e "BOOTDELAYTIMER=0" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bOVPNSPLITTUNNEL=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting OVPNSPLITTUNNEL Default: Enabled"
+    echo -e "OVPNSPLITTUNNEL=1" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN0ROUTETABLE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0ROUTETABLE Default: Table 100"
+    echo -e "WAN0ROUTETABLE=100" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN1ROUTETABLE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1ROUTETABLE Default: Table 200"
+    echo -e "WAN1ROUTETABLE=200" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN0TARGETRULEPRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0TARGETRULEPRIORITY Default: Priority 100"
+    echo -e "WAN0TARGETRULEPRIORITY=100" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN1TARGETRULEPRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1TARGETRULEPRIORITY Default: Priority 100"
+    echo -e "WAN1TARGETRULEPRIORITY=100" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN0MARK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0MARK Default: 0x80000000"
+    echo -e "WAN0MARK=0x80000000" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN1MARK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1MARK Default: 0x90000000"
+    echo -e "WAN1MARK=0x90000000" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN0MASK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN0MASK Default: 0xf0000000"
+    echo -e "WAN0MASK=0xf0000000" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bWAN1MASK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting WAN1MASK Default: 0xf0000000"
+    echo -e "WAN1MASK=0xf0000000" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bLBRULEPRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting LBRULEPRIORITY Default: Priority 150"
+    echo -e "LBRULEPRIORITY=150" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bFROMWAN0PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting FROMWAN0PRIORITY Default: Priority 200"
+    echo -e "FROMWAN0PRIORITY=200" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bTOWAN0PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting TOWAN0PRIORITY Default: Priority 400"
+    echo -e "TOWAN0PRIORITY=400" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bFROMWAN1PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting FROMWAN1PRIORITY Default: Priority 200"
+    echo -e "FROMWAN1PRIORITY=200" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bTOWAN1PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting TOWAN1PRIORITY Default: Priority 400"
+    echo -e "TOWAN1PRIORITY=400" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bOVPNWAN0PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting OVPNWAN0PRIORITY Default: Priority 100"
+    echo -e "OVPNWAN0PRIORITY=100" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bOVPNWAN1PRIORITY=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting OVPNWAN1PRIORITY Default: Priority 200"
+    echo -e "OVPNWAN1PRIORITY=200" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bRECURSIVEPINGCHECK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting RECURSIVEPINGCHECK Default: 1 Iteration"
+    echo -e "RECURSIVEPINGCHECK=1" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bDEVMODE=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating DEVMODE Default: Disabled"
+    echo -e "DEVMODE=0" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bCHECKNVRAM=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating CHECKNVRAM Default: Disabled"
+    echo -e "CHECKNVRAM=0" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating CUSTOMLOGPATH Default: N/A"
+    echo -e "CUSTOMLOGPATH=" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bSCHEDULECRONJOB=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating SCHEDULECRONJOB Default: Enabled"
+    echo -e "SCHEDULECRONJOB=1" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bSTATUSCHECK=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating STATUSCHECK Default: 30"
+    echo -e "STATUSCHECK=30" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bPINGTIMEMIN=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating PINGTIMEMIN Default: 40"
+    echo -e "PINGTIMEMIN=40" >> $CONFIGFILE
+  fi
+  if [ -z "$(sed -n '/\bPINGTIMEMAX=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating PINGTIMEMAX Default: 80"
+    echo -e "PINGTIMEMAX=80" >> $CONFIGFILE
+  fi
 
 # Cleanup Config file of deprecated options
 DEPRECATEDOPTIONS='
@@ -1928,17 +1369,26 @@ RULEPRIORITY6IN4
 PACKETSIZE
 '
 
-for DEPRECATEDOPTION in ${DEPRECATEDOPTIONS};do
-if [ ! -z "$(sed -n '/\b'${DEPRECATEDOPTION}'=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
-  logger -p 6 -t "$ALIAS" "Debug - Removing deprecated option: "${DEPRECATEDOPTION}" from "$CONFIGFILE""
-  sed -i '/\b'${DEPRECATEDOPTION}'=\b/d' $CONFIGFILE
+  for DEPRECATEDOPTION in ${DEPRECATEDOPTIONS};do
+  if [ ! -z "$(sed -n '/\b'${DEPRECATEDOPTION}'=\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1;then
+    logger -p 6 -t "$ALIAS" "Debug - Removing deprecated option: "${DEPRECATEDOPTION}" from "$CONFIGFILE""
+    sed -i '/\b'${DEPRECATEDOPTION}'=\b/d' $CONFIGFILE
+  fi
+  done
+
+  [[ "$configdefaultssync" == "0" ]] >/dev/null 2>&1 && configdefaultssync="1"
 fi
-done
 
 logger -p 6 -t "$ALIAS" "Debug - Reading "$CONFIGFILE""
 . $CONFIGFILE
 
-if [[ "$OVPNSPLITTUNNEL" == "0" ]] >/dev/null 2>&1;then
+# Get Global WAN Parameters
+if [ -z "${globalwansync+x}" ] >/dev/null 2>&1;then
+  GETWANMODE=2
+  getwanparameters || return
+fi
+
+if [[ "$WANSMODE" == "lb" ]] >/dev/null 2>&1 && [[ "$OVPNSPLITTUNNEL" == "0" ]] >/dev/null 2>&1;then
 OVPNCONFIGFILES='
 /etc/openvpn/client1/config.ovpn
 /etc/openvpn/client2/config.ovpn
@@ -1956,12 +1406,790 @@ OVPNCONFIGFILES='
       REMOTEADDRESSES="${REMOTEADDRESSES} ${REMOTEADDRESS}"
     fi
   done
+elif [[ "$WANSMODE" != "lb" ]] >/dev/null 2>&1;then
+  [ -z "${REMOTEADDRESSES+x}" ] >/dev/null 2>&1 && REMOTEADDRESSES=""
 fi
 
 # Debug Logging
 debuglog || return
 
 return
+}
+
+# Configuration Menu
+config ()
+{
+# Check for configuration and load configuration
+if [ -f "$CONFIGFILE" ] >/dev/null 2>&1;then
+  setvariables || return
+else
+  printf "${RED}***WAN Failover is not Installed***${NOCOLOR}\n"
+  if [[ "$mode" == "menu" ]] >/dev/null 2>&1;then
+    printf "\n  (r)  return    Return to Main Menu"
+    printf "\n  (e)  exit      Exit" 
+  else
+    printf "\n  (e)  exit      Exit" 
+  fi
+  printf "\nMake a selection: "
+
+  read -r input
+  case $input in
+    'r'|'R'|'menu'|'return'|'Return' )
+    clear
+    menu
+    break
+    ;;
+
+    'e'|'E'|'exit' )
+    clear
+    if [[ "$mode" == "menu" ]] >/dev/null 2>&1;then
+      exit
+    else
+      return
+    fi
+    break
+    ;;
+    * ) continue;;
+  esac
+fi
+
+# Check for configuration and load configuration
+if [ ! -f "$CONFIGFILE" ] >/dev/null 2>&1;then
+  echo -e "${RED}WAN Failover currently has no configuration file present{$NOCOLOR}"
+elif [ -f "$CONFIGFILE" ] >/dev/null 2>&1;then
+  setvariables || return
+fi
+
+# Get Global WAN Parameters
+if [ -z "${globalwansync+x}" ] >/dev/null 2>&1;then
+  GETWANMODE=2
+  getwanparameters || return
+fi
+
+# Determine QoS Display
+# WAN0_QOS_IBW
+if [[ "$WAN0_QOS_IBW" == "0" ]] >/dev/null 2>&1;then
+  wan0qosibw="Automatic"
+elif [[ "$WAN0_QOS_IBW" -gt "1024" ]] >/dev/null 2>&1;then
+  wan0qosibw=""$(($WAN0_QOS_IBW/1024))" Mbps"
+else
+  wan0qosibw="$WAN0_QOS_IBW Kbps"
+fi
+
+# WAN0_QOS_OBW
+if [[ "$WAN0_QOS_OBW" == "0" ]] >/dev/null 2>&1;then
+  wan0qosobw="Automatic"
+elif [[ "$WAN0_QOS_OBW" -gt "1024" ]] >/dev/null 2>&1;then
+  wan0qosobw=""$(($WAN0_QOS_OBW/1024))" Mbps"
+else
+  wan0qosobw="$WAN0_QOS_OBW Kbps"
+fi
+
+# WAN1_QOS_IBW
+if [[ "$WAN1_QOS_IBW" == "0" ]] >/dev/null 2>&1;then
+  wan1qosibw="Automatic"
+elif [[ "$WAN1_QOS_IBW" -gt "1024" ]] >/dev/null 2>&1;then
+  wan1qosibw=""$(($WAN1_QOS_IBW/1024))" Mbps"
+else
+  wan1qosibw="$WAN1_QOS_IBW Kbps"
+fi
+
+# WAN1_QOS_OBW
+if [[ "$WAN1_QOS_OBW" == "0" ]] >/dev/null 2>&1;then
+  wan1qosobw="Automatic"
+elif [[ "$WAN1_QOS_OBW" -gt "1024" ]] >/dev/null 2>&1;then
+  wan1qosobw=""$(($WAN1_QOS_OBW/1024))" Mbps"
+else
+  wan1qosobw="$WAN1_QOS_OBW Kbps"
+fi
+
+# Load Config Menu
+clear
+printf "\n  ${BOLD}Failover Monitoring Settings:${NOCOLOR}\n"
+option=1
+printf "  (1)  Configure WAN0 Target           WAN0 Target: ${BLUE}$WAN0TARGET${NOCOLOR}\n"
+
+printf "  (2)  Configure WAN1 Target           WAN1 Target: ${BLUE}$WAN1TARGET${NOCOLOR}\n"
+
+printf "  (3)  Configure Ping Count            Ping Count: ${BLUE}$PINGCOUNT${NOCOLOR}\n"
+
+printf "  (4)  Configure Ping Timeout          Ping Timeout: ${BLUE}$PINGTIMEOUT${NOCOLOR}\n"
+
+printf "  (5)  Configure Ping Time Min         Ping Time Minimum: ${GREEN}"$PINGTIMEMIN"ms${NOCOLOR}\n"
+
+printf "  (6)  Configure Ping Time Max         Ping Time Maximum: ${RED}"$PINGTIMEMAX"ms${NOCOLOR}\n"
+
+printf "\n  ${BOLD}QoS Settings:${NOCOLOR}\n"
+printf "  (7)  Configure WAN0 QoS              WAN0 QoS: " && { [[ "$WAN0_QOS_ENABLE" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+if [[ "$WAN0_QOS_ENABLE" == "1" ]] || [[ "$DEVMODE" == "1" ]] >/dev/null 2>&1 >/dev/null 2>&1;then
+  printf "    (7a) Configure Download Speed       - Download Speed: ${BLUE}$wan0qosibw${NOCOLOR}\n"
+  printf "    (7b) Configure Upload Speed         - Upload Speed: ${BLUE}$wan0qosobw${NOCOLOR}\n"
+  printf "    (7c) Configure Packet Overhead      - Packet Overhead: ${BLUE}"$WAN0_QOS_OVERHEAD" Bytes${NOCOLOR}\n"
+  printf "    (7d) Configure ATM Mode             - ATM Mode: " && { [[ "$WAN0_QOS_ATM" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
+
+printf "  (8)  Configure WAN1 QoS              WAN1 QoS: " && { [[ "$WAN1_QOS_ENABLE" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+if [[ "$WAN1_QOS_ENABLE" == "1" ]] || [[ "$DEVMODE" == "1" ]] >/dev/null 2>&1 >/dev/null 2>&1;then
+  printf "    (8a) Configure Download Speed       - Download Speed: ${BLUE}$wan1qosibw${NOCOLOR}\n"
+  printf "    (8b) Configure Upload Speed         - Upload Speed: ${BLUE}$wan1qosobw${NOCOLOR}\n"
+  printf "    (8c) Configure Packet Overhead      - Packet Overhead: ${BLUE}"$WAN1_QOS_OVERHEAD" Bytes${NOCOLOR}\n"
+  printf "    (8d) Configure ATM Mode             - ATM Mode: " && { [[ "$WAN1_QOS_ATM" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
+
+printf "\n  ${BOLD}Optional Settings:${NOCOLOR}\n"
+printf "  (9)  Configure Packet Loss Logging   Packet Loss Logging: " && { [[ "$PACKETLOSSLOGGING" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+
+printf "  (10) Configure Boot Delay Timer      Boot Delay Timer: ${BLUE}$BOOTDELAYTIMER Seconds${NOCOLOR}\n"
+
+printf "  (11) Configure Email Notifications   Email Notifications: " && { [[ "$SENDEMAIL" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+
+printf "  (12) Configure WAN0 Packet Size      WAN0 Packet Size: ${BLUE}$WAN0PACKETSIZE Bytes${NOCOLOR}\n"
+
+printf "  (13) Configure WAN1 Packet Size      WAN1 Packet Size: ${BLUE}$WAN1PACKETSIZE Bytes${NOCOLOR}\n"
+
+printf "  (14) Configure NVRAM Checks          NVRAM Checks: " && { [[ "$CHECKNVRAM" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+
+printf "  (15) Configure Dev Mode              Dev Mode: " && { [[ "$DEVMODE" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "Disabled" ;} && printf "\n"
+
+printf "  (16) Configure Custom Log Path       Custom Log Path: " && { [ ! -z "$CUSTOMLOGPATH" ] >/dev/null 2>&1 && printf "${BLUE}$CUSTOMLOGPATH${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+
+printf "\n  ${BOLD}Advanced Settings:${NOCOLOR}  ${RED}***Recommended to leave default unless necessary to change***${NOCOLOR}\n"
+printf "  (17) Configure WAN0 Route Table      WAN0 Route Table: ${BLUE}$WAN0ROUTETABLE${NOCOLOR}\n"
+
+printf "  (18) Configure WAN1 Route Table      WAN1 Route Table: ${BLUE}$WAN1ROUTETABLE${NOCOLOR}\n"
+
+printf "  (19) Configure WAN0 Target Priority  WAN0 Target Priority: ${BLUE}$WAN0TARGETRULEPRIORITY${NOCOLOR}\n"
+
+printf "  (20) Configure WAN1 Target Priority  WAN1 Target Priority: ${BLUE}$WAN1TARGETRULEPRIORITY${NOCOLOR}\n"
+
+printf "  (21) Configure Recursive Ping Check  Recursive Ping Check: ${BLUE}$RECURSIVEPINGCHECK${NOCOLOR}\n"
+
+printf "  (22) Configure WAN Disabled Timer    WAN Disabled Timer: ${BLUE}$WANDISABLEDSLEEPTIMER Seconds${NOCOLOR}\n"
+
+printf "  (23) Configure Email Boot Delay      Email Boot Delay: ${BLUE}$SKIPEMAILSYSTEMUPTIME Seconds${NOCOLOR}\n"
+
+printf "  (24) Configure Email Timeout         Email Timeout: ${BLUE}$EMAILTIMEOUT Seconds${NOCOLOR}\n"
+
+printf "  (25) Configure Cron Job              Cron Job: " && { [[ "$SCHEDULECRONJOB" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+
+printf "  (26) Configure Status Check          Status Check Interval: ${BLUE}$STATUSCHECK Seconds${NOCOLOR}\n"
+
+if [[ "$WANSMODE" == "lb" ]] >/dev/null 2>&1 || [[ "$DEVMODE" == "1" ]] >/dev/null 2>&1;then
+  printf "\n  ${BOLD}Load Balance Mode Settings:${NOCOLOR}\n"
+  printf "  (27) Configure LB Rule Priority      Load Balance Rule Priority: ${BLUE}$LBRULEPRIORITY${NOCOLOR}\n"
+  
+  printf "  (28) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] >/dev/null 2>&1 && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  
+  printf "  (29) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${BLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
+  
+  printf "  (30) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${BLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
+  
+  printf "  (31) Configure WAN0 FWMark           WAN0 FWMark: ${BLUE}$WAN0MARK${NOCOLOR}\n"
+  
+  printf "  (32) Configure WAN1 FWMark           WAN1 FWMark: ${BLUE}$WAN1MARK${NOCOLOR}\n"
+  
+  printf "  (33) Configure WAN0 Mask             WAN0 Mask: ${BLUE}$WAN0MASK${NOCOLOR}\n"
+  
+  printf "  (34) Configure WAN1 Mask             WAN1 Mask: ${BLUE}$WAN1MASK${NOCOLOR}\n"
+fi
+
+# Unset Variables
+[ ! -z "${unset+x}" ] >/dev/null 2>&1 && unset option
+[ ! -z "${wan0qosibw+x}" ] >/dev/null 2>&1 && unset wan0qosibw
+[ ! -z "${wan0qosobw+x}" ] >/dev/null 2>&1 && unset wan0qosobw
+[ ! -z "${wan1qosibw+x}" ] >/dev/null 2>&1 && unset wan1qosibw
+[ ! -z "${wan1qosobw+x}" ] >/dev/null 2>&1 && unset wan1qosobw
+
+if [[ "$mode" == "menu" ]] >/dev/null 2>&1;then
+  printf "\n  (r)  return    Return to Main Menu"
+  printf "\n  (e)  exit      Exit" 
+else
+  printf "\n  (e)  exit      Exit" 
+fi
+printf "\nMake a selection: "
+
+# Set Variables for Configuration Menu
+[ -z "${NEWVARIABLES+x}" ] >/dev/null 2>&1 && NEWVARIABLES=""
+[ -z "${RESTARTREQUIRED+x}" ] >/dev/null 2>&1 && RESTARTREQUIRED="0"
+read -r configinput
+case "${configinput}" in
+  '1')      # WAN0TARGET
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN0 Target IP Address - Will be routed via "$(nvram get wan0_gateway & nvramcheck)" dev "$(nvram get wan0_gw_ifname & nvramcheck)": " ip
+    if expr "$ip" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null 2>&1;then
+      for i in 1 2 3 4;do
+        if [ $(echo "$ip" | cut -d. -f$i) -gt "255" ] >/dev/null 2>&1;then
+          echo -e "${RED}***"$ip" is an Invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "$ALIAS" "Debug - WAN0 Target IP Address: "$ip" is an Invalid IP Address"
+          break 1
+        elif [[ "$(nvram get wan0_gateway & nvramcheck)" == "$ip" ]] >/dev/null 2>&1;then
+          echo -e "${RED}***"$ip" is the WAN0 Gateway IP Address***${NOCOLOR}"
+          logger -p 6 -t "$ALIAS" "WAN0 Target IP Address: "$ip" is WAN0 Gateway IP Address"
+          break 1
+        else
+          SETWAN0TARGET=$ip
+          logger -p 6 -t "$ALIAS" "Debug - WAN0 Target IP Address: "$ip""
+          break 2
+        fi
+      done
+    else  
+      echo -e "${RED}***"$ip" is an Invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "$ALIAS" "Debug - WAN0 Target IP Address: "$ip" is an Invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0TARGET=|$SETWAN0TARGET"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '2')      # WAN1TARGET
+  while true >/dev/null 2>&1;do  
+    read -p "Configure WAN1 Target IP Address - Will be routed via "$(nvram get wan1_gateway & nvramcheck)" dev "$(nvram get wan1_gw_ifname & nvramcheck)": " ip
+    if expr "$ip" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' >/dev/null 2>&1;then
+      for i in 1 2 3 4;do
+        if [ $(echo "$ip" | cut -d. -f$i) -gt "255" ] >/dev/null 2>&1;then
+          echo -e "${RED}***"$ip" is an Invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "$ALIAS" "Debug - WAN1 Target IP Address: "$ip" is an Invalid IP Address"
+          break 1
+        elif [[ "$(nvram get wan1_gateway & nvramcheck)" == "$ip" ]] >/dev/null 2>&1;then
+          echo -e "${RED}***"$ip" is the WAN1 Gateway IP Address***${NOCOLOR}"
+          logger -p 6 -t "$ALIAS" "WAN1 Target IP Address: "$ip" is WAN0 Gateway IP Address"
+          break 1
+        else
+          SETWAN1TARGET=$ip
+          logger -p 6 -t "$ALIAS" "Debug - WAN1 Target IP Address: "$ip""
+          break 2
+        fi
+      done
+    else  
+      echo -e "${RED}***"$ip" is an Invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "$ALIAS" "Debug - WAN1 Target IP Address: "$ip" is an Invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1TARGET=|$SETWAN1TARGET"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '3')      # PINGCOUNT
+  while true >/dev/null 2>&1;do  
+    read -p "Configure Ping Count - This is how many consecutive times a ping will fail before a WAN connection is considered disconnected: " value
+    case $value in
+      [0123456789]* ) SETPINGCOUNT=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter a valid number***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} PINGCOUNT=|$SETPINGCOUNT"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '4')      # PINGTIMEOUT
+  while true >/dev/null 2>&1;do  
+    read -p "Configure Ping Timeout - Value is in seconds: " value
+    case $value in
+      [0123456789]* ) SETPINGTIMEOUT=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} PINGTIMEOUT=|$SETPINGTIMEOUT"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '5')      # PINGTIMEMIN
+  while true >/dev/null 2>&1;do  
+    read -p "Configure Minimum Ping Time - Value is in milliseconds: " value
+    case $value in
+      [0123456789]* ) SETPINGTIMEMIN=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in milliseconds***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} PINGTIMEMIN=|$SETPINGTIMEMIN"
+  ;;
+  '6')      # PINGTIMEMAX
+  while true >/dev/null 2>&1;do  
+    read -p "Configure Maximum Ping Time - Value is in milliseconds: " value
+    case $value in
+      [0123456789]* ) SETPINGTIMEMAX=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in milliseconds***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} PINGTIMEMAX=|$SETPINGTIMEMAX"
+  ;;
+  '7')      # WAN0_QOS_ENABLE
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable QoS for WAN0? ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETWAN0_QOS_ENABLE=1;;
+      [Nn]* ) SETWAN0_QOS_ENABLE=0;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+    [[ "$SETWAN0_QOS_ENABLE" == "0" ]] >/dev/null 2>&1 && { SETWAN0_QOS_IBW=0 ; SETWAN0_QOS_OBW=0 ;} && break 1
+    read -p "Do you want to use Automatic QoS Settings for WAN0? ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETWAN0_QOS_IBW=0;SETWAN0_QOS_OBW=0; break 1;;
+      [Nn]* ) ;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+    read -p "Configure WAN0 QoS Download Bandwidth - Value is in Mbps: " value
+    case $value in
+      [0123456789]* ) SETWAN0_QOS_IBW=$(($value*1024));;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+    esac
+    read -p "Configure WAN0 QoS Upload Bandwidth - Value is in Mbps: " value
+    case $value in
+      [0123456789]* ) SETWAN0_QOS_OBW=$(($value*1024)); break 1;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0_QOS_ENABLE=|$SETWAN0_QOS_ENABLE WAN0_QOS_IBW=|$SETWAN0_QOS_IBW WAN0_QOS_OBW=|$SETWAN0_QOS_OBW"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '7a')      # WAN0_QOS_IBW
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN0 QoS Download Bandwidth - Value is in Mbps: " value
+    case $value in
+      [0123456789]* ) SETWAN0_QOS_IBW=$(($value*1024)); break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0_QOS_IBW=|$SETWAN0_QOS_IBW"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '7b')      # WAN0_QOS_OBW
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN0 QoS Upload Bandwidth - Value is in Mbps: " value
+    case $value in
+      [0123456789]* ) SETWAN0_QOS_OBW=$(($value*1024)); break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0_QOS_OBW=|$SETWAN0_QOS_OBW"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '7c')      # WAN0_QOS_OVERHEAD
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN0 QoS Packet Overhead - Value is in Bytes: " value
+    case $value in
+      [0123456789]* ) SETWAN0_QOS_OVERHEAD=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Bytes***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0_QOS_OVERHEAD=|$SETWAN0_QOS_OVERHEAD"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '7d')      # WAN0_QOS_ATM
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable ATM Mode for WAN0? ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETWAN0_QOS_ATM=1; break;;
+      [Nn]* ) SETWAN0_QOS_ATM=0; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0_QOS_ATM=|$SETWAN0_QOS_ATM"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '8')      # WAN1_QOS_ENABLE
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable QoS for WAN1? ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETWAN1_QOS_ENABLE=1;;
+      [Nn]* ) SETWAN1_QOS_ENABLE=0;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+    [[ "$SETWAN1_QOS_ENABLE" == "0" ]] >/dev/null 2>&1 && { SETWAN1_QOS_IBW=0 ; SETWAN1_QOS_OBW=0 ;} && break 1
+    read -p "Do you want to use Automatic QoS Settings for WAN1? ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETWAN1_QOS_IBW=0;SETWAN1_QOS_OBW=0; break 1;;
+      [Nn]* ) ;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+    read -p "Configure WAN1 QoS Download Bandwidth - Value is in Mbps: " value
+    case $value in
+      [0123456789]* ) SETWAN1_QOS_IBW=$(($value*1024));;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+    esac
+    read -p "Configure WAN1 QoS Upload Bandwidth - Value is in Mbps: " value
+    case $value in
+      [0123456789]* ) SETWAN1_QOS_OBW=$(($value*1024)); break 1;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1_QOS_ENABLE=|$SETWAN1_QOS_ENABLE WAN1_QOS_IBW=|$SETWAN1_QOS_IBW WAN1_QOS_OBW=|$SETWAN1_QOS_OBW"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '8a')      # WAN1_QOS_IBW
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN1 QoS Download Bandwidth - Value is in Mbps: " value
+    case $value in
+      [0123456789]* ) SETWAN1_QOS_IBW=$(($value*1024)); break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1_QOS_IBW=|$SETWAN1_QOS_IBW"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '8b')      # WAN1_QOS_OBW
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN1 QoS Upload Bandwidth - Value is in Mbps: " value
+    case $value in
+      [0123456789]* ) SETWAN1_QOS_OBW=$(($value*1024)); break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Mbps***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1_QOS_OBW=|$SETWAN1_QOS_OBW"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '8c')      # WAN1_QOS_OVERHEAD
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN1 QoS Packet Overhead - Value is in Bytes: " value
+    case $value in
+      [0123456789]* ) SETWAN1_QOS_OVERHEAD=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Bytes***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1_QOS_OVERHEAD=|$SETWAN1_QOS_OVERHEAD"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '8d')      # WAN1_QOS_ATM
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable ATM Mode for WAN1? ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETWAN1_QOS_ATM=1; break;;
+      [Nn]* ) SETWAN1_QOS_ATM=0; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1_QOS_ATM=|$SETWAN1_QOS_ATM"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '9')      # PACKETLOSSLOGGING
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable Packet Loss Logging? ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETPACKETLOSSLOGGING=1; break;;
+      [Nn]* ) SETPACKETLOSSLOGGING=0; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} PACKETLOSSLOGGING=|$SETPACKETLOSSLOGGING"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '10')      # BOOTDELAYTIMER
+  while true >/dev/null 2>&1;do
+    read -p "Configure Boot Delay Timer - This will delay the script from executing until System Uptime reaches this time (seconds): " value
+    case $value in
+      [0123456789]* ) SETBOOTDELAYTIMER=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} BOOTDELAYTIMER=|$SETBOOTDELAYTIMER"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '11')      # SENDEMAIL
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable Email Notifications? ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETSENDEMAIL=1; break;;
+      [Nn]* ) SETSENDEMAIL=0; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} SENDEMAIL=|$SETSENDEMAIL"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '12')      # WAN0PACKETSIZE
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN0 Packet Size - This defines the Packet Size (Bytes) for pinging the WAN0 Target IP Address: " value
+    case $value in
+      [0123456789]* ) SETWAN0PACKETSIZE=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Bytes***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0PACKETSIZE=|$SETWAN0PACKETSIZE"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '13')      # WAN1PACKETSIZE
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN1 Packet Size - This defines the Packet Size (Bytes) for pinging the WAN1 Target IP Address: " value
+    case $value in
+      [0123456789]* ) SETWAN1PACKETSIZE=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in Bytes***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1PACKETSIZE=|$SETWAN1PACKETSIZE"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '14')      # CHECKNVRAM
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable NVRAM Checks? This defines if the Script is set to perform NVRAM checks before peforming key functions: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETCHECKNVRAM=1; break;;
+      [Nn]* ) SETCHECKNVRAM=0; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} CHECKNVRAM=|$SETCHECKNVRAM"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '15')      # DEVMODE
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable Developer Mode? This defines if the Script is set to Developer Mode where updates will apply beta releases: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETDEVMODE=1; break;;
+      [Nn]* ) SETDEVMODE=0; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} DEVMODE=|$SETDEVMODE"
+  ;;
+  '16')      # CUSTOMLOGPATH
+  while true >/dev/null 2>&1;do
+    read -p "Configure Custom Log Path - This defines a Custom System Log path for Monitor/Capture Mode: " value
+    case $value in
+      [:.-_/0123456789abcdefghijklmnopqstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ]* ) SETCUSTOMLOGPATH=$value; break;;
+      "" ) SETCUSTOMLOGPATH=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} CUSTOMLOGPATH=|$SETCUSTOMLOGPATH"
+  ;;
+  '17')      # WAN0ROUTETABLE
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN0 Route Table - This defines the Routing Table for WAN0, it is recommended to leave this default unless necessary to change: " value
+    case $value in
+      [0123456789]* ) SETWAN0ROUTETABLE=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0ROUTETABLE=|$SETWAN0ROUTETABLE"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '18')      # WAN1ROUTETABLE
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN1 Route Table - This defines the Routing Table for WAN1, it is recommended to leave this default unless necessary to change: " value
+    case $value in
+      [0123456789]* ) SETWAN1ROUTETABLE=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1ROUTETABLE=|$SETWAN1ROUTETABLE"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '19')      # WAN0TARGETRULEPRIORITY
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN0 Target Rule Priority - This defines the IP Rule Priority for the WAN0 Target IP Address: " value
+    case $value in
+      [0123456789]* ) SETWAN0TARGETRULEPRIORITY=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0TARGETRULEPRIORITY=|$SETWAN0TARGETRULEPRIORITY"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '20')      # WAN1TARGETRULEPRIORITY
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN1 Target Rule Priority - This defines the IP Rule Priority for the WAN1 Target IP Address: " value
+    case $value in
+      [0123456789]* ) SETWAN1TARGETRULEPRIORITY=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1TARGETRULEPRIORITY=|$SETWAN1TARGETRULEPRIORITY"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '21')      # RECURSIVEPINGCHECK
+  while true >/dev/null 2>&1;do
+    read -p "Configure Recursive Ping Check - This defines how many times a WAN Interface has to fail target pings to be considered failed (Ping Count x RECURSIVEPINGCHECK), this setting is for circumstances where ICMP Echo / Response can be disrupted by ISP DDoS Prevention or other factors.  It is recommended to leave this setting default: " value
+    case $value in
+      [0123456789]* ) SETRECURSIVEPINGCHECK=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} RECURSIVEPINGCHECK=|$SETRECURSIVEPINGCHECK"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '22')      # WANDISABLEDSLEEPTIMER
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN Disabled Sleep Timer - This is how many seconds the WAN Failover pauses and checks again if Dual WAN, Failover/Load Balance Mode, or WAN links are disabled/disconnected: " value
+    case $value in
+      [0123456789]* ) SETWANDISABLEDSLEEPTIMER=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WANDISABLEDSLEEPTIMER=|$SETWANDISABLEDSLEEPTIMER"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '23')      # SKIPEMAILSYSTEMUPTIME
+  while true >/dev/null 2>&1;do
+    read -p "Configure Email Boot Delay Timer - This will delay sending emails while System Uptime is less than this time: " value
+    case $value in
+      [0123456789]* ) SETSKIPEMAILSYSTEMUPTIME=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} SKIPEMAILSYSTEMUPTIME=|$SETSKIPEMAILSYSTEMUPTIME"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '24')      # EMAILTIMEOUT
+  while true >/dev/null 2>&1;do
+    read -p "Configure Email Timeout - This defines the timeout for sending an email after a Failover event: " value
+    case $value in
+      [0123456789]* ) SETEMAILTIMEOUT=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} EMAILTIMEOUT=|$SETEMAILTIMEOUT"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '25')      # SCHEDULECRONJOB
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable Cron Job? This defines if the script will create the Cron Job: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SCHEDULECRONJOB=1; break;;
+      [Nn]* ) SCHEDULECRONJOB=0; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} SCHEDULECRONJOB=|$SCHEDULECRONJOB"
+  ;;
+  '26')      # STATUSCHECK
+  while true >/dev/null 2>&1;do  
+    read -p "Configure Status Check Interval - Value is in seconds: " value
+    case $value in
+      [0123456789]* ) SETSTATUSCHECK=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+    esac
+  done
+NEWVARIABLES="${NEWVARIABLES} STATUSCHECK=|$SETSTATUSCHECK"
+  ;;
+  '27')      # LBRULEPRIORITY
+  while true >/dev/null 2>&1;do
+    read -p "Configure Load Balance Rule Priority - This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change: " value
+    case $value in
+      [0123456789]* ) SETLBRULEPRIORITY=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} LBRULEPRIORITY=|$SETLBRULEPRIORITY"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '28')      # OVPNSPLITTUNNEL
+  while true >/dev/null 2>&1;do
+    read -p "Do you want to enable OpenVPN Split Tunneling? This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETOVPNSPLITTUNNEL=1; break;;
+      [Nn]* ) SETOVPNSPLITTUNNEL=0; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNSPLITTUNNEL=|$SETOVPNSPLITTUNNEL"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '29')      # OVPNWAN0PRIORITY
+  while true >/dev/null 2>&1;do
+    read -p "Configure OpenVPN WAN0 Priority - This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is Disabled: " value
+    case $value in
+      [0123456789]* ) SETOVPNWAN0PRIORITY=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNWAN0PRIORITY=|$SETOVPNWAN0PRIORITY"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '30')      # OVPNWAN1PRIORITY
+  while true >/dev/null 2>&1;do
+    read -p "Configure OpenVPN WAN1 Priority - This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is Disabled: " value
+    case $value in
+      [0123456789]* ) SETOVPNWAN1PRIORITY=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNWAN1PRIORITY=|$SETOVPNWAN1PRIORITY"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '31')      # WAN0MARK
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN0 FWMark - This defines the WAN0 FWMark for Load Balance Mode: " value
+    case $value in
+      [0123456789xf]* ) SETWAN0MARK=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0MARK=|$SETWAN0MARK"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '32')      # WAN1MARK
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN1 FWMark - This defines the WAN1 FWMark for Load Balance Mode: " value
+    case $value in
+      [0123456789xf]* ) SETWAN1MARK=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1MARK=|$SETWAN1MARK"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '33')      # WAN0MASK
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN0 Mask - This defines the WAN0 Mask for Load Balance Mode: " value
+    case $value in
+      [0123456789xf]* ) SETWAN0MASK=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0MASK=|$SETWAN0MASK"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  '34')      # WAN1MASK
+  while true >/dev/null 2>&1;do
+    read -p "Configure WAN1 Mask - This defines the WAN1 Mask for Load Balance Mode: " value
+    case $value in
+      [0123456789xf]* ) SETWAN1MASK=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1MASK=|$SETWAN1MASK"
+  [[ "$RESTARTREQUIRED" == "0" ]] >/dev/null 2>&1 && RESTARTREQUIRED=1
+  ;;
+  'r'|'return'|'menu')
+  clear
+  menu
+  break
+  ;;
+  'e'|'E'|'exit')
+  clear
+  if [[ "$mode" == "menu" ]] >/dev/null 2>&1;then
+    exit
+  else
+    return
+  fi
+  break
+  ;;
+esac
+
+# Configure Changed Setting in Configuration File
+if [ ! -z "$NEWVARIABLES" ] >/dev/null 2>&1;then
+  for NEWVARIABLE in ${NEWVARIABLES};do
+    if [ -z "$(cat $CONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')")" ] >/dev/null 2>&1 && [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" != "CUSTOMLOGPATH=" ]] >/dev/null 2>&1;then
+      echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" >> $CONFIGFILE
+      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $CONFIGFILE
+    elif [ ! -z "$(cat $CONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')")" ] >/dev/null 2>&1 && [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" != "CUSTOMLOGPATH=" ]] >/dev/null 2>&1;then
+      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $CONFIGFILE
+    elif [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" == "CUSTOMLOGPATH=" ]] >/dev/null 2>&1;then
+      [ ! -z "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$CONFIGFILE")" ] >/dev/null 2>&1 && sed -i '/CUSTOMLOGPATH=/d' $CONFIGFILE
+      echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')" >> $CONFIGFILE
+    fi
+  done
+  if [[ "$RESTARTREQUIRED" == "1" ]] >/dev/null 2>&1;then
+    echo -e "${RED}***This change will require WAN Failover to restart to take effect***${NOCOLOR}"
+    PressEnter
+    config
+  fi
+fi
+
+# Unset Variables
+[ ! -z "${NEWVARIABLES+x}" ] >/dev/null 2>&1 && unset NEWVARIABLES
+[ ! -z "${configinput+x}" ] >/dev/null 2>&1 && unset configinput
+[ ! -z "${value+x}" ] >/dev/null 2>&1 && unset value
+[ ! -z "${RESTARTREQUIRED+x}" ] >/dev/null 2>&1 && unset RESTARTREQUIRED
+
+# Return to Config Menu
+config
 }
 
 # WAN Status
@@ -2069,6 +2297,7 @@ else
       logger -p 6 -t "$ALIAS" "Debug - Recursive Ping Check: "$RECURSIVEPINGCHECK""
       i=1
       PACKETLOSS=""
+      PINGTIME=""
       while [ "$i" -le "$RECURSIVEPINGCHECK" ] >/dev/null 2>&1;do
         # Determine IP Rule or Route for successful ping
         [ -z "${PINGPATH+x}" ] >/dev/null 2>&1 && PINGPATH=0
@@ -2086,6 +2315,7 @@ else
           PINGWANPID=$!
           wait $PINGWANPID
           PACKETLOSS="$(sed -n 1p /tmp/${WANPREFIX}packetloss.tmp)"
+          PINGTIME="$(sed -n 2p /tmp/${WANPREFIX}packetloss.tmp)"          
           logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS""
           if [[ "$READYSTATE" == "0" ]] >/dev/null 2>&1 && [[ "$PINGPATH" == "1" ]] >/dev/null 2>&1 && [[ "$PACKETLOSS" == "100%" ]] >/dev/null 2>&1;then
             restartwan${WANSUFFIX} &
@@ -2109,6 +2339,7 @@ else
           PINGWANPID=$!
           wait $PINGWANPID
           PACKETLOSS="$(sed -n 1p /tmp/${WANPREFIX}packetloss.tmp)"
+          PINGTIME="$(sed -n 2p /tmp/${WANPREFIX}packetloss.tmp)"
           logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS""
           [[ "$PACKETLOSS" == "0%" ]] >/dev/null 2>&1 && [[ "$PINGPATH" != "2" ]] >/dev/null 2>&1 && PINGPATH=2 && setwanstatus
           [[ "$READYSTATE" == "0" ]] >/dev/null 2>&1 && [[ "$PINGPATH" == "2" ]] >/dev/null 2>&1 && logger -p 3 -t "$ALIAS" "WAN Status - ***Warning*** Compatibility issues with "$TARGET" may occur without specifying Outbound Interface"
@@ -2128,6 +2359,7 @@ else
           PINGWANPID=$!
           wait $PINGWANPID
           PACKETLOSS="$(sed -n 1p /tmp/${WANPREFIX}packetloss.tmp)"
+          PINGTIME="$(sed -n 2p /tmp/${WANPREFIX}packetloss.tmp)"
           logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Packet Loss: "$PACKETLOSS""
           [[ "$PACKETLOSS" == "0%" ]] >/dev/null 2>&1 && [[ "$PINGPATH" != "3" ]] >/dev/null 2>&1 && PINGPATH=3 && setwanstatus
           [[ "$READYSTATE" == "0" ]] >/dev/null 2>&1 && [[ "$PINGPATH" == "3" ]] >/dev/null 2>&1 && logger -p 3 -t "$ALIAS" "WAN Status - ***Warning*** Compatibility issues with "$TARGET" may occur with adding route via "$GATEWAY" dev "$GWIFNAME""
@@ -2160,6 +2392,7 @@ else
         # Determine WAN Status based on Packet Loss
         if { [[ "$PACKETLOSS" == "0%" ]] >/dev/null 2>&1 || [[ "$PACKETLOSS" != "100%" ]] >/dev/null 2>&1 ;} && [ ! -z "$PACKETLOSS" ] >/dev/null 2>&1;then
           logger -p 5 -t "$ALIAS" "WAN Status - "${WANPREFIX}" has "$PACKETLOSS" packet loss"
+          logger -p 5 -t "$ALIAS" "WAN Status - "${WANPREFIX}" has a "$PINGTIME"ms ping time"
           STATUS="CONNECTED"
           logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Status: "$STATUS""
           [[ "$STATE" != "2" ]] >/dev/null 2>&1 && nvram set ${WANPREFIX}_state_t=2
@@ -2177,6 +2410,7 @@ else
           fi
         else
           logger -p 2 -st "$ALIAS" "WAN Status - "${WANPREFIX}" has "$PACKETLOSS" packet loss"
+          logger -p 2 -st "$ALIAS" "WAN Status - "${WANPREFIX}" has a "$PINGTIME"ms ping time"
           STATUS="DISCONNECTED"
           logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Status: "$STATUS""
           if [[ "$i" -le "$RECURSIVEPINGCHECK" ]] >/dev/null 2>&1;then
@@ -2188,6 +2422,8 @@ else
         fi
       done
       unset PINGPATH
+      unset PACKETLOSS
+      unset PINGTIME
       unset i
     fi
   done
@@ -3232,7 +3468,7 @@ restartwan0pid=$!
 
 # Set Timeout for WAN interface to restart to a max of 30 seconds and while WAN Interface is State 6
 restartwan0timeout="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
-while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan0timeout" ]] >/dev/null 2>&1 && [ ! -z "$(ps | awk '{print $1}' | grep -w "$restartwan0pid")" ] >/dev/null 2>&1;do
+while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan0timeout" ]] >/dev/null 2>&1 && [ ! -z "$(ps | awk '{print $1}' | grep -o "$restartwan0pid")" ] >/dev/null 2>&1;do
   wait $restartwan0pid
   wan0state="$(nvram get "$WAN0"_state_t & nvramcheck)"
   if [[ "$wan0state" == "6" ]] >/dev/null 2>&1;then
@@ -3280,7 +3516,7 @@ restartwan1pid=$!
 
 # Set Timeout for WAN interface to restart to a max of 30 seconds and while WAN Interface is State 6
 restartwan1timeout="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
-while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan1timeout" ]] >/dev/null 2>&1 && [ ! -z "$(ps | awk '{print $1}' | grep -w "$restartwan1pid")" ] >/dev/null 2>&1;do
+while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan1timeout" ]] >/dev/null 2>&1 && [ ! -z "$(ps | awk '{print $1}' | grep -o "$restartwan1pid")" ] >/dev/null 2>&1;do
   wait $restartwan1pid
   wan1state="$(nvram get "$WAN1"_state_t & nvramcheck)"
   if [[ "$wan1state" == "6" ]] >/dev/null 2>&1;then
@@ -4559,7 +4795,7 @@ OVPNSERVERS="
 
   logger -p 6 -t "$ALIAS" "Debug - Checking if OpenVPN Server instances exist and are enabled"
   for OVPNSERVER in ${OVPNSERVERS};do
-    if [ ! -z "$(nvram get vpn_serverx_start | grep -o "$OVPNSERVER" & nvramcheck)" ] >/dev/null 2>&1;then
+    if [ ! -z "$(echo $OVPNSERVERINSTANCES | grep -o "$OVPNSERVER")" ] >/dev/null 2>&1;then
       # Restart OVPN Server Instance
       logger -p 5 -st "$ALIAS" "Service Restart - Restarting OpenVPN Server "$OVPNSERVER""
       service restart_vpnserver"$OVPNSERVER" &
@@ -4572,7 +4808,7 @@ OVPNSERVERS="
   # Wait for Services to Restart
   if [ ! -z "${SERVICERESTARTPIDS+x}" ] >/dev/null 2>&1;then
     for SERVICERESTARTPID in ${SERVICERESTARTPIDS};do
-      if [ -z "$(ps | grep -v "grep" | awk '{print $1}' | grep -o "${SERVICERESTARTPID}")" ] >/dev/null 2>&1;then
+      if [ -z "$(ps | awk '{print $1}' | grep -o "${SERVICERESTARTPID}")" ] >/dev/null 2>&1;then
         logger -p 6 -t "$ALIAS" "Debug - PID: ${SERVICERESTARTPID} completed"
         continue
       else
@@ -4850,7 +5086,7 @@ while true >/dev/null 2>&1;do
   getsystemparameters || return
 
   # Get Active Variables
-  [ ! -z "$(ps | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}' &)" ] >/dev/null 2>&1 && RUNNING="1" || RUNNING="0"
+  [ ! -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' &)" ] >/dev/null 2>&1 && RUNNING="1" || RUNNING="0"
   currenttime="$(date +%d%H%M%S)"
   currentdate="$(date +%-m%d%y)"
 
@@ -5119,9 +5355,9 @@ if { [[ "$mode" == "manual" ]] >/dev/null 2>&1 || [[ "$mode" == "run" ]] >/dev/n
   GETWANMODE=3
   getwanparameters || return
 
-  [ ! -z "${MODEL+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Model: "$(nvram get model & nvramcheck)""
-  [ ! -z "${PRODUCTID+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Product ID: "$(nvram get productid & nvramcheck)""
-  [ ! -z "${BUILDNAME+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Build Name: "$(nvram get build_name & nvramcheck)""
+  [ ! -z "${MODEL+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Model: "$MODEL""
+  [ ! -z "${PRODUCTID+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Product ID: "$PRODUCTID""
+  [ ! -z "${BUILDNAME+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Build Name: "$BUILDNAME""
   [ ! -z "${BUILDNO+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Firmware: "$BUILDNO""
   [ ! -z "${IPVERSION+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - IPRoute Version: "$IPVERSION""
   [ ! -z "${WANSCAP+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - WAN Capability: "$WANSCAP""
@@ -5130,10 +5366,10 @@ if { [[ "$mode" == "manual" ]] >/dev/null 2>&1 || [[ "$mode" == "run" ]] >/dev/n
   [ ! -z "${WANSDUALWAN+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Dual WAN Interfaces: "$WANSDUALWAN""
   [ ! -z "${WANDOGENABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - ASUS Factory Watchdog: "$WANDOGENABLE""
   [ ! -z "${JFFSSCRIPTS+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - JFFS custom scripts and configs: "$JFFSSCRIPTS""
-  [ ! -z "${HTTPENABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - HTTP Web Access: "$(nvram get misc_http_x & nvramcheck)""
-  [ ! -z "${FIREWALLENABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Firewall Enabled: "$(nvram get fw_enable_x & nvramcheck)""
-  [ ! -z "${IPV6FIREWALLENABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - IPv6 Firewall Enabled: "$(nvram get ipv6_fw_enable & nvramcheck)""
-  [ ! -z "${LEDDISABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - LEDs Disabled: "$(nvram get led_disable & nvramcheck)""
+  [ ! -z "${HTTPENABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - HTTP Web Access: "$HTTPENABLE""
+  [ ! -z "${FIREWALLENABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - Firewall Enabled: "$FIREWALLENABLE""
+  [ ! -z "${IPV6FIREWALLENABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - IPv6 Firewall Enabled: "$IPV6FIREWALLENABLE""
+  [ ! -z "${LEDDISABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - LEDs Disabled: "$LEDDISABLE""
   [ ! -z "${QOSENABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - QoS Enabled: "$QOSENABLE""
   [ ! -z "${DDNSENABLE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - DDNS Enabled: "$DDNSENABLE""
   [ ! -z "${DDNSHOSTNAME+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - DDNS Hostname: "$DDNSHOSTNAME""
@@ -5141,7 +5377,7 @@ if { [[ "$mode" == "manual" ]] >/dev/null 2>&1 || [[ "$mode" == "run" ]] >/dev/n
   [ ! -z "${IPV6SERVICE+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - WAN IPv6 Service: "$IPV6SERVICE""
   [ ! -z "${IPV6IPADDR+x}" ] >/dev/null 2>&1 && logger -p 6 -t "$ALIAS" "Debug - WAN IPv6 Address: "$IPV6IPADDR""
   logger -p 6 -t "$ALIAS" "Debug - Default Route: "$(ip route list default table main)""
-  logger -p 6 -t "$ALIAS" "Debug - OpenVPN Server Instances Enabled: "$(nvram get vpn_serverx_start & nvramcheck)""
+  logger -p 6 -t "$ALIAS" "Debug - OpenVPN Server Instances Enabled: "$OVPNSERVERINSTANCES""
   for WANPREFIX in ${WANPREFIXES};do
     # Getting WAN Parameters
     GETWANMODE=1
