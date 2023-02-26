@@ -140,5 +140,5 @@ while [[ "$i" -le "100000" ]] >/dev/null 2>&1;do
 done
 
 # Notify When Script Completes and Exit
-echo "Test completed at Iteration: $i
+echo "Test completed at Iteration: $i"
 exit 0
