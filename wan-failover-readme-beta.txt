@@ -90,7 +90,7 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - STATUSCHECK: This defines the refresh interval for the WAN Failover Status Console.  Default: 
 
 Release Notes:
-v2.0.0-beta3 - 02/23/2023
+v2.0.0-beta4 - 02/27/2023
 Installation:
 - Uninstallation will prompt if configuration file should be deleted or retained.
 - During uninstallation, the script will now delete the script file.  This change was necessary for AMTM integration
@@ -121,6 +121,9 @@ Enhancements:
 - Email Notifications will now display if QoS ATM is enabled.
 - Configuration Menu will now allow configuration of all QoS Settings.
 - Configuration Mode will now go straight to Configuration Menu when using command argument "config".
+- Restart Services will now restart all processes consecutively without waiting for them to complete to reduce failover/failback time.
+- Improvements to Update Mode for version checks
+- Update Mode will now check checksum to ensure integrity of WAN Failover.
 
 Fixes:
 - Removed VPNMON-R2 integration.  VPNMON-R2 is now capable of detecting failover events and resetting itself without WAN Failover.
@@ -130,6 +133,7 @@ Fixes:
 - Monitor and Capture Mode will no longer show messages from tail command stating the file path has changed.
 - Fixed Restart Mode not killing all PIDs.
 - Added a check if WAN was changed by router firmware before making it to Failover function so it doesn't attempt to switch back Primary WAN to a down WAN interface.
+- Fixed an issue where Installation would not create the WAN0_QOS_OBW configuration setting.
 
 Deprecated:
 - Removed Email Configuration Mode, use Configuration Menu to change Email Notification Settings.
