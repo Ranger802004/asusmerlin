@@ -45,7 +45,7 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 -	WAN0TARGET:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.8.8
 -	WAN1TARGET:  This is the target IP address for WAN1, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN1 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.4.4
 -	PINGCOUNT:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected. Default: 3 Seconds
--	PINGTIMEOUT:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.
+-	PINGTIMEOUT:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.  Default: 1 Second
 - WAN0_QOS_ENABLE: WAN0 QoS Enabled/Disabled
 - WAN0_QOS_IBW: WAN0 QoS Download Bandwidth:  Value is in Mbps
 - WAN0_QOS_OBW: WAN0 QoS Upload Bandwidth: Value is in Mbps
