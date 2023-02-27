@@ -835,7 +835,13 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
   done
   # Determine PIDs to kill
   logger -p 6 -t "$ALIAS" "Debug - Selecting PIDs to kill"
-  PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+
+  # Determine binary to use for detecting PIDs
+  if [ -f "/usr/bin/pstree" ] >/dev/null 2>&1;then
+    PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+  else
+    PIDS="$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')"
+  fi
 
   # Schedule CronJob  
   logger -p 6 -t "$ALIAS" "Debug - Calling CronJob to be rescheduled"
@@ -865,17 +871,34 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
     [ ! -z "${WAITTIMER+X}" ] >/dev/null 2>&1 && unset WAITTIMER
 
     # Kill PIDs
-    PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+    # Determine binary to use for detecting PIDs
+    if [ -f "/usr/bin/pstree" ] >/dev/null 2>&1;then
+      PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+    else
+      PIDS="$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')"
+    fi
+
     until [ -z "$PIDS" ] >/dev/null 2>&1;do
       [ -z "$PIDS" ] && break
-      for PID in ${PIDS};do
-        [ ! -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' | grep -o "${PID}")" ] \
-        && logger -p 1 -st "$ALIAS" "Restart - Killing "$ALIAS" Process ID: "${PID}"" \
-          && { kill -9 ${PID} \
-          && { PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 1 -st "$ALIAS" "Restart - Killed "$ALIAS" Process ID: "${PID}"" && continue ;} \
-          || { [ -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' | grep -o "${PID}")" ] >/dev/null 2>&1 && PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue || PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 2 -st "$ALIAS" "Restart - ***Error*** Unable to kill "$ALIAS" Process ID: "${PID}"" ;} ;} \
-        || PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue
-      done
+      if [ -f "/usr/bin/pstree" ] >/dev/null 2>&1;then
+        for PID in ${PIDS};do
+          [ ! -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' | grep -o "${PID}")" ] \
+          && logger -p 1 -st "$ALIAS" "Restart - Killing "$ALIAS" Process ID: "${PID}"" \
+            && { kill -9 ${PID} \
+            && { PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 1 -st "$ALIAS" "Restart - Killed "$ALIAS" Process ID: "${PID}"" && continue ;} \
+            || { [ -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' | grep -o "${PID}")" ] >/dev/null 2>&1 && PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue || PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 2 -st "$ALIAS" "Restart - ***Error*** Unable to kill "$ALIAS" Process ID: "${PID}"" ;} ;} \
+          || PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue
+        done
+      else
+        for PID in ${PIDS};do
+          [ ! -z "$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}' | grep -o "${PID}")" ] \
+          && logger -p 1 -st "$ALIAS" "Restart - Killing "$ALIAS" Process ID: "${PID}"" \
+            && { kill -9 ${PID} \
+            && { PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 1 -st "$ALIAS" "Restart - Killed "$ALIAS" Process ID: "${PID}"" && continue ;} \
+            || { [ -z "$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}' | grep -o "${PID}")" ] >/dev/null 2>&1 && PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue || PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 2 -st "$ALIAS" "Restart - ***Error*** Unable to kill "$ALIAS" Process ID: "${PID}"" ;} ;} \
+          || PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue
+        done
+      fi
     done
     # Execute Cleanup
     . $CONFIGFILE
@@ -897,7 +920,12 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
   logger -p 6 -t "$ALIAS" "Debug - System Uptime: "$(awk -F "." '{print $1}' "/proc/uptime")" Seconds"
   logger -p 6 -t "$ALIAS" "Debug - Restart Timeout is in "$(($RESTARTTIMEOUT-$(awk -F "." '{print $1}' "/proc/uptime")))" Seconds"
   while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$RESTARTTIMEOUT" ]] >/dev/null 2>&1;do
-    PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+    # Determine binary to use for detecting PIDs
+    if [ -f "/usr/bin/pstree" ] >/dev/null 2>&1;then
+      PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+    else
+      PIDS="$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')"
+    fi
     if [ -z "${PIDS+x}" ] >/dev/null 2>&1 || [ -z "$PIDS" ] >/dev/null 2>&1;then
       if tty >/dev/null 2>&1;then
         TIMEOUTTIMER=$(($RESTARTTIMEOUT-$(awk -F "." '{print $1}' "/proc/uptime")))
@@ -920,7 +948,12 @@ if [[ "${mode}" == "restart" ]] >/dev/null 2>&1 || [[ "${mode}" == "update" ]] >
 
   # Check if script restarted
   logger -p 6 -t "$ALIAS" "Debug - Checking if "$ALIAS" restarted"
-  PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+  # Determine binary to use for detecting PIDs
+  if [ -f "/usr/bin/pstree" ] >/dev/null 2>&1;then
+    PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*')" || PIDS=""
+  else
+    PIDS="$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}')"
+  fi
   logger -p 6 -t "$ALIAS" "Debug - ***Checking if PIDs array is null*** Process ID(s): "$PIDS""
   if [ ! -z "${PIDS+x}" ] >/dev/null 2>&1 && [ ! -z "$PIDS" ] >/dev/null 2>&1;then
     logger -p 1 -st "$ALIAS" "Restart - Successfully Restarted "$ALIAS" Process ID(s): "$PIDS""
@@ -1003,7 +1036,7 @@ if [[ "$version" -lt "$remoteversion" ]] >/dev/null 2>&1;then
     || logger -p 2 -st "$ALIAS" "Update - ***Error*** Unable to update "$ALIAS" to version: "$REMOTEVERSION""
   fi
 elif [[ "$version" == "$remoteversion" ]] >/dev/null 2>&1;then
-  logger -p 5 -t "$ALIAS" ""$ALIAS" is update to date - Version: "$VERSION""
+  logger -p 5 -t "$ALIAS" ""$ALIAS" is up to date - Version: "$VERSION""
   [[ "$passiveupdate" == "0" ]] >/dev/null 2>&1 && echo -e "${GREEN}"$ALIAS" is up to date - Version: "$VERSION"${NOCOLOR}"
   if [[ "$CHECKSUM" != "$REMOTECHECKSUM" ]] >/dev/null 2>&1;then
     [[ "$updateneeded" != "2" ]] >/dev/null 2>&1 && updateneeded="2"
@@ -5398,7 +5431,13 @@ while true >/dev/null 2>&1;do
   getsystemparameters || return
 
   # Get Active Variables
-  [ ! -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' &)" ] >/dev/null 2>&1 && RUNNING="1" || RUNNING="0"
+  # Determine binary to use for detecting PIDs
+  if [ -f "/usr/bin/pstree" ] >/dev/null 2>&1;then
+    [ ! -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' &)" ] >/dev/null 2>&1 && RUNNING="1" || RUNNING="0"
+  else
+    [ ! -z "$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}' &)" ] >/dev/null 2>&1 && RUNNING="1" || RUNNING="0"
+  fi
+
   currenttime="$(date +%d%H%M%S)"
   currentdate="$(date +%-m%d%y)"
 
