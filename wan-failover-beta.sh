@@ -2865,66 +2865,67 @@ if [[ "$GETWANMODE" == "1" ]] >/dev/null 2>&1;then
 
   while [ -z "${wansync+x}" ] >/dev/null 2>&1 || [[ "$wansync" == "0" ]] >/dev/null 2>&1;do
     wansync="0"
+    sleep 1
 
     # ENABLE
-    ENABLE="$(nvram get ${WANPREFIX}_enable & nvramcheck)" && { [ ! -z "$ENABLE" ] >/dev/null 2>&1 || { unset ENABLE && continue ;} ;}
+    ENABLE="$(nvram get ${WANPREFIX}_enable & nvramcheck)" && { [ ! -z "$ENABLE" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set ENABLE for "${WANPREFIX}"" && unset ENABLE && continue ;} ;}
 
     # STATE
-    STATE="$(nvram get ${WANPREFIX}_state_t & nvramcheck)" && { [ ! -z "$STATE" ] >/dev/null 2>&1 || { unset STATE && continue ;} ;}
+    STATE="$(nvram get ${WANPREFIX}_state_t & nvramcheck)" && { [ ! -z "$STATE" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set STATE for "${WANPREFIX}"" && unset STATE && continue ;} ;}
 
     # AUXSTATE
-    AUXSTATE="$(nvram get ${WANPREFIX}_auxstate_t & nvramcheck)" && { [ ! -z "$AUXSTATE" ] >/dev/null 2>&1 || { unset AUXSTATE && continue ;} ;}
+    AUXSTATE="$(nvram get ${WANPREFIX}_auxstate_t & nvramcheck)" && { [ ! -z "$AUXSTATE" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUXSTATE for "${WANPREFIX}"" && unset AUXSTATE && continue ;} ;}
 
     # SBSTATE
-    SBSTATE="$(nvram get ${WANPREFIX}_sbstate_t & nvramcheck)" && { [ ! -z "$SBSTATE" ] >/dev/null 2>&1 || { unset SBSTATE && continue ;} ;}
+    SBSTATE="$(nvram get ${WANPREFIX}_sbstate_t & nvramcheck)" && { [ ! -z "$SBSTATE" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set SBSTATE for "${WANPREFIX}"" && unset SBSTATE && continue ;} ;}
   
     # IPADDR
-    IPADDR="$(nvram get ${WANPREFIX}_ipaddr & nvramcheck)" && { { [ ! -z "$IPADDR" ] >/dev/null 2>&1 || [[ "$STATE" != "2" ]] >/dev/null 2>&1 ;} || { unset IPADDR && continue ;} ;}
+    IPADDR="$(nvram get ${WANPREFIX}_ipaddr & nvramcheck)" && { { [ ! -z "$IPADDR" ] >/dev/null 2>&1 || [[ "$STATE" != "2" ]] >/dev/null 2>&1 || [[ "$ENABLE" == "0" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPADDR for "${WANPREFIX}"" && unset IPADDR && continue ;} ;}
 
     # GATEWAY
-    GATEWAY="$(nvram get ${WANPREFIX}_gateway & nvramcheck)" && { { [ ! -z "$GATEWAY" ] >/dev/null 2>&1 || [[ "$STATE" != "2" ]] >/dev/null 2>&1 ;} || { unset GATEWAY && continue ;} ;}
+    GATEWAY="$(nvram get ${WANPREFIX}_gateway & nvramcheck)" && { { [ ! -z "$GATEWAY" ] >/dev/null 2>&1 || [[ "$STATE" != "2" ]] >/dev/null 2>&1 || [[ "$ENABLE" == "0" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set GATEWAY for "${WANPREFIX}"" && unset GATEWAY && continue ;} ;}
 
     # GWIFNAME
-    GWIFNAME="$(nvram get ${WANPREFIX}_gw_ifname & nvramcheck)" && { { [ ! -z "$GWIFNAME" ] >/dev/null 2>&1 || [[ "$AUXSTATE" != "0" ]] >/dev/null 2>&1 || [[ "$STATE" != "2" ]] >/dev/null 2>&1 ;} || { unset GWIFNAME && continue ;} ;}
+    GWIFNAME="$(nvram get ${WANPREFIX}_gw_ifname & nvramcheck)" && { { [ ! -z "$GWIFNAME" ] >/dev/null 2>&1 || [[ "$AUXSTATE" != "0" ]] >/dev/null 2>&1 || [[ "$STATE" != "2" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set GWIFNAME for "${WANPREFIX}"" && unset GWIFNAME && continue ;} ;}
 
     # IFNAME
-    IFNAME="$(nvram get ${WANPREFIX}_ifname & nvramcheck)" && { { [ ! -z "$IFNAME" ] >/dev/null 2>&1 || [[ "$AUXSTATE" != "0" ]] >/dev/null 2>&1 ;} || { unset IFNAME && continue ;} ;}
+    IFNAME="$(nvram get ${WANPREFIX}_ifname & nvramcheck)" && { { [ ! -z "$IFNAME" ] >/dev/null 2>&1 || [[ "$AUXSTATE" != "0" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set IFNAME for "${WANPREFIX}"" && unset IFNAME && continue ;} ;}
 
     # REALIPSTATE
-    REALIPSTATE="$(nvram get ${WANPREFIX}_realip_state & nvramcheck)" && { [ ! -z "$REALIPSTATE" ] >/dev/null 2>&1 || { unset REALIPSTATE && continue ;} ;}
+    REALIPSTATE="$(nvram get ${WANPREFIX}_realip_state & nvramcheck)" && { [ ! -z "$REALIPSTATE" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set REALIPSTATE for "${WANPREFIX}"" && unset REALIPSTATE && continue ;} ;}
 
     # REALIPADDR
-    REALIPADDR="$(nvram get ${WANPREFIX}_realip_ip & nvramcheck)" && { { [ ! -z "$REALIPADDR" ] >/dev/null 2>&1 || [[ "$REALIPSTATE" != "2" ]] >/dev/null 2>&1 ;} || { unset REALIPADDR && continue ;} ;}
+    REALIPADDR="$(nvram get ${WANPREFIX}_realip_ip & nvramcheck)" && { { [ ! -z "$REALIPADDR" ] >/dev/null 2>&1 || [[ "$REALIPSTATE" != "2" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set REALIPADDR for "${WANPREFIX}"" && unset REALIPADDR && continue ;} ;}
 
     # PRIMARY
-    PRIMARY="$(nvram get ${WANPREFIX}_primary & nvramcheck)" && { [ ! -z "$PRIMARY" ] >/dev/null 2>&1 || { unset PRIMARY && continue ;} ;}
+    PRIMARY="$(nvram get ${WANPREFIX}_primary & nvramcheck)" && { [ ! -z "$PRIMARY" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set PRIMARY for "${WANPREFIX}"" && unset PRIMARY && continue ;} ;}
 
     # USBMODEMREADY
-    USBMODEMREADY="$(nvram get ${WANPREFIX}_is_usb_modem_ready & nvramcheck)" && { [ ! -z "$USBMODEMREADY" ] >/dev/null 2>&1 || { unset USBMODEMREADY && continue ;} ;}
+    USBMODEMREADY="$(nvram get ${WANPREFIX}_is_usb_modem_ready & nvramcheck)" && { [ ! -z "$USBMODEMREADY" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set USBMODEMREADY for "${WANPREFIX}"" && unset USBMODEMREADY && continue ;} ;}
 
     # DNSENABLE
-    DNSENABLE="$(nvram get ${WANPREFIX}_dnsenable_x & nvramcheck)" && { [ ! -z "$DNSENABLE" ] >/dev/null 2>&1 || { unset DNSENABLE && continue ;} ;}
+    DNSENABLE="$(nvram get ${WANPREFIX}_dnsenable_x & nvramcheck)" && { [ ! -z "$DNSENABLE" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNSENABLE for "${WANPREFIX}"" && unset DNSENABLE && continue ;} ;}
 
     # DNS
-    DNS="$(nvram get ${WANPREFIX}_dns & nvramcheck)" && { { [ ! -z "$DNS" ] >/dev/null 2>&1 || [[ "$DNSENABLE" == "0" ]] >/dev/null 2>&1 ;} || { unset DNS && continue ;} ;}
+    DNS="$(nvram get ${WANPREFIX}_dns & nvramcheck)" && { { [ ! -z "$DNS" ] >/dev/null 2>&1 || [[ "$DNSENABLE" == "0" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS for "${WANPREFIX}"" && unset DNS && continue ;} ;}
 
     # AUTODNS1
-    AUTODNS1="$(echo $DNS | awk '{print $1}')" && { { [ ! -z "$AUTODNS1" ] >/dev/null 2>&1 || [ -z "$DNS" ] >/dev/null 2>&1 ;} || { unset DNS && continue ;} ;}
+    AUTODNS1="$(echo $DNS | awk '{print $1}')" && { { [ ! -z "$AUTODNS1" ] >/dev/null 2>&1 || [ -z "$DNS" ] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS1 for "${WANPREFIX}"" && unset AUTODNS1 && continue ;} ;}
 
     # AUTODNS2
-    AUTODNS2="$(echo $DNS | awk '{print $2}')" && { { [ ! -z "$AUTODNS2" ] >/dev/null 2>&1 || [ -z "$DNS" ] >/dev/null 2>&1 ;} || { unset DNS && continue ;} ;}
+    AUTODNS2="$(echo $DNS | awk '{print $2}')" && { { [ ! -z "$AUTODNS2" ] >/dev/null 2>&1 || [ -z "$DNS" ] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS2 for "${WANPREFIX}"" && unset AUTODNS2DNS && continue ;} ;}
 
     # DNS1
-    DNS1="$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" && { { [ ! -z "$DNS1" ] >/dev/null 2>&1 || [[ "$DNSENABLE" == "1" ]] >/dev/null 2>&1 || [[ -z "$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" ]] >/dev/null 2>&1 ;} || { unset DNS1 && continue ;} ;}
+    DNS1="$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" && { { [ ! -z "$DNS1" ] >/dev/null 2>&1 || [[ "$DNSENABLE" == "1" ]] >/dev/null 2>&1 || [[ -z "$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS1 for "${WANPREFIX}"" && unset DNS1 && continue ;} ;}
 
     # DNS2
-    DNS2="$(nvram get ${WANPREFIX}_dns2_x & nvramcheck)" && { { [ ! -z "$DNS2" ] >/dev/null 2>&1 || [[ "$DNSENABLE" == "1" ]] >/dev/null 2>&1 || [[ -z "$(nvram get ${WANPREFIX}_dns2_x & nvramcheck)" ]] >/dev/null 2>&1 ;} || { unset DNS2 && continue ;} ;}
+    DNS2="$(nvram get ${WANPREFIX}_dns2_x & nvramcheck)" && { { [ ! -z "$DNS2" ] >/dev/null 2>&1 || [[ "$DNSENABLE" == "1" ]] >/dev/null 2>&1 || [[ -z "$(nvram get ${WANPREFIX}_dns2_x & nvramcheck)" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS2 for "${WANPREFIX}"" && unset DNS2 && continue ;} ;}
 
     # UPNPENABLE
-    UPNPENABLE="$(nvram get ${WANPREFIX}_upnp_enable & nvramcheck)" && { [ ! -z "$UPNPENABLE" ] >/dev/null 2>&1 || { unset UPNPENABLE && continue ;} ;}
+    UPNPENABLE="$(nvram get ${WANPREFIX}_upnp_enable & nvramcheck)" && { [ ! -z "$UPNPENABLE" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set UPNPENABLE for "${WANPREFIX}"" && unset UPNPENABLE && continue ;} ;}
 
     # NAT
-    NAT="$(nvram get ${WANPREFIX}_nat_x & nvramcheck)" && { [ ! -z "$NAT" ] >/dev/null 2>&1 || { unset NAT && continue ;} ;}
+    NAT="$(nvram get ${WANPREFIX}_nat_x & nvramcheck)" && { [ ! -z "$NAT" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set NAT for "${WANPREFIX}"" && unset NAT && continue ;} ;}
 
     if [[ "${WANPREFIX}" == "$WAN0" ]] >/dev/null 2>&1;then
 
@@ -2932,11 +2933,11 @@ if [[ "$GETWANMODE" == "1" ]] >/dev/null 2>&1;then
       if [ ! -z "${WAN0DUALWANDEV+x}" ]] >/dev/null 2>&1;then
         DUALWANDEV="$WAN0DUALWANDEV"
       else
-        DUALWANDEV="$(nvram get wans_dualwan | awk '{print $1}' & nvramcheck)" && { [ ! -z "$DUALWANDEV" ] >/dev/null 2>&1 || { unset DUALWANDEV && continue ;} ;}
+        DUALWANDEV="$(nvram get wans_dualwan | awk '{print $1}' & nvramcheck)" && { [ ! -z "$DUALWANDEV" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set DUALWANDEV for "${WANPREFIX}"" && unset DUALWANDEV && continue ;} ;}
       fi
 
       # LINKWAN
-      LINKWAN="$(nvram get link_wan & nvramcheck)" && { [ ! -z "$LINKWAN" ] >/dev/null 2>&1 || { unset LINKWAN && continue ;} ;}
+      LINKWAN="$(nvram get link_wan & nvramcheck)" && { [ ! -z "$LINKWAN" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set LINKWAN for "${WANPREFIX}"" && unset LINKWAN && continue ;} ;}
 
       # PINGPATH
       if [ ! -z "${WAN0PINGPATH+x}" ] >/dev/null 2>&1;then
@@ -3086,11 +3087,11 @@ if [[ "$GETWANMODE" == "1" ]] >/dev/null 2>&1;then
       if [ ! -z "${WAN1DUALWANDEV+x}" ]] >/dev/null 2>&1;then
         DUALWANDEV="$WAN1DUALWANDEV"
       else
-        DUALWANDEV="$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" && { [ ! -z "$DUALWANDEV" ] >/dev/null 2>&1 || { unset DUALWANDEV && continue ;} ;}
+        DUALWANDEV="$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" && { [ ! -z "$DUALWANDEV" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set DUALWANDEV for "${WANPREFIX}"" && unset DUALWANDEV && continue ;} ;}
       fi
 
       # LINKWAN
-      LINKWAN="$(nvram get link_wan1 & nvramcheck)" && { [ ! -z "$LINKWAN" ] >/dev/null 2>&1 || { unset LINKWAN && continue ;} ;}
+      LINKWAN="$(nvram get link_wan1 & nvramcheck)" && { [ ! -z "$LINKWAN" ] >/dev/null 2>&1 || { logger -p 6 -t "$ALIAS" "Debug - failed to set LINKWAN for "${WANPREFIX}"" && unset LINKWAN && continue ;} ;}
 
       # TARGET
       if [ ! -z "${WAN1TARGET+x}" ] >/dev/null 2>&1;then
