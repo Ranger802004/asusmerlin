@@ -2910,10 +2910,10 @@ if [[ "$GETWANMODE" == "1" ]] >/dev/null 2>&1;then
     DNS="$(nvram get ${WANPREFIX}_dns & nvramcheck)" && { { [ ! -z "$DNS" ] >/dev/null 2>&1 || [[ "$DNSENABLE" == "0" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS for "${WANPREFIX}"" && unset DNS && continue ;} ;}
 
     # AUTODNS1
-    AUTODNS1="$(echo $DNS | awk '{print $1}')" && { { [ ! -z "$AUTODNS1" ] >/dev/null 2>&1 || [ -z "$DNS" ] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS1 for "${WANPREFIX}"" && unset AUTODNS1 && continue ;} ;}
+    AUTODNS1="$(echo $DNS | awk '{print $1}')" && { { [ ! -z "$AUTODNS1" ] >/dev/null 2>&1 || [ -z "$DNS" ] >/dev/null 2>&1 || [ -z "$(echo $DNS | awk '{print $1}')" ] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS1 for "${WANPREFIX}"" && unset AUTODNS1 && continue ;} ;}
 
     # AUTODNS2
-    AUTODNS2="$(echo $DNS | awk '{print $2}')" && { { [ ! -z "$AUTODNS2" ] >/dev/null 2>&1 || [ -z "$DNS" ] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS2 for "${WANPREFIX}"" && unset AUTODNS2DNS && continue ;} ;}
+    AUTODNS2="$(echo $DNS | awk '{print $2}')" && { { [ ! -z "$AUTODNS2" ] >/dev/null 2>&1 || [ -z "$DNS" ] >/dev/null 2>&1 || [ -z "$(echo $DNS | awk '{print $2}')" ] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS2 for "${WANPREFIX}"" && unset AUTODNS2DNS && continue ;} ;}
 
     # DNS1
     DNS1="$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" && { { [ ! -z "$DNS1" ] >/dev/null 2>&1 || [[ "$DNSENABLE" == "1" ]] >/dev/null 2>&1 || [[ -z "$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" ]] >/dev/null 2>&1 ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS1 for "${WANPREFIX}"" && unset DNS1 && continue ;} ;}
