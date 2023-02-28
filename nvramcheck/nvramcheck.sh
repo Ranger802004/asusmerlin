@@ -27,12 +27,14 @@ return
 
 # Ask if NVRAM PID Checks will be performed
 echo -e "Do you want to check for stuck NVRAM PIDs and kill them?  If you select no, there possibly will be stuck processes that may need to terminated."
-read -p "***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
-case $yn in
-  [Yy]* ) CHECKNVRAM="1";;
-  [Nn]* ) CHECKNVRAM="0";;
-  * ) echo -e "***Invalid Selection***"
-esac
+while true >/dev/null 2>&1; do
+  read -p "***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
+  case $yn in
+    [Yy]* ) CHECKNVRAM="1" && break;;
+    [Nn]* ) CHECKNVRAM="0" && break;;
+    * ) echo -e "***Invalid Selection*** && continue"
+  esac
+done
 
 # Identify Router Model
 MODEL="$(nvram get productid)"
