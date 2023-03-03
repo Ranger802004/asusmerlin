@@ -2940,7 +2940,7 @@ if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
     DNSENABLE="$(nvram get ${WANPREFIX}_dnsenable_x & nvramcheck)" && { [ ! -z "$DNSENABLE" ] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNSENABLE for "${WANPREFIX}"" && unset DNSENABLE && continue ;} ;}
 
     # DNS
-    DNS="$(nvram get ${WANPREFIX}_dns & nvramcheck)" && { { [ ! -z "$DNS" ] &>/dev/null || [[ "$DNSENABLE" == "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS for "${WANPREFIX}"" && unset DNS && continue ;} ;}
+    DNS="$(nvram get ${WANPREFIX}_dns & nvramcheck)" && { { [ ! -z "$DNS" ] &>/dev/null || [[ "$DNSENABLE" == "0" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null || [ -z "$(nvram get ${WANPREFIX}_dns & nvramcheck)" ] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS for "${WANPREFIX}"" && unset DNS && continue ;} ;}
 
     # AUTODNS1
     AUTODNS1="$(echo $DNS | awk '{print $1}')" && { { [ ! -z "$AUTODNS1" ] &>/dev/null || [ -z "$DNS" ] &>/dev/null || [ -z "$(echo $DNS | awk '{print $1}')" ] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS1 for "${WANPREFIX}"" && unset AUTODNS1 && continue ;} ;}
@@ -3321,28 +3321,30 @@ elif [[ "$GETWANMODE" == "2" ]] &>/dev/null;then
       [ ! -z "$WANSCAP" ] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WANSCAP" && unset WANSCAP && continue ;}
     fi
 
-    # WAN0IFNAME
-    if [ -z "${WAN0IFNAME+x}" ] &>/dev/null;then
-      WAN0IFNAME="$(nvram get wan0_ifname & nvramcheck)"
-      [ ! -z "$WAN0IFNAME" ] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0IFNAME" && unset WAN0IFNAME && continue ;}
-    fi
-
     # WAN0DUALWANDEV
     if [ -z "${WAN0DUALWANDEV+x}" ] &>/dev/null;then
       WAN0DUALWANDEV="$(nvram get nvram get wans_dualwan | awk '{print $1}' & nvramcheck)"
       [ ! -z "$WAN0DUALWANDEV" ] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0DUALWANDEV" && unset WAN0DUALWANDEV && continue ;}
     fi
 
-    # WAN1IFNAME
-    if [ -z "${WAN1IFNAME+x}" ] &>/dev/null;then
-      WAN1IFNAME="$(nvram get wan1_ifname & nvramcheck)"
-      [ ! -z "$WAN1IFNAME" ] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1IFNAME" && unset WAN1IFNAME && continue ;}
-    fi
-
     # WAN1DUALWANDEV
     if [ -z "${WAN1DUALWANDEV+x}" ] &>/dev/null;then
       WAN1DUALWANDEV="$(nvram get nvram get wans_dualwan | awk '{print $2}' & nvramcheck)"
       [ ! -z "$WAN1DUALWANDEV" ] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1DUALWANDEV" && unset WAN1DUALWANDEV && continue ;}
+    fi
+
+    # WAN0IFNAME
+    if [ -z "${WAN0IFNAME+x}" ] &>/dev/null;then
+      WAN0IFNAME="$(nvram get wan0_ifname & nvramcheck)"
+      { [ ! -z "$WAN0IFNAME" ] &>/dev/null || [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null ;} \
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0IFNAME" && unset WAN0IFNAME && continue ;}
+    fi
+
+    # WAN1IFNAME
+    if [ -z "${WAN1IFNAME+x}" ] &>/dev/null;then
+      WAN1IFNAME="$(nvram get wan1_ifname & nvramcheck)"
+      { [ ! -z "$WAN1IFNAME" ] &>/dev/null || [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null ;} \
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1IFNAME" && unset WAN1IFNAME && continue ;}
     fi
 
     # IPV6SERVICE
@@ -3438,6 +3440,30 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       [ ! -z "$WAN0LINKWAN" ] &>/dev/null || WAN0LINKWAN="$zWAN0LINKWAN"
     fi
 
+    # WAN0USBMODEMREADY
+    if [ -z "${WAN0USBMODEMREADY+x}" ] &>/dev/null || [ -z "${zWAN0USBMODEMREADY+x}" ] &>/dev/null;then
+      WAN0USBMODEMREADY="$(nvram get wan0_is_usb_modem_ready & nvramcheck)"
+      [ ! -z "$WAN0USBMODEMREADY" ] &>/dev/null \
+      && zWAN0USBMODEMREADY="$WAN0USBMODEMREADY" \
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0USBMODEMREADY" && unset WAN0USBMODEMREADY ; unset zWAN0USBMODEMREADY && continue ;}
+    elif [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null;then
+      [[ "$zWAN0USBMODEMREADY" != "$WAN0USBMODEMREADY" ]] &>/dev/null && zWAN0USBMODEMREADY="$WAN0USBMODEMREADY"
+      WAN0USBMODEMREADY="$(nvram get wan0_is_usb_modem_ready & nvramcheck)"
+      [ ! -z "$WAN0USBMODEMREADY" ] &>/dev/null || WAN0USBMODEMREADY="$zWAN0USBMODEMREADY"
+    fi
+
+    # WAN0IFNAME
+    if [ -z "${WAN0IFNAME+x}" ] &>/dev/null || [ -z "${zWAN0IFNAME+x}" ] &>/dev/null;then
+      WAN0IFNAME="$(nvram get wan0_ifname & nvramcheck)"
+      { [ ! -z "$WAN0IFNAME" ] &>/dev/null || [[ "$WAN0AUXSTATE" != "0" ]] &>/dev/null || [[ "$WAN0LINKWAN" == "0" ]] &>/dev/null || { [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN0USBMODEMREADY" == "0" ]] &>/dev/null ;} ;} \
+      && zWAN0IFNAME="$WAN0IFNAME" \
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0IFNAME" && unset WAN0IFNAME ; unset zWAN0IFNAME && continue ;}
+    else
+      [[ "$zWAN0IFNAME" != "$WAN0IFNAME" ]] &>/dev/null && zWAN0IFNAME="$WAN0IFNAME"
+      WAN0IFNAME="$(nvram get wan0_ifname & nvramcheck)"
+      [ ! -z "$WAN0IFNAME" ] &>/dev/null || WAN0IFNAME="$zWAN0IFNAME"
+    fi
+
     # WAN0GWIFNAME
     if [ -z "${WAN0GWIFNAME+x}" ] &>/dev/null || [ -z "${zWAN0GWIFNAME+x}" ] &>/dev/null;then
       WAN0GWIFNAME="$(nvram get wan0_gw_ifname & nvramcheck)"
@@ -3476,18 +3502,6 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       [[ "$zWAN0PRIMARY" != "$WAN0PRIMARY" ]] &>/dev/null && zWAN0PRIMARY="$WAN0PRIMARY"
       WAN0PRIMARY="$(nvram get wan0_primary & nvramcheck)"
       [ ! -z "$WAN0PRIMARY" ] &>/dev/null || WAN0PRIMARY="$zWAN0PRIMARY"
-    fi
-
-    # WAN0USBMODEMREADY
-    if [ -z "${WAN0USBMODEMREADY+x}" ] &>/dev/null || [ -z "${zWAN0USBMODEMREADY+x}" ] &>/dev/null;then
-      WAN0USBMODEMREADY="$(nvram get wan0_is_usb_modem_ready & nvramcheck)"
-      [ ! -z "$WAN0USBMODEMREADY" ] &>/dev/null \
-      && zWAN0USBMODEMREADY="$WAN0USBMODEMREADY" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0USBMODEMREADY" && unset WAN0USBMODEMREADY ; unset zWAN0USBMODEMREADY && continue ;}
-    elif [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null;then
-      [[ "$zWAN0USBMODEMREADY" != "$WAN0USBMODEMREADY" ]] &>/dev/null && zWAN0USBMODEMREADY="$WAN0USBMODEMREADY"
-      WAN0USBMODEMREADY="$(nvram get wan0_is_usb_modem_ready & nvramcheck)"
-      [ ! -z "$WAN0USBMODEMREADY" ] &>/dev/null || WAN0USBMODEMREADY="$zWAN0USBMODEMREADY"
     fi
 
     # WAN0IPADDR
@@ -3599,6 +3613,30 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       [ ! -z "$WAN1LINKWAN" ] &>/dev/null || WAN1LINKWAN="$zWAN1LINKWAN"
     fi
 
+    # WAN1USBMODEMREADY
+    if [ -z "${WAN1USBMODEMREADY+x}" ] &>/dev/null || [ -z "${zWAN1USBMODEMREADY+x}" ] &>/dev/null;then
+      WAN1USBMODEMREADY="$(nvram get wan1_is_usb_modem_ready & nvramcheck)"
+      [ ! -z "$WAN1USBMODEMREADY" ] &>/dev/null \
+      && zWAN1USBMODEMREADY="$WAN1USBMODEMREADY" \
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1USBMODEMREADY" && unset WAN1USBMODEMREADY ; unset zWAN1USBMODEMREADY && continue ;}
+    elif [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null;then
+      [[ "$zWAN1USBMODEMREADY" != "$WAN1USBMODEMREADY" ]] &>/dev/null && zWAN1USBMODEMREADY="$WAN1USBMODEMREADY"
+      WAN1USBMODEMREADY="$(nvram get wan1_is_usb_modem_ready & nvramcheck)"
+      [ ! -z "$WAN1USBMODEMREADY" ] &>/dev/null || WAN1USBMODEMREADY="$zWAN1USBMODEMREADY"
+    fi
+
+    # WAN1IFNAME
+    if [ -z "${WAN1IFNAME+x}" ] &>/dev/null || [ -z "${zWAN1IFNAME+x}" ] &>/dev/null;then
+      WAN1IFNAME="$(nvram get wan1_ifname & nvramcheck)"
+      { [ ! -z "$WAN1IFNAME" ] &>/dev/null || [[ "$WAN1AUXSTATE" != "0" ]] &>/dev/null || [[ "$WAN1LINKWAN" == "0" ]] &>/dev/null || { [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN1USBMODEMREADY" == "0" ]] &>/dev/null ;} ;} \
+      && zWAN1IFNAME="$WAN1IFNAME" \
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1IFNAME" && unset WAN1IFNAME ; unset zWAN1IFNAME && continue ;}
+    else
+      [[ "$zWAN1IFNAME" != "$WAN1IFNAME" ]] &>/dev/null && zWAN1IFNAME="$WAN1IFNAME"
+      WAN1IFNAME="$(nvram get wan1_ifname & nvramcheck)"
+      [ ! -z "$WAN1IFNAME" ] &>/dev/null || WAN1IFNAME="$zWAN1IFNAME"
+    fi
+
     # WAN1GWIFNAME
     if [ -z "${WAN1GWIFNAME+x}" ] &>/dev/null || [ -z "${zWAN1GWIFNAME+x}" ] &>/dev/null;then
       WAN1GWIFNAME="$(nvram get wan1_gw_ifname & nvramcheck)"
@@ -3637,18 +3675,6 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       [[ "$zWAN1PRIMARY" != "$WAN1PRIMARY" ]] &>/dev/null && zWAN1PRIMARY="$WAN1PRIMARY"
       WAN1PRIMARY="$(nvram get wan1_primary & nvramcheck)"
       [ ! -z "$WAN1PRIMARY" ] &>/dev/null || WAN1PRIMARY="$zWAN1PRIMARY"
-    fi
-
-    # WAN1USBMODEMREADY
-    if [ -z "${WAN1USBMODEMREADY+x}" ] &>/dev/null || [ -z "${zWAN1USBMODEMREADY+x}" ] &>/dev/null;then
-      WAN1USBMODEMREADY="$(nvram get wan1_is_usb_modem_ready & nvramcheck)"
-      [ ! -z "$WAN1USBMODEMREADY" ] &>/dev/null \
-      && zWAN1USBMODEMREADY="$WAN1USBMODEMREADY" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1USBMODEMREADY" && unset WAN1USBMODEMREADY ; unset zWAN1USBMODEMREADY && continue ;}
-    elif [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null;then
-      [[ "$zWAN1USBMODEMREADY" != "$WAN1USBMODEMREADY" ]] &>/dev/null && zWAN1USBMODEMREADY="$WAN1USBMODEMREADY"
-      WAN1USBMODEMREADY="$(nvram get wan1_is_usb_modem_ready & nvramcheck)"
-      [ ! -z "$WAN1USBMODEMREADY" ] &>/dev/null || WAN1USBMODEMREADY="$zWAN1USBMODEMREADY"
     fi
 
     # WAN1IPADDR
