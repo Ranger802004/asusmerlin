@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/03/2023
-# Version: v2.0.0-beta5
+# Date: 03/05/2023
+# Version: v2.0.0-beta6
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.0-beta5"
+VERSION="v2.0.0-beta6"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -24,9 +24,9 @@ WAN1="wan1"
 
 # Checksum
 if [ -f "/usr/sbin/openssl" ] &>/dev/null;then
-  CHECKSUM="$(/usr/sbin/openssl sha256 $0 | awk -F " " '{print $2}')"
+  CHECKSUM="$(/usr/sbin/openssl sha256 "$0" | awk -F " " '{print $2}')"
 elif [ -f "/usr/bin/md5sum" ] &>/dev/null;then
-  CHECKSUM="$(/usr/bin/md5sum $0 | awk -F " " '{print $1}')"
+  CHECKSUM="$(/usr/bin/md5sum "$0" | awk -F " " '{print $1}')"
 fi
 
 # Color Codes
@@ -64,7 +64,7 @@ fi
 # Set Script Mode
 if [ "$#" == "0" ] &>/dev/null;then
   # Default to Menu Mode if no argument specified
-  [ -z "${mode+x}" ] &>/dev/null && mode=menu
+  [ -z "${mode+x}" ] &>/dev/null && mode="menu"
 elif [ "$#" != "0" ] &>/dev/null;then
   [ -z "${mode+x}" ] &>/dev/null && mode="${1#}"
 fi
@@ -97,7 +97,7 @@ elif [[ "${mode}" == "run" ]] &>/dev/null;then
   exec 100>"$LOCKFILE" || exit
   flock -x -n 100 || { if tty &>/dev/null;then echo -e "${RED}***$ALIAS is already running***${NOCOLOR}";fi && exit ;}
   logger -p 6 -t "$ALIAS" "Debug - Locked File: "$LOCKFILE""
-  trap 'cleanup && kill -9 "$$"' KILL EXIT HUP INT QUIT TERM STOP
+  trap 'cleanup && kill -9 "$$"' EXIT HUP INT QUIT TERM
   logger -p 6 -t "$ALIAS" "Debug - Trap set to remove "$LOCKFILE" on exit"
   logger -p 6 -t "$ALIAS" "Debug - Script Mode: "${mode}""
   systemcheck || return
@@ -107,7 +107,7 @@ elif [[ "${mode}" == "manual" ]] &>/dev/null;then
   exec 100>"$LOCKFILE" || return
   flock -x -n 100 || { if tty &>/dev/null;then echo -e "${RED}***$ALIAS is already running***${NOCOLOR}";fi && exit ;}
   logger -p 6 -t "$ALIAS" "Debug - Locked File: "$LOCKFILE""
-  trap 'cleanup && kill -9 "$$"' KILL EXIT HUP INT QUIT TERM STOP
+  trap 'cleanup && kill -9 "$$"' EXIT HUP INT QUIT TERM
   logger -p 6 -t "$ALIAS" "Debug - Trap set to remove "$LOCKFILE" on exit"
   logger -p 6 -t "$ALIAS" "Debug - Script Mode: "${mode}""
   systemcheck || return
@@ -148,7 +148,7 @@ elif [[ "${mode}" == "switchwan" ]] &>/dev/null;then
   elif [[ "$WANSMODE" != "lb" ]] &>/dev/null;then
     while [[ "${mode}" == "switchwan" ]] &>/dev/null;do
       if tty &>/dev/null;then
-        read -p "Are you sure you want to switch Primary WAN? ***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
+        read -p "Are you sure you want to switch Primary WAN? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
         case $yn in
           [Yy]* ) break;;
           [Nn]* ) return;;
@@ -593,7 +593,7 @@ logger -p 6 -t "$ALIAS" "Debug - Function: Install"
 
 # Prompt for Confirmation to Install
 while [[ "${mode}" == "install" ]] &>/dev/null;do
-  read -p "Do you want to install WAN Failover? ***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
+  read -p "Do you want to install WAN Failover? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
   case $yn in
     [Yy]* ) break;;
     [Nn]* ) return;;
@@ -707,7 +707,7 @@ read -n 1 -s -r -p "Press any key to continue to uninstall..."
 
     # Prompt for Deleting Config File
     while true &>/dev/null;do  
-      read -p "Do you want to keep WAN Failover Configuration? ***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
+      read -p "Do you want to keep WAN Failover Configuration? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
       case $yn in
         [Yy]* ) deleteconfig="1" && break;;
         [Nn]* ) deleteconfig="0" && break;;
@@ -843,7 +843,7 @@ logger -p 6 -t "$ALIAS" "Debug - Function: killscript"
 
 if [[ "${mode}" == "restart" ]] &>/dev/null || [[ "${mode}" == "update" ]] &>/dev/null;then
   while [[ "${mode}" == "restart" ]] &>/dev/null;do
-    read -p "Are you sure you want to restart WAN Failover? ***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
+    read -p "Are you sure you want to restart WAN Failover? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
     case $yn in
       [Yy]* ) break;;
       [Nn]* ) return;;
@@ -1057,9 +1057,9 @@ if [[ "$version" -lt "$remoteversion" ]] &>/dev/null;then
     echo -e "${YELLOW}"$ALIAS" is out of date - Current Version: ${LIGHTBLUE}"$VERSION"${YELLOW} Available Version: ${LIGHTBLUE}"$REMOTEVERSION"${NOCOLOR}${NOCOLOR}"
     while true &>/dev/null;do
       if [[ "$DEVMODE" == "0" ]] &>/dev/null;then
-        read -p "Do you want to update to the latest production version? "$REMOTEVERSION" ***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
+        read -p "Do you want to update to the latest production version? "$REMOTEVERSION" ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
       elif [[ "$DEVMODE" == "1" ]] &>/dev/null;then
-        read -p "Do you want to update to the latest beta version? "$REMOTEVERSION" ***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
+        read -p "Do you want to update to the latest beta version? "$REMOTEVERSION" ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
       fi
       case $yn in
         [Yy]* ) break;;
@@ -1084,7 +1084,7 @@ elif [[ "$version" == "$remoteversion" ]] &>/dev/null;then
   fi
   if [[ "$passiveupdate" == "0" ]] &>/dev/null;then
     while true &>/dev/null;do  
-      read -p ""$ALIAS" is up to date. Do you want to reinstall "$ALIAS" Version: "$VERSION"? ***Enter Y for Yes or N for No*** `echo $'\n> '`" yn
+      read -p ""$ALIAS" is up to date. Do you want to reinstall "$ALIAS" Version: "$VERSION"? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
       case $yn in
         [Yy]* ) break;;
         [Nn]* ) unset passiveupdate && return;;
@@ -3335,7 +3335,7 @@ elif [[ "$GETWANMODE" == "2" ]] &>/dev/null;then
     # WAN0IFNAME
     if [ -z "${WAN0IFNAME+x}" ] &>/dev/null;then
       WAN0IFNAME="$(nvram get wan0_ifname & nvramcheck)"
-      { [ ! -z "$WAN0IFNAME" ] &>/dev/null || [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null || [ -z "$(nvram get wan0_ifname & nvramcheck)" ] &>/dev/null ;} \
+      { [ ! -z "$WAN0IFNAME" ] &>/dev/null || { [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$(nvram get wan0_is_usb_modem_ready & nvramcheck)" == "0" ]] &>/dev/null ;} || [[ "$(nvram get link_wan & nvramcheck)" == "0" ]] &>/dev/null || [ -z "$(nvram get wan0_ifname & nvramcheck)" ] &>/dev/null ;} \
       || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0IFNAME" && unset WAN0IFNAME && continue ;}
     fi
 
@@ -3348,7 +3348,7 @@ elif [[ "$GETWANMODE" == "2" ]] &>/dev/null;then
     # WAN1IFNAME
     if [ -z "${WAN1IFNAME+x}" ] &>/dev/null;then
       WAN1IFNAME="$(nvram get wan1_ifname & nvramcheck)"
-      { [ ! -z "$WAN1IFNAME" ] &>/dev/null || [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null || [ -z "$(nvram get wan1_ifname & nvramcheck)" ] &>/dev/null ;} \
+      { [ ! -z "$WAN1IFNAME" ] &>/dev/null || { [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$(nvram get wan1_is_usb_modem_ready & nvramcheck)" == "0" ]] &>/dev/null ;} || [[ "$(nvram get link_wan1 & nvramcheck)" == "0" ]] &>/dev/null || [ -z "$(nvram get wan1_ifname & nvramcheck)" ] &>/dev/null ;} \
       || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1IFNAME" && unset WAN1IFNAME && continue ;}
     fi
 
@@ -3460,13 +3460,13 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
     # WAN0IFNAME
     if [ -z "${WAN0IFNAME+x}" ] &>/dev/null || [ -z "${zWAN0IFNAME+x}" ] &>/dev/null;then
       WAN0IFNAME="$(nvram get wan0_ifname & nvramcheck)"
-      { [ ! -z "$WAN0IFNAME" ] &>/dev/null || [[ "$WAN0AUXSTATE" != "0" ]] &>/dev/null || { [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN0USBMODEMREADY" == "0" ]] &>/dev/null ;} || [ -z "$(nvram get wan0_ifname & nvramcheck)" ] &>/dev/null ;} \
+      { [ ! -z "$WAN0IFNAME" ] &>/dev/null || [[ "$WAN0AUXSTATE" != "0" ]] &>/dev/null || { [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN0USBMODEMREADY" == "0" ]] &>/dev/null ;} || [[ "$WAN0LINKWAN" == "0" ]] &>/dev/null || [ -z "$(nvram get wan0_ifname & nvramcheck)" ] &>/dev/null ;} \
       && zWAN0IFNAME="$WAN0IFNAME" \
       || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0IFNAME" && unset WAN0IFNAME ; unset zWAN0IFNAME && continue ;}
     else
       [[ "$zWAN0IFNAME" != "$WAN0IFNAME" ]] &>/dev/null && zWAN0IFNAME="$WAN0IFNAME"
       WAN0IFNAME="$(nvram get wan0_ifname & nvramcheck)"
-      { [ ! -z "$WAN0IFNAME" ] &>/dev/null && [[ "$WAN0AUXSTATE" == "0" ]] &>/dev/null && { [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN0USBMODEMREADY" == "1" ]] &>/dev/null ;} ;} || WAN0IFNAME="$zWAN0IFNAME"
+      { [ ! -z "$WAN0IFNAME" ] &>/dev/null && [[ "$WAN0AUXSTATE" == "0" ]] &>/dev/null && { [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN0USBMODEMREADY" == "1" ]] &>/dev/null ;} && [[ "$WAN0LINKWAN" == "1" ]] &>/dev/null ;} || WAN0IFNAME="$zWAN0IFNAME"
     fi
 
     # WAN0GWIFNAME
@@ -3633,13 +3633,13 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
     # WAN1IFNAME
     if [ -z "${WAN1IFNAME+x}" ] &>/dev/null || [ -z "${zWAN1IFNAME+x}" ] &>/dev/null;then
       WAN1IFNAME="$(nvram get wan1_ifname & nvramcheck)"
-      { [ ! -z "$WAN1IFNAME" ] &>/dev/null || [[ "$WAN1AUXSTATE" != "0" ]] &>/dev/null || { [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN1USBMODEMREADY" == "0" ]] &>/dev/null ;} || [ -z "$(nvram get wan0_ifname & nvramcheck)" ] &>/dev/null ;} \
+      { [ ! -z "$WAN1IFNAME" ] &>/dev/null || [[ "$WAN1AUXSTATE" != "0" ]] &>/dev/null || { [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN1USBMODEMREADY" == "0" ]] &>/dev/null ;} || [[ "$WAN1LINKWAN" == "0" ]] &>/dev/null || [ -z "$(nvram get wan0_ifname & nvramcheck)" ] &>/dev/null ;} \
       && zWAN1IFNAME="$WAN1IFNAME" \
       || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1IFNAME" && unset WAN1IFNAME ; unset zWAN1IFNAME && continue ;}
     else
       [[ "$zWAN1IFNAME" != "$WAN1IFNAME" ]] &>/dev/null && zWAN1IFNAME="$WAN1IFNAME"
       WAN1IFNAME="$(nvram get wan1_ifname & nvramcheck)"
-      { [ ! -z "$WAN1IFNAME" ] &>/dev/null && [[ "$WAN1AUXSTATE" == "0" ]] &>/dev/null && { [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN1USBMODEMREADY" == "1" ]] &>/dev/null ;} ;} || WAN1IFNAME="$zWAN1IFNAME"
+      { [ ! -z "$WAN1IFNAME" ] &>/dev/null && [[ "$WAN1AUXSTATE" == "0" ]] &>/dev/null && { [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN1USBMODEMREADY" == "1" ]] &>/dev/null ;} && [[ "$WAN1LINKWAN" == "1" ]] &>/dev/null ;} || WAN1IFNAME="$zWAN1IFNAME"
     fi
 
     # WAN1GWIFNAME
