@@ -2619,6 +2619,16 @@ for WANPREFIX in ${WANPREFIXES};do
      && logger -p 4 -t "$ALIAS" "Check Routing Table - Added default route for ${WANPREFIX} Routing Table via "$GATEWAY" dev "$GWIFNAME"" \
      || logger -p 2 -t "$ALIAS" "Check Routing Table - ***Error*** Unable to add default route for ${WANPREFIX} Routing Table via "$GATEWAY" dev "$GWIFNAME""
   fi
+
+  # Check WAN Routing Table for Target IP Route
+  logger -p 6 -t "$ALIAS" "Debug - Checking ${WANPREFIX} for route to Target IP: $TARGET for ${WANPREFIX} Routing Table via $GATEWAY dev $GWIFNAME"
+  if [ -z "$(ip route list $TARGET via $GATEWAY dev $GWIFNAME table $TABLE)" ] &>/dev/null;then
+     logger -p 5 -t "$ALIAS" "Check Routing Table - Adding route to Target IP: $TARGET for ${WANPREFIX} Routing Table via $GATEWAY dev $GWIFNAME"
+     ip route add $TARGET via $GATEWAY dev $GWIFNAME table $TABLE \
+     && logger -p 4 -t "$ALIAS" "Check Routing Table - Added default route to Target IP: $TARGET for ${WANPREFIX} Routing Table via $GATEWAY dev $GWIFNAME" \
+     || logger -p 2 -t "$ALIAS" "Check Routing Table - ***Error*** Unable to add default route to Target IP: $TARGET for ${WANPREFIX} Routing Table via $GATEWAY dev $GWIFNAME"
+  fi
+
 done
 
 return
@@ -5908,13 +5918,14 @@ if { [[ "$mode" == "manual" ]] &>/dev/null || [[ "$mode" == "run" ]] &>/dev/null
     getwanparameters || return
 
     logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Enabled: "$ENABLE""
-    logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Routing Table Default Route: "$(ip route list default table "$TABLE")""
+    logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Routing Table Default Route: "$(ip route list default table $TABLE)""
     logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Ping Path: "$PINGPATH""
-    logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Target IP Rule: "$(ip rule list from all iif lo to "$TARGET" lookup "$TABLE")""
-    if [[ "$PINGPATH" == "0" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Target IP Rule: "$(ip rule list from all iif lo to $TARGET lookup $TABLE)""
+    if [[ "$PINGPATH" == "0" ]] &>/dev/null || [[ "$PINGPATH" == "3" ]] &>/dev/null;then
       logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Target IP Route: "$(ip route list $TARGET via $GATEWAY dev $GWIFNAME table main)""
     else
-      logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Target IP Route: "$(ip route list default table $TABLE)""
+      logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Default IP Route: "$(ip route list default table $TABLE)""
+      logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Target IP Route: "$(ip route list $TARGET via $GATEWAY dev $GWIFNAME table $TABLE)""
     fi
     logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" IP Address: "$IPADDR""
     logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Real IP Address: "$REALIPADDR""
