@@ -27,6 +27,7 @@ if [[ "$(nvram get wan0_state_t)" == "2" ]] &>/dev/null;then
   [[ ! -z "${WAN0PINGTIME+x}" ]] &>/dev/null && echo -e "WAN0 Ping Time: "$WAN0PINGTIME"ms"
   echo -e "WAN0 Target IP Rules: \n$(ip rule list | grep -w "to $WAN0TARGET")"
   echo -e "WAN0 Routing Table: \n$(ip route list table $WAN0ROUTETABLE)"
+  echo -e "WAN0 Gateway ARP Entry: \n$(arp -a $(nvram get wan0_gateway))"
 else
   echo -e "WAN0 is not Connected"
 fi
@@ -49,6 +50,7 @@ if [[ "$(nvram get wan1_state_t)" == "2" ]] &>/dev/null;then
   [[ ! -z "${WAN1PINGTIME+x}" ]] &>/dev/null && echo -e "WAN1 Ping Time: "$WAN1PINGTIME"ms"
   echo -e "WAN1 Target IP Rules: \n$(ip rule list | grep -w "to $WAN1TARGET")"
   echo -e "WAN1 Routing Table: \n$(ip route list table $WAN1ROUTETABLE)"
+  echo -e "WAN1 Gateway ARP Entry: \n$(arp -a $(nvram get wan1_gateway))"
 else
   echo -e "WAN1 is not Connected"
 fi
