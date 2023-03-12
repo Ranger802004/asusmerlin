@@ -2,7 +2,7 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/05/2023
+# Date: 03/12/2023
 # Version: v2.0.0-beta6
 
 # Cause the script to exit if errors are encountered
@@ -4014,7 +4014,7 @@ if [ ! -f "$WAN0PACKETLOSSFILE" ] &>/dev/null;then
 fi
 
 # Capture Packet Loss
-PINGWAN0TARGETOUTPUT="$(ping -I $WAN0GWIFNAME $WAN0TARGET -q -c $PINGCOUNT -W $(($PINGCOUNT*PINGTIMEOUT)) -w $(($PINGCOUNT*PINGTIMEOUT)) -s $WAN0PACKETSIZE 2>/dev/null)" \
+PINGWAN0TARGETOUTPUT="$(ping -I $WAN0GWIFNAME $WAN0TARGET -q -c $PINGCOUNT -W $PINGTIMEOUT -s $WAN0PACKETSIZE 2>/dev/null)" \
 && WAN0PACKETLOSS="$(echo $PINGWAN0TARGETOUTPUT | awk '/packet loss/ {print $18}')" \
 || WAN0PACKETLOSS="100%"
 if [[ "$WAN0PACKETLOSS" != "100%" ]] &>/dev/null;then
@@ -4044,7 +4044,7 @@ if [ ! -f "$WAN1PACKETLOSSFILE" ] &>/dev/null;then
 fi
 
 # Capture Packet Loss
-PINGWAN1TARGETOUTPUT="$(ping -I $WAN1GWIFNAME $WAN1TARGET -q -c $PINGCOUNT -W $(($PINGCOUNT*PINGTIMEOUT)) -w $(($PINGCOUNT*PINGTIMEOUT)) -s $WAN1PACKETSIZE 2>/dev/null)" \
+PINGWAN1TARGETOUTPUT="$(ping -I $WAN1GWIFNAME $WAN1TARGET -q -c $PINGCOUNT -W $PINGTIMEOUT -s $WAN1PACKETSIZE 2>/dev/null)" \
 && WAN1PACKETLOSS="$(echo $PINGWAN1TARGETOUTPUT | awk '/packet loss/ {print $18}')" \
 || WAN1PACKETLOSS="100%"
 if [[ "$WAN1PACKETLOSS" != "100%" ]] &>/dev/null;then
