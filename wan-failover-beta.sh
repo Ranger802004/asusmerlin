@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/12/2023
-# Version: v2.0.0-beta6
+# Date: 03/15/2023
+# Version: v2.0.0
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.0-beta6"
+VERSION="v2.0.0"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -341,6 +341,7 @@ FWVERSIONS='
 386.7
 386.9
 388.1
+388.2
 '
 
 # Firmware Version Check
@@ -5587,8 +5588,8 @@ while true &>/dev/null;do
     [ ! -z "$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}' &)" ] &>/dev/null && RUNNING="1" || RUNNING="0"
   fi
 
-  currenttime="$(date +%H%M%S | awk '{print "1"$0}')"
-  currentdate="$(date +%m%d%y | awk '{print "1"$0}')"
+  # Get Current Epoch Time
+  currenttime="$(date +%s)"
 
   if [[ "$updateneeded" == "0" ]] &>/dev/null;then
     DISPLAYVERSION="${LIGHTGRAY}$VERSION${NOCOLOR}"
@@ -5618,8 +5619,8 @@ while true &>/dev/null;do
     WAN0PACKETLOSS="$(sed -n 1p "$WAN0PACKETLOSSFILE")"
     WAN0PINGTIME="$(sed -n 2p "$WAN0PACKETLOSSFILE")"
     WAN0LASTUPDATE="$(date -r "$WAN0PACKETLOSSFILE")"
-    wan0lastupdatetime="$(date -r "$WAN0PACKETLOSSFILE" +%H%M%S | awk '{print "1"$0}')"
-    wan0lastupdatedate="$(date -r "$WAN0PACKETLOSSFILE" +%m%d%y | awk '{print "1"$0}')"
+    # Get Last WAN0 Update Epoch Time
+    wan0lastupdatetime="$(date -r "$WAN0PACKETLOSSFILE" +%s)"
     # Determine Packet Loss Color
     if [[ "$WAN0PACKETLOSS" == "0%" ]] &>/dev/null;then
       WAN0PACKETLOSSCOLOR="${CYAN}"
@@ -5649,7 +5650,6 @@ while true &>/dev/null;do
     WAN0PINGTIME="N/A"
     WAN0LASTUPDATE="N/A"
     wan0lastupdatetime=""
-    wan0lastupdatedate=""
     WAN0PACKETLOSSCOLOR="${NOCOLOR}"
     WAN0PINGTIMECOLOR="${NOCOLOR}" 
   fi
@@ -5657,8 +5657,8 @@ while true &>/dev/null;do
     WAN1PACKETLOSS="$(sed -n 1p "$WAN1PACKETLOSSFILE")"
     WAN1PINGTIME="$(sed -n 2p "$WAN1PACKETLOSSFILE")"
     WAN1LASTUPDATE="$(date -r "$WAN1PACKETLOSSFILE")"
-    wan1lastupdatetime="$(date -r "$WAN1PACKETLOSSFILE" +%H%M%S | awk '{print "1"$0}')"
-    wan1lastupdatedate="$(date -r "$WAN1PACKETLOSSFILE" +%m%d%y | awk '{print "1"$0}')"
+    # Get Last WAN1 Update Epoch Time
+    wan1lastupdatetime="$(date -r "$WAN1PACKETLOSSFILE" +%s)"
     # Determine Packet Loss Color
     if [[ "$WAN1PACKETLOSS" == "0%" ]] &>/dev/null;then
       WAN1PACKETLOSSCOLOR="${CYAN}"
@@ -5687,7 +5687,7 @@ while true &>/dev/null;do
     WAN1PACKETLOSS="N/A"
     WAN1PINGTIME="N/A"
     WAN1LASTUPDATE="N/A"
-    wan1lastupdate=""
+    wan1lastupdatetime=""
     WAN1PACKETLOSSCOLOR="${NOCOLOR}"
     WAN1PINGTIMECOLOR="${NOCOLOR}" 
   fi
@@ -5695,11 +5695,11 @@ while true &>/dev/null;do
   if [[ "$RUNNING" == "1" ]] &>/dev/null;then
     if [[ "$WAN0ENABLE" == "0" ]] &>/dev/null || [[ "$WAN1ENABLE" == "0" ]] &>/dev/null;then
       RUNNING=3
-    elif [ ! -z "${currenttime+x}" ] &>/dev/null && [ ! -z "${wan0lastupdatetime+x}" ] &>/dev/null && [ ! -z "${wan1lastupdatetime+x}" ] &>/dev/null && [ ! -z "${currentdate+x}" ] &>/dev/null && [ ! -z "${wan0lastupdatedate+x}" ] &>/dev/null && [ ! -z "${wan1lastupdatedate+x}" ] &>/dev/null;then
+    elif [ ! -z "${currenttime+x}" ] &>/dev/null && [ ! -z "${wan0lastupdatetime+x}" ] &>/dev/null && [ ! -z "${wan1lastupdatetime+x}" ] &>/dev/null;then
       [ ! -z "${wan0lastupdatetime+x}" ] &>/dev/null && wan0checktime="$(echo $(($wan0lastupdatetime+(($PINGCOUNT*$PINGTIMEOUT)*$RECURSIVEPINGCHECK)+($STATUSCHECK*3))))"
       [ ! -z "${wan1lastupdatetime+x}" ] &>/dev/null && wan1checktime="$(echo $(($wan1lastupdatetime+(($PINGCOUNT*$PINGTIMEOUT)*$RECURSIVEPINGCHECK)+($STATUSCHECK*3))))"
-      [[ "$WAN0ENABLE" == "1" ]] &>/dev/null && [[ "$currentdate" == "$wan0lastupdatedate" ]] &>/dev/null && { [[ "$currenttime" -gt "$wan0checktime" ]] &>/dev/null && RUNNING=2 ;}
-      [[ "$WAN1ENABLE" == "1" ]] &>/dev/null && [[ "$currentdate" == "$wan1lastupdatedate" ]] &>/dev/null && { [[ "$currenttime" -gt "$wan1checktime" ]] &>/dev/null && RUNNING=2 ;}
+      [[ "$WAN0ENABLE" == "1" ]] &>/dev/null && { [[ "$currenttime" -gt "$wan0checktime" ]] &>/dev/null && RUNNING=2 ;}
+      [[ "$WAN1ENABLE" == "1" ]] &>/dev/null && { [[ "$currenttime" -gt "$wan1checktime" ]] &>/dev/null && RUNNING=2 ;}
     else
       RUNNING=2
     fi
