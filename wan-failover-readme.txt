@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 12/28/2022
-# Version: v1.6.0
+# Date: 03/15/2022
+# Version: v2.0.0
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -21,24 +21,40 @@ Updating:
 Uninstallation:
 /jffs/scripts/wan-failover.sh uninstall
 
-Required Configuration: During installation or reconfiguration, the following settings are configured:
--	WAN0 Target:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Example: 8.8.8.8
--	WAN1 Target:  This is the target IP address for WAN1, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN1 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Example: 8.8.4.4
--	Ping Count:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected.   
--	Ping Timeout:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.
--	QoS Settings are configured for each WAN interface because both interfaces may not have the same bandwidth (download/upload speeds).  The script will automatically change these settings for each interface as they become the active WAN interface.  If QoS is disabled or QoS Automatic Settings are being used, these settings will not be applied.
-  o	WAN0 QoS Enabled/Disabled
-    o	WAN0 QoS Upload Bandwidth: Value is in Mbps
-    o	WAN0 QoS Download Bandwidth:  Value is in Mbps
-  o	WAN1 QoS Enabled/Disabled
-    o	WAN1 QoS Download Bandwidth: Value is in Mbps
-    o	WAN1 QoS Upload Bandwidth: Value is in Mbps
+Accessing Menu:
+wan-failover
 
-Optional Configuration: ***Options that can be adjusted in the configuration file***
-- To enable or disable email notifications, execute the command arguments "email enable" or "email disable", default mode is Enabled.  Example: "/jffs/scripts/wan-failover.sh email enable"  ***Email Notifications work with amtm or AIProtection Alert Preferences****
+Run Modes:
+- Menu Mode: SSH User Interface for WAN Failover, access by executing script without any arguments.
+- Install Mode: Install the script and configuration files necessary. Add the command argument "install" to use this mode.
+- Uninstall Mode: Uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
+- Config Mode: Configuration Menu will load and allow configuration of WAN Failover.  Use command argument "config" to use this mode.
+- Run Mode: Execute the script in the background via Cron Job. Add the command argument "run" to use this mode.
+- Update Mode: Download and update to the latest version.  (v1.3.7 or higher)
+- Manual Mode: Execute the script in a command console. Add the command argument "manual" to use this mode.
+- Initiate Mode: Execute the script to only create Routing Table Rules, IP Rules, and IPTables Rules.
+- Switch WAN Mode: ***Failover Mode Only*** Manually switch Primary WAN. Add the command argument "switchwan" to use this mode.
+- Monitor Mode: Monitor the System Log file for the script. Add the command argument "monitor" to use this mode.
+- Capture Mode: Capture the System Log for WAN Failover events and generate a temporary file under /tmp/ named wan-failover-<DATESTAMP>.log.  Example: /tmp/wan-failover-2022-11-09-22:09:41-CST.log
+- Restart Mode: Restart the script if it is currently running.  Add the command argument "restart" to use this mode. (v1.5.5 or higher)
+- Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
+- Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the command argument "cron" to use this mode.
+- Status Console Mode: This will display the Status Console for WAN Failover.  Add the command argument "status" to use this mode.
+
+Configuration Options (/jffs/configs/wan-failover.conf):
+-	WAN0TARGET:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.8.8
+-	WAN1TARGET:  This is the target IP address for WAN1, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN1 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.4.4
+-	PINGCOUNT:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected. Default: 3 Seconds
+-	PINGTIMEOUT:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.  Default: 1 Second
+- WAN0_QOS_ENABLE: WAN0 QoS Enabled/Disabled
+- WAN0_QOS_IBW: WAN0 QoS Download Bandwidth:  Value is in Mbps
+- WAN0_QOS_OBW: WAN0 QoS Upload Bandwidth: Value is in Mbps
 - WAN0_QOS_OVERHEAD: This will define WAN0 Packet Overhead when QoS is Enabled.  Default: 0 Bytes
-- WAN1_QOS_OVERHEAD: This will define WAN1 Packet Overhead when QoS is Enabled.  Default: 0 Bytes
 - WAN0_QOS_ATM: This will enable or disable Asynchronous Transfer Mode (ATM) for WAN0 when QoS is Enabled. Default: Disabled (0)
+- WAN1_QOS_ENABLE: WAN1 QoS Enabled/Disabled
+- WAN1_QOS_IBW: WAN1 QoS Download Bandwidth: Value is in Mbps
+- WAN1_QOS_OBW: WAN1 QoS Upload Bandwidth: Value is in Mbps
+- WAN1_QOS_OVERHEAD: This will define WAN1 Packet Overhead when QoS is Enabled.  Default: 0 Bytes
 - WAN1_QOS_ATM: This will enable or disable Asynchronous Transfer Mode (ATM) for WAN1 when QoS is Enabled. Default: Disabled (0)
 - WANDISABLEDSLEEPTIMER: This is how many seconds the script pauses and checks again if Dual WAN, Failover/Load Balance Mode, or WAN links are disabled/disconnected. Default: 10 seconds
 - PACKETLOSSLOGGING: This will log packet loss detections that are less than 100% packet loss but more than 0% packet loss.  These events are not enough to trigger a WAN Failover/Failback condition but may be informational data as to the performance of a WAN interface.  If the Ping Timeout setting is too low (1-2 seconds) combined with a high latency WAN interface such as satellite internet services, this logging can become excessive with the described configuration. Default: Enabled (1)
@@ -67,25 +83,62 @@ Optional Configuration: ***Options that can be adjusted in the configuration fil
 - WAN1PACKETSIZE: This defines the Packet Size for pinging the WAN1 Target IP Address.  Default: 56 Bytes
 - CUSTOMLOGPATH: This defines a Custom System Log path for Monitor Mode. Default: N/A
 - DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
-- CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Enabled
-
-Run Modes:
-- Menu Mode: SSH User Interface for WAN Failover, access by executing script without any arguments.
-- Install Mode: Install the script and configuration files necessary. Add the command argument "install" to use this mode.
-- Uninstall Mode: Uninstall the configuration files necessary to stop the script from running. Add the command argument "uninstall" to use this mode.
-- Run Mode: Execute the script in the background via Cron Job. Add the command argument "run" to use this mode.
-- Update Mode: Download and update to the latest version.  (v1.3.7 or higher)
-- Configuration Mode: Reconfiguration of WAN Failover to update or change settings. Add the command argument "config" to use this mode (v1.4.2 or higher)
-- Manual Mode: Execute the script in a command console. Add the command argument "manual" to use this mode.
-- Switch WAN Mode: ***Failover Mode Only*** Manually switch Primary WAN. Add the command argument "switchwan" to use this mode.
-- Email Configuration Mode: Enable or disable email notifications using enable or disable parameter.  Add command argument "email enable" or "email disable".
-- Monitor Mode: Monitor the System Log file for the script. Add the command argument "monitor" to use this mode.
-- Capture Mode: Capture the System Log for WAN Failover events and generate a temporary file under /tmp/ named wan-failover-<DATESTAMP>.log.  Example: /tmp/wan-failover-2022-11-09-22:09:41-CST.log
-- Restart Mode: Restart the script if it is currently running.  Add the command argument "restart" to use this mode. (v1.5.5 or higher)
-- Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
-- Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the comment argument "cron" to use this mode.
+- CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Disabled
+- SCHEDULECRONJOB: This defines control whether the Cron Job is scheduled or not for WAN Failover to run.  Default: Enabled
+- PINGTIMEMIN: This defines a minimum threshold for the console showing the Ping Time Status as Green, above this value it will show Yellow. Default: 40ms
+- PINGTIMEMAX: This defines a maximum threshold for the console showing the Ping Time Status as Red. Default: 80ms
+- STATUSCHECK: This defines the refresh interval for the WAN Failover Status Console.  Default: 
 
 Release Notes:
+v2.0.0 - 03/15/2023
+Installation:
+- Uninstallation will prompt if configuration file should be deleted or retained.
+- During uninstallation, the script will now delete the script file.  This change was necessary for AMTM integration
+- Installation will automatically create default configuration that can be modified in the Config Menu.
+- Installation will alert and log if Router is not properly configured for WAN Failover to being operation.
+
+Enhancements:
+- Added 388.2 to supported Firmware list
+- Added 386.9 to supported Firmware list
+- switchwan argument can now be ran in an unattended mode to passively allow failover that doesn't require User Verification to failover.
+- Added new Configuration Option: SCHEDULECRONJON.  Enabled by default, this will control whether the Cron Job is scheduled or not for WAN Failover to run.
+  This is configurable in the Config Menu under Option 23: Configure Cron Job
+- Added Load Balance Mode Settings to GUI Config Menu for WAN0 FWMark, WAN0 Mask, WAN1 FWMark, and WAN1 Mask.
+- Changed CHECKNVRAM Default to Disabled for performance optimization.  This feature should only be enabled on routers with issues accessing nvram.
+  Existing installations of WAN Failover will need this setting manually changed under Configuration Menu Option 12.
+- Added initiate command argument to only create Routing Table Rules, IP Rules, and IPTables Rules.
+- Load Balance Monitor will now check IP Rules by default of every 15 minutes to make sure all rules are properly configured.  This will help resolve issues where the router adds improperly configured IPTables MANGLE rules.
+- Visual Enhancements with prompts.
+- Optimization of script including reducing the number of NVRAM calls during script execution.
+- New Enhanced Status Console
+  - Access from Menu or Command Argument "status"
+  - Built in Refresh Interval Added
+  - Additional information included (Failover Status, Primary WAN, Gateway MAC Address, Ping Time, etc).
+  - Added new configuration items PINGTIMEMIN (Ping Time will show green in Console), PINGTIMEMAX (Ping Time will show red in console), STATUSCHECK (Default interval between Status Console refreshes).
+- System Log Events will now show as "wan-failover" instead of "wan-failover.sh"
+- System Log Events for Failover Mode WAN Switches will dynamically be listed under "Failover" or "Failback" instead of "WAN Switch"
+- System Log Events will now log if Ping Time Maximum is reached for WAN0 or WAN1.
+- System Log Events will now log if an NVRAM Check Failure occured with CHECKNVRAM Enabled.
+- Email Notifications will now display if QoS ATM is enabled.
+- Configuration Menu will now allow configuration of all QoS Settings.
+- Configuration Mode will now go straight to Configuration Menu when using command argument "config".
+- Restart Services will now restart all processes consecutively without waiting for them to complete to reduce failover/failback time.
+- Improvements to Update Mode for version checks
+- Update Mode will now check checksum to ensure integrity of WAN Failover.
+
+Fixes:
+- Removed VPNMON-R2 integration.  VPNMON-R2 is now capable of detecting failover events and resetting itself without WAN Failover.
+- Resolved issue where some Failback emails were not being generated
+- Resolved issue where WAN Failover was logging that QoS settings were being applied and restarting services if the non-Primary WAN failed during monitoring
+- Various fixes to improve reliability and integrity of script.
+- Monitor and Capture Mode will no longer show messages from tail command stating the file path has changed.
+- Fixed Restart Mode not killing all PIDs.
+- Added a check if WAN was changed by router firmware before making it to Failover function so it doesn't attempt to switch back Primary WAN to a down WAN interface.
+- Fixed an issue where Installation would not create the WAN0_QOS_OBW configuration setting.
+
+Deprecated:
+- Removed Email Configuration Mode, use Configuration Menu to change Email Notification Settings.
+
 v1.6.0 - 12/28/2022
 Enhancements:
 - Added SSH User Interface
