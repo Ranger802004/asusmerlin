@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/17/2023
-# Version: v2.0.1-beta1
+# Date: 03/20/2023
+# Version: v2.0.1-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.1-beta1"
+VERSION="v2.0.1-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -2439,6 +2439,9 @@ else
             PINGPATH="1" && setwanstatus
           elif [[ "$PINGPATH" != "1" ]] &>/dev/null && [[ "$PACKETLOSS" != "0%" ]] &>/dev/null;then
             ip rule del from all iif lo to $TARGET oif $GWIFNAME table $TABLE priority $PRIORITY
+          elif [[ "$PINGPATH" == "1" ]] &>/dev/null && [[ "$PACKETLOSS" == "100%" ]] &>/dev/null && [[ "$STATE" == "2" ]] &>/dev/null;then
+            ip rule del from all iif lo to $TARGET oif $GWIFNAME table $TABLE priority $PRIORITY
+            PINGPATH="0"
           fi
         fi
 
@@ -3528,16 +3531,29 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
 
     # WAN0GWMAC
     if [[ -z "${WAN0GWMAC+x}" ]] &>/dev/null || [[ -z "${zWAN0GWMAC+x}" ]] &>/dev/null;then
-      WAN0GWMAC="$(nvram get wan0_gw_mac & nvramcheck)"
-      { [[ -n "$WAN0GWMAC" ]] &>/dev/null || [[ "$WAN0AUXSTATE" != "0" ]] &>/dev/null || [[ -z "$(nvram get wan0_gw_mac & nvramcheck)" ]] &>/dev/null ;} \
-      && zWAN0GWMAC="$WAN0GWMAC" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GWMAC" && unset WAN0GWMAC ; unset zWAN0GWMAC && continue ;}
-    elif { [[ -z "$WAN0GWMAC" ]] &>/dev/null || [[ -z "$zWAN0GWMAC" ]] &>/dev/null ;} && [[ "$WAN0AUXSTATE" == "0" ]] &>/dev/null;then
-      { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GWMAC" && unset WAN0GWMAC ; unset zWAN0GWMAC ;} && continue
+      if [[ "$WAN0ENABLE" == "0" ]] &>/dev/null || [[ "$WAN0AUXSTATE" == "1" ]] &>/dev/null;then
+        WAN0GWMAC=""
+      elif [[ -n "$(nvram get wan0_gw_mac & nvramcheck)" ]] &>/dev/null;then
+        WAN0GWMAC="$(nvram get wan0_gw_mac & nvramcheck)"
+      elif [[ -n "$WAN0GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN0GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
+        WAN0GWMAC="$(arp -i $WAN0GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
+      else
+        WAN0GWMAC=""
+      fi
+      zWAN0GWMAC="$WAN0GWMAC"
     else
       [[ "$zWAN0GWMAC" != "$WAN0GWMAC" ]] &>/dev/null && zWAN0GWMAC="$WAN0GWMAC"
-      WAN0GWMAC="$(nvram get wan0_gw_mac & nvramcheck)"
-      [[ -n "$WAN0GWMAC" ]] &>/dev/null || WAN0GWMAC="$zWAN0GWMAC"
+      if [[ "$WAN0ENABLE" == "0" ]] &>/dev/null || [[ "$WAN0AUXSTATE" == "1" ]] &>/dev/null;then
+        WAN0GWMAC=""
+      elif [[ -n "$(nvram get wan0_gw_mac & nvramcheck)" ]] &>/dev/null;then
+        WAN0GWMAC="$(nvram get wan0_gw_mac & nvramcheck)"
+        { [[ -z "$WAN0GWMAC" ]] &>/dev/null && [[ -n "$zWAN0GWMAC" ]] &>/dev/null ;} && WAN0GWMAC="$zWAN0GWMAC"
+      elif [[ -n "$WAN0GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN0GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
+        WAN0GWMAC="$(arp -i $WAN0GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
+        { [[ -z "$WAN0GWMAC" ]] &>/dev/null && [[ -n "$zWAN0GWMAC" ]] &>/dev/null ;} && WAN0GWMAC="$zWAN0GWMAC"
+      else
+        WAN0GWMAC=""
+      fi
     fi
 
     # WAN0PRIMARY
@@ -3701,16 +3717,29 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
 
     # WAN1GWMAC
     if [[ -z "${WAN1GWMAC+x}" ]] &>/dev/null || [[ -z "${zWAN1GWMAC+x}" ]] &>/dev/null;then
-      WAN1GWMAC="$(nvram get wan1_gw_mac & nvramcheck)"
-      { [[ -n "$WAN1GWMAC" ]] &>/dev/null || [[ "$WAN1AUXSTATE" != "0" ]] &>/dev/null || [[ -z "$(nvram get wan1_gw_mac & nvramcheck)" ]] &>/dev/null ;} \
-      && zWAN1GWMAC="$WAN1GWMAC" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWMAC" && unset WAN1GWMAC ; unset zWAN1GWMAC && continue ;}
-    elif { [[ -z "$WAN1GWMAC" ]] &>/dev/null || [[ -z "$zWAN1GWMAC" ]] &>/dev/null ;} && [[ "$WAN1AUXSTATE" == "0" ]] &>/dev/null;then
-      { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWMAC" && unset WAN1GWMAC ; unset zWAN1GWMAC ;} && continue
+      if [[ "$WAN1ENABLE" == "0" ]] &>/dev/null || [[ "$WAN1AUXSTATE" == "1" ]] &>/dev/null;then
+        WAN1GWMAC=""
+      elif [[ -n "$(nvram get wan1_gw_mac & nvramcheck)" ]] &>/dev/null;then
+        WAN1GWMAC="$(nvram get wan1_gw_mac & nvramcheck)"
+      elif [[ -n "$WAN1GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN1GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
+        WAN1GWMAC="$(arp -i $WAN1GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
+      else
+        WAN1GWMAC=""
+      fi
+      zWAN1GWMAC="$WAN1GWMAC"
     else
       [[ "$zWAN1GWMAC" != "$WAN1GWMAC" ]] &>/dev/null && zWAN1GWMAC="$WAN1GWMAC"
-      WAN1GWMAC="$(nvram get wan1_gw_mac & nvramcheck)"
-      [[ -n "$WAN1GWMAC" ]] &>/dev/null || WAN1GWMAC="$zWAN1GWMAC"
+      if [[ "$WAN1ENABLE" == "0" ]] &>/dev/null || [[ "$WAN1AUXSTATE" == "1" ]] &>/dev/null;then
+        WAN1GWMAC=""
+      elif [[ -n "$(nvram get wan1_gw_mac & nvramcheck)" ]] &>/dev/null;then
+        WAN1GWMAC="$(nvram get wan1_gw_mac & nvramcheck)"
+        { [[ -z "$WAN1GWMAC" ]] &>/dev/null && [[ -n "$zWAN1GWMAC" ]] &>/dev/null ;} && WAN1GWMAC="$zWAN1GWMAC"
+      elif [[ -n "$WAN1GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN1GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
+        WAN1GWMAC="$(arp -i $WAN1GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
+        { [[ -z "$WAN1GWMAC" ]] &>/dev/null && [[ -n "$zWAN1GWMAC" ]] &>/dev/null ;} && WAN1GWMAC="$zWAN1GWMAC"
+      else
+        WAN1GWMAC=""
+      fi
     fi
 
     # WAN1PRIMARY
