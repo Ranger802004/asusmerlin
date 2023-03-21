@@ -3,7 +3,7 @@
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 03/21/2023
-# Version: v2.0.1-beta3
+# Version: v2.0.1-beta4
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.1-beta3"
+VERSION="v2.0.1-beta4"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -363,7 +363,7 @@ logger -p 5 -t "$ALIAS" "System Check - IP Version: "$IPVERSION""
 
 # JFFS Custom Scripts Enabled Check
 logger -p 6 -t "$ALIAS" "Debug - JFFS custom scripts and configs: "$JFFSSCRIPTS""
-if [[ "$JFFSSCRIPTS" != "1" ]] &>/dev/null;then
+if [[ "$JFFSSCRIPTS" == "0" ]] &>/dev/null;then
   logger -p 3 -st "$ALIAS" "System Check - ***JFFS custom scripts and configs not Enabled***"
 fi
 
@@ -403,7 +403,6 @@ update && unset passiveupdate || return
 
 # Check Process Priority
 logger -p 5 -t "$ALIAS" "System Check - Process Priority: "$PROCESSPRIORITY""
-
 
 return
 }
@@ -1235,7 +1234,8 @@ logger -p 6 -t "$ALIAS" "Debug - Reading "$CONFIGFILE""
 
 if [[ "$configdefaultssync" == "0" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Checking for missing configuration options"
-  WANDOGTARGET="$(nvram get wandog_target & nvramcheck)"
+  [[ -n "${PRODUCTID+x}" ]] &>/dev/null || { getsystemparameters || return ;}
+  [[ -n "${WANDOGTARGET+x}" ]] &>/dev/null || { getsystemparameters || return ;}
   QOSENABLE="$(nvram get qos_enable & nvramcheck)"
   QOSIBW="$(nvram get qos_ibw & nvramcheck)"
   QOSOBW="$(nvram get qos_obw & nvramcheck)"
@@ -1427,8 +1427,13 @@ if [[ "$configdefaultssync" == "0" ]] &>/dev/null;then
     echo -e "DEVMODE=0" >> $CONFIGFILE
   fi
   if [[ -z "$(sed -n '/\bCHECKNVRAM=\b/p' "$CONFIGFILE")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating CHECKNVRAM Default: Disabled"
-    echo -e "CHECKNVRAM=0" >> $CONFIGFILE
+    if [[ "$PRODUCTID" == "RT-AC86U" ]] &>/dev/null || [[ "$PRODUCTID" == "GT-AC2900" ]] &>/dev/null;then
+      logger -p 6 -t "$ALIAS" "Debug - Creating CHECKNVRAM Default: Enabled"
+      echo -e "CHECKNVRAM=1" >> $CONFIGFILE
+    else
+      logger -p 6 -t "$ALIAS" "Debug - Creating CHECKNVRAM Default: Disabled"
+      echo -e "CHECKNVRAM=0" >> $CONFIGFILE
+    fi
   fi
   if [[ -z "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$CONFIGFILE")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating CUSTOMLOGPATH Default: N/A"
@@ -2310,11 +2315,11 @@ wanstatus ()
 logger -p 6 -t "$ALIAS" "Debug - Function: wanstatus"
 
 # Check if script has been loaded and is already in a Ready State
-[[ -z "${READYSTATE+x}" ]] &>/dev/null && READYSTATE=0
+[[ -z "${READYSTATE+x}" ]] &>/dev/null && READYSTATE="0"
 
 # Boot Delay Timer
-logger -p 6 -t "$ALIAS" "Debug - System Uptime: "$(awk -F "." '{print $1}' "/proc/uptime")" Seconds"
-logger -p 6 -t "$ALIAS" "Debug - Boot Delay Timer: "$BOOTDELAYTIMER" Seconds"
+logger -p 6 -t "$ALIAS" "Debug - System Uptime: $(awk -F "." '{print $1}' "/proc/uptime") Seconds"
+logger -p 6 -t "$ALIAS" "Debug - Boot Delay Timer: $BOOTDELAYTIMER Seconds"
 if [[ -n "$BOOTDELAYTIMER" ]] &>/dev/null;then
   if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$BOOTDELAYTIMER" ]] &>/dev/null;then
     logger -p 4 -st "$ALIAS" "Boot Delay - Waiting for System Uptime to reach $BOOTDELAYTIMER seconds"
@@ -2327,7 +2332,7 @@ fi
 
 # Get Global WAN Parameters
 if [[ -z "${globalwansync+x}" ]] &>/dev/null;then
-  GETWANMODE=2
+  GETWANMODE="2"
   getwanparameters || return
 fi
 
@@ -2343,44 +2348,44 @@ elif [[ "$WANDOGENABLE" != "0" ]] &>/dev/null;then
 else
   for WANPREFIX in ${WANPREFIXES};do
     # Getting WAN Parameters
-    GETWANMODE=1
+    GETWANMODE="1"
     getwanparameters || return
 
     # Check if WAN Interfaces are Disabled
     if [[ "$ENABLE" == "0" ]] &>/dev/null;then
       logger -p 1 -st "$ALIAS" "WAN Status - ${WANPREFIX} disabled"
-      STATUS=DISABLED
-      logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Status: "$STATUS""
+      STATUS="DISABLED"
+      logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Status: $STATUS"
       setwanstatus && continue
     # Check if WAN is Enabled
     elif [[ "$ENABLE" == "1" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "WAN Status - ${WANPREFIX} enabled"
       # Check WAN Connection
-      logger -p 6 -t "$ALIAS" "Debug - Checking "${WANPREFIX}" State"
+      logger -p 6 -t "$ALIAS" "Debug - Checking ${WANPREFIX} State"
       if [[ "$AUXSTATE" == "1" ]] &>/dev/null || [[ -z "$GWIFNAME" ]] &>/dev/null || { [[ "$DUALWANDEV" == "usb" ]] &>/dev/null && { [[ "$USBMODEMREADY" == "0" ]] &>/dev/null || [[ -z "$IFNAME" ]] &>/dev/null ;} ;};then
-        [[ "$DUALWANDEV" != "usb" ]] &>/dev/null && logger -p 1 -st "$ALIAS" "WAN Status - "${WANPREFIX}": Cable Unplugged"
-        [[ "$DUALWANDEV" == "usb" ]] &>/dev/null && logger -p 1 -st "$ALIAS" "WAN Status - "${WANPREFIX}": USB Unplugged" && RESTARTSERVICESMODE=2 && restartservices
-        STATUS=UNPLUGGED
-        logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Status: "$STATUS""
+        [[ "$DUALWANDEV" != "usb" ]] &>/dev/null && logger -p 1 -st "$ALIAS" "WAN Status - ${WANPREFIX}: Cable Unplugged"
+        [[ "$DUALWANDEV" == "usb" ]] &>/dev/null && logger -p 1 -st "$ALIAS" "WAN Status - ${WANPREFIX}: USB Unplugged" && RESTARTSERVICESMODE="2" && restartservices
+        STATUS="UNPLUGGED"
+        logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Status: $STATUS"
         setwanstatus && continue
-      elif [[ "$AUXSTATE" != "1" ]] &>/dev/null && [[ "$STATE" == "3" ]] &>/dev/null;then
-        nvram set "${WANPREFIX}"_state_t=2
+      elif [[ "$AUXSTATE" == "0" ]] &>/dev/null && [[ "$STATE" == "3" ]] &>/dev/null;then
+        nvram set "${WANPREFIX}"_state_t="2" ; STATE="2"
         sleep 3
         STATE="$(nvram get "${WANPREFIX}"_state_t & nvramcheck)"
-      elif { [[ "$AUXSTATE" != "1" ]] &>/dev/null || { [[ "$DUALWANDEV" == "usb" ]] &>/dev/null && { [[ "$USBMODEMREADY" == "1" ]] &>/dev/null && [[ -n "$IFNAME" ]] &>/dev/null ;} ;} ;} && { [[ "$STATE" != "2" ]] &>/dev/null && [[ "$STATE" != "6" ]] &>/dev/null ;};then
+      elif { [[ "$AUXSTATE" == "0" ]] &>/dev/null || { [[ "$DUALWANDEV" == "usb" ]] &>/dev/null && { [[ "$USBMODEMREADY" == "1" ]] &>/dev/null && [[ -n "$IFNAME" ]] &>/dev/null ;} ;} ;} && [[ "$STATE" != "2" ]] &>/dev/null;then
         restartwan${WANSUFFIX} &
         restartwanpid="$!"
         wait $restartwanpid && unset restartwanpid
         STATE="$(nvram get "${WANPREFIX}"_state_t & nvramcheck)"
-        logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Post-Restart State: "$STATE""
-        if { [[ "$AUXSTATE" != "1" ]] &>/dev/null || { [[ "$DUALWANDEV" == "usb" ]] &>/dev/null && { [[ "$USBMODEMREADY" == "1" ]] &>/dev/null && [[ -n "$IFNAME" ]] &>/dev/null ;} ;} ;} && { [[ "$STATE" != "2" ]] &>/dev/null && [[ "$STATE" != "6" ]] &>/dev/null ;};then
-          logger -p 1 -st "$ALIAS" "WAN Status - "${WANPREFIX}": Disconnected"
-          STATUS=DISCONNECTED
-          logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Status: "$STATUS""
+        logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Post-Restart State: $STATE"
+        if { [[ "$AUXSTATE" == "0" ]] &>/dev/null || { [[ "$DUALWANDEV" == "usb" ]] &>/dev/null && { [[ "$USBMODEMREADY" == "1" ]] &>/dev/null && [[ -n "$IFNAME" ]] &>/dev/null ;} ;} ;} && [[ "$STATE" != "2" ]] &>/dev/null;then
+          logger -p 1 -st "$ALIAS" "WAN Status - ${WANPREFIX}: Disconnected"
+          STATUS="DISCONNECTED"
+          logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Status: $STATUS"
           setwanstatus && continue
         elif [[ "$STATE" == "2" ]] &>/dev/null;then
-          logger -p 4 -st "$ALIAS" "WAN Status - Successfully Restarted "${WANPREFIX}""
-          [[ "$DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$USBMODEMREADY" == "1" ]] &>/dev/null && RESTARTSERVICESMODE=2 && restartservices
+          logger -p 4 -st "$ALIAS" "WAN Status - Successfully Restarted ${WANPREFIX}"
+          [[ "$DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$USBMODEMREADY" == "1" ]] &>/dev/null && RESTARTSERVICESMODE="2" && restartservices
           sleep 5
         else
           wanstatus
@@ -2388,14 +2393,14 @@ else
       fi
 
       # Check if WAN Gateway IP or IP Address are 0.0.0.0 or null
-      logger -p 6 -t "$ALIAS" "Debug - Checking "${WANPREFIX}" for null IP or Gateway"
+      logger -p 6 -t "$ALIAS" "Debug - Checking ${WANPREFIX} for null IP or Gateway"
       if { { [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null || [[ -z "$IPADDR" ]] &>/dev/null ;} || { [[ "$GATEWAY" == "0.0.0.0" ]] &>/dev/null || [[ -z "$GATEWAY" ]] &>/dev/null ;} ;};then
-        [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "WAN Status - ***Error*** ${WANPREFIX} IP Address: "$IPADDR""
+        [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "WAN Status - ***Error*** ${WANPREFIX} IP Address: $IPADDR"
         [[ -z "$IPADDR" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "WAN Status - ***Error*** ${WANPREFIX} IP Address: Null"
-        [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "WAN Status - ***Error*** ${WANPREFIX} Gateway IP Address: "$GATEWAY""
+        [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "WAN Status - ***Error*** ${WANPREFIX} Gateway IP Address: $GATEWAY"
         [[ -z "$GATEWAY" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "WAN Status - ***Error*** ${WANPREFIX} Gateway IP Address: Null"
-        STATUS=DISCONNECTED
-        logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Status: "$STATUS""
+        STATUS="DISCONNECTED"
+        logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Status: $STATUS"
         setwanstatus && continue
       fi
 
@@ -2521,7 +2526,7 @@ else
           logger -p 2 -st "$ALIAS" "WAN Status - ${WANPREFIX} has $PACKETLOSS packet loss"
           [[ "$READYSTATE" == "0" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "***Verify $TARGET is a valid server for ICMP Echo Requests for ${WANPREFIX}***"
           STATUS="DISCONNECTED"
-          logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" Status: "$STATUS""
+          logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Status: $STATUS"
           if [[ "$i" -le "$RECURSIVEPINGCHECK" ]] &>/dev/null;then
             i=$(($i+1))
             setwanstatus && continue
@@ -2530,7 +2535,6 @@ else
           fi
         else
           logger -p 2 -st "$ALIAS" "WAN Status - ${WANPREFIX} has $PACKETLOSS packet loss"
-          logger -p 2 -st "$ALIAS" "WAN Status - ${WANPREFIX} has a "$PINGTIME"ms ping time"
           STATUS="DISCONNECTED"
           logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Status: $STATUS"
           if [[ "$i" -le "$RECURSIVEPINGCHECK" ]] &>/dev/null;then
@@ -2568,8 +2572,8 @@ fi
 [[ -z "${email+x}" ]] &>/dev/null && email="1"
 
 # Set WAN Status to DISABLED, DISCONNECTED, or CONNECTED and select function.
-logger -p 6 -t "$ALIAS" "Debug - WAN0STATUS: "$WAN0STATUS""
-logger -p 6 -t "$ALIAS" "Debug - WAN1STATUS: "$WAN1STATUS""
+logger -p 6 -t "$ALIAS" "Debug - WAN0STATUS: $WAN0STATUS"
+logger -p 6 -t "$ALIAS" "Debug - WAN1STATUS: $WAN1STATUS"
 
 # Checking if WAN Disabled returned to WAN Status and resetting loop iterations if WAN Status has changed
 if [[ -z "${wandisabledloop+x}" ]] &>/dev/null;then
@@ -2581,7 +2585,7 @@ elif [[ -n "${wandisabledloop+x}" ]] || [[ "$wandisabledloop" != "0" ]] &>/dev/n
 fi
 
 # Getting Active WAN Parameters
-GETWANMODE=3
+GETWANMODE="3"
 getwanparameters || return
 
 # Determine which function to go to based on Failover Mode and WAN Status
@@ -2592,11 +2596,11 @@ elif [[ "$WAN0STATUS" != "CONNECTED" ]] &>/dev/null && [[ "$WAN1STATUS" != "CONN
   wandisabled
 elif [[ "$WANSMODE" != "lb" ]] &>/dev/null && [[ "$WAN0STATUS" == "CONNECTED" ]] &>/dev/null;then
   # Verify WAN Properties are synced with Primary WAN
-  [[ "$WAN0PRIMARY" == "1" ]] &>/dev/null && SWITCHPRIMARY=0 && switchwan && switchdns && checkiprules
+  [[ "$WAN0PRIMARY" == "1" ]] &>/dev/null && SWITCHPRIMARY="0" && switchwan && switchdns && checkiprules
   # Switch WAN to Primary WAN
   [[ "$WAN0PRIMARY" != "1" ]] &>/dev/null && { logger -p 6 -t "$ALIAS" "Debug - WAN0 is not Primary WAN" && failover ;}
   # Send Email if Enabled
-  [[ "$email" == "1" ]] &>/dev/null && sendemail && email=0
+  [[ "$email" == "1" ]] &>/dev/null && sendemail && email="0"
   # Determine which function to use based on Secondary WAN
   [[ "$WAN1STATUS" == "CONNECTED" ]] &>/dev/null && wan0failovermonitor
   [[ "$WAN1STATUS" == "UNPLUGGED" ]] &>/dev/null && wandisabled
@@ -2604,11 +2608,11 @@ elif [[ "$WANSMODE" != "lb" ]] &>/dev/null && [[ "$WAN0STATUS" == "CONNECTED" ]]
   [[ "$WAN1STATUS" == "DISABLED" ]] &>/dev/null && wandisabled
 elif [[ "$WANSMODE" != "lb" ]] &>/dev/null && [[ "$WAN1STATUS" == "CONNECTED" ]] &>/dev/null;then
   # Verify WAN Properties are synced with Primary WAN
-  [[ "$WAN1PRIMARY" == "1" ]] &>/dev/null && SWITCHPRIMARY=0 && switchwan && switchdns && checkiprules
+  [[ "$WAN1PRIMARY" == "1" ]] &>/dev/null && SWITCHPRIMARY="0" && switchwan && switchdns && checkiprules
   # Switch WAN to Primary WAN
-  [[ "$WAN1PRIMARY" != "1" ]] &>/dev/null && { logger -p 6 -t "$ALIAS" "Debug - WAN1 is not Primary WAN" && failover && email=0 ;}
+  [[ "$WAN1PRIMARY" != "1" ]] &>/dev/null && { logger -p 6 -t "$ALIAS" "Debug - WAN1 is not Primary WAN" && failover && email="0" ;}
   # Send Email if Enabled
-  [[ "$email" == "1" ]] &>/dev/null && sendemail && email=0
+  [[ "$email" == "1" ]] &>/dev/null && sendemail && email="0"
   # Determine which function to use based on Secondary WAN
   [[ "$WAN0STATUS" == "UNPLUGGED" ]] &>/dev/null && wandisabled
   [[ "$WAN0STATUS" == "DISCONNECTED" ]] &>/dev/null && { [[ -n "${WAN0PACKETLOSS+x}" ]] &>/dev/null && [[ "$WAN0PACKETLOSS" == "100%" ]] &>/dev/null && wan0failbackmonitor || wandisabled ;}
@@ -2627,7 +2631,7 @@ logger -p 6 -t "$ALIAS" "Debug - Function: checkroutingtable"
 
 for WANPREFIX in ${WANPREFIXES};do
   # Getting WAN Parameters
-  GETWANMODE=1
+  GETWANMODE="1"
   getwanparameters || return
 
   # Check if WAN is Enabled
@@ -2637,11 +2641,11 @@ for WANPREFIX in ${WANPREFIXES};do
   [[ "$STATE" != "2" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null && continue
 
   # Check if WAN Gateway IP or IP Address are 0.0.0.0 or null
-  logger -p 6 -t "$ALIAS" "Debug - Checking "${WANPREFIX}" for null IP or Gateway"
+  logger -p 6 -t "$ALIAS" "Debug - Checking ${WANPREFIX} for null IP or Gateway"
   if { { [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null || [[ -z "$IPADDR" ]] &>/dev/null ;} || { [[ "$GATEWAY" == "0.0.0.0" ]] &>/dev/null || [[ -z "$GATEWAY" ]] &>/dev/null ;} ;};then
-    [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "Check Routing Table - ***Error*** ${WANPREFIX} IP Address: "$IPADDR""
+    [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "Check Routing Table - ***Error*** ${WANPREFIX} IP Address: $IPADDR"
     [[ -z "$IPADDR" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "Check Routing Table - ***Error*** ${WANPREFIX} IP Address: Null"
-    [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "Check Routing Table - ***Error*** ${WANPREFIX} Gateway IP Address: "$GATEWAY""
+    [[ "$IPADDR" == "0.0.0.0" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "Check Routing Table - ***Error*** ${WANPREFIX} Gateway IP Address: $GATEWAY"
     [[ -z "$GATEWAY" ]] &>/dev/null && logger -p 2 -st "$ALIAS" "Check Routing Table - ***Error*** ${WANPREFIX} Gateway IP Address: Null"
     continue
   fi
@@ -2649,11 +2653,11 @@ for WANPREFIX in ${WANPREFIXES};do
   # Check WAN Routing Table for Default Routes
   logger -p 6 -t "$ALIAS" "Debug - Checking "${WANPREFIX}" for Default Route in "$TABLE""
   if [[ -z "$(ip route list default table "$TABLE" | awk '{print $3" "$5}' | grep -w "$GATEWAY $GWIFNAME")" ]] &>/dev/null;then
-   [[ -n "$(ip route list default table "$TABLE")" ]] &>/dev/null && ip route del default table "$TABLE"
-     logger -p 5 -t "$ALIAS" "Check Routing Table - Adding default route for ${WANPREFIX} Routing Table via "$GATEWAY" dev "$GWIFNAME""
-     ip route add default via $GATEWAY dev $GWIFNAME table "$TABLE" \
-     && logger -p 4 -t "$ALIAS" "Check Routing Table - Added default route for ${WANPREFIX} Routing Table via "$GATEWAY" dev "$GWIFNAME"" \
-     || logger -p 2 -t "$ALIAS" "Check Routing Table - ***Error*** Unable to add default route for ${WANPREFIX} Routing Table via "$GATEWAY" dev "$GWIFNAME""
+   [[ -n "$(ip route list default table $TABLE)" ]] &>/dev/null && ip route del default table $TABLE
+     logger -p 5 -t "$ALIAS" "Check Routing Table - Adding default route for ${WANPREFIX} Routing Table via "$GATEWAY" dev $GWIFNAME"
+     ip route add default via $GATEWAY dev $GWIFNAME table $TABLE \
+     && logger -p 4 -t "$ALIAS" "Check Routing Table - Added default route for ${WANPREFIX} Routing Table via $GATEWAY dev $GWIFNAME" \
+     || logger -p 2 -t "$ALIAS" "Check Routing Table - ***Error*** Unable to add default route for ${WANPREFIX} Routing Table via $GATEWAY dev $GWIFNAME"
   fi
 
   # Check WAN Routing Table for Target IP Route
@@ -2680,13 +2684,13 @@ getsystemparameters || return
 
 # Get Global WAN Parameters
 if [[ -z "${globalwansync+x}" ]] &>/dev/null;then
-  GETWANMODE=2
+  GETWANMODE="2"
   getwanparameters || return
 fi
 
 for WANPREFIX in ${WANPREFIXES};do
   # Getting WAN Parameters
-  GETWANMODE=1
+  GETWANMODE="1"
   getwanparameters || return
 
   # Check Rules if Status is Connected
@@ -3937,17 +3941,18 @@ logger -p 6 -t "$ALIAS" "Debug - Function: restartwan0"
 # 5 - Disabled
 # 6 - Stopping
 
-# Check if WAN0 is Enabled
-if [[ "$(nvram get "$WAN0"_enable & nvramcheck)" == "0" ]] &>/dev/null;then
+# Restart WAN0 Interface
+wan0state="$(nvram get "$WAN0"_state_t & nvramcheck)"
+if [[ "$wan0state" == "5" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Not Restarting "$WAN0" because it is not Enabled"
   return
+elif [[ "$wan0state" == "4" ]] &>/dev/null;then
+  logger -p 1 -st "$ALIAS" "Restart WAN0 - Starting "$WAN0""
+  service "start_wan_if 0" &
 else
-  wan0state="$(nvram get "$WAN0"_state_t & nvramcheck)"
+  logger -p 1 -st "$ALIAS" "Restart WAN0 - Restarting "$WAN0""
+  service "restart_wan_if 0" &
 fi
-
-# Restart WAN0 Interface
-logger -p 1 -st "$ALIAS" "Restart WAN0 - Restarting "$WAN0""
-service "restart_wan_if 0" &
 restartwan0pid=$!
 
 # Set Timeout for WAN interface to restart to a max of 30 seconds and while WAN Interface is State 6
@@ -4007,15 +4012,18 @@ logger -p 6 -t "$ALIAS" "Debug - Function: restartwan1"
 # 5 - Disabled
 # 6 - Stopping
 
-# Check if WAN1 is Enabled
-if [[ "$(nvram get "$WAN1"_enable & nvramcheck)" == "0" ]] &>/dev/null;then
+# Restart WAN1 Interface
+wan1state="$(nvram get wan1_state_t & nvramcheck)"
+if [[ "$wan1state" == "5" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Not Restarting "$WAN1" because it is not Enabled"
   return
+elif [[ "$wan1state" == "4" ]] &>/dev/null;then
+  logger -p 1 -st "$ALIAS" "Restart WAN1 - Starting "$WAN1""
+  service "start_wan_if 1" &
+else
+  logger -p 1 -st "$ALIAS" "Restart WAN1 - Restarting "$WAN1""
+  service "restart_wan_if 1" &
 fi
-
-# Restart WAN1 Interface
-logger -p 1 -st "$ALIAS" "Restart WAN1 - Restarting "$WAN1""
-service "restart_wan_if 1" &
 restartwan1pid=$!
 
 # Set Timeout for WAN interface to restart to a max of 30 seconds and while WAN Interface is State 6
@@ -5643,6 +5651,8 @@ if [[ -z "${globalwansync+x}" ]] &>/dev/null;then
 fi
 
 # Check for Update
+# Get Current Epoch Time
+lastupdatecheck="$(date +%s)"
 passiveupdate="1"
 update && unset passiveupdate || return
 
@@ -5661,6 +5671,16 @@ while true &>/dev/null;do
   # Get Current Epoch Time
   currenttime="$(date +%s)"
 
+  # Check for Update
+  # Get Current Epoch Time
+  [[ -z "${lastupdatecheck+x}" ]] &>/dev/null && lastupdatecheck="$(date +%s)"
+  if [[ "$(($currenttime))" -ge "$(($lastupdatecheck+14400))" ]] &>/dev/null;then
+    lastupdatecheck="$(date +%s)"
+    passiveupdate="1"
+    update && unset passiveupdate || return
+  fi
+
+  # Set Display Version Color and Notification
   if [[ "$updateneeded" == "0" ]] &>/dev/null;then
     DISPLAYVERSION="${LIGHTGRAY}$VERSION${NOCOLOR}"
   elif [[ "$updateneeded" == "1" ]] &>/dev/null;then
@@ -5676,6 +5696,40 @@ while true &>/dev/null;do
   # Get Active WAN Parameters
   GETWANMODE="3"
   getwanparameters || return
+
+  # Set WAN0 Status and Color
+  if [[ "$WAN0STATE" == "0" ]] &>/dev/null;then
+    WAN0DISPLAYSTATUS="${LIGHTMAGENTA}Initializing${NOCOLOR}"
+  elif [[ "$WAN0STATE" == "1" ]] &>/dev/null;then
+    WAN0DISPLAYSTATUS="${LIGHTCYAN}Connecting${NOCOLOR}"
+  elif [[ "$WAN0STATE" == "2" ]] &>/dev/null;then
+    WAN0DISPLAYSTATUS="${GREEN}Connected${NOCOLOR}"
+  elif [[ "$WAN0STATE" == "3" ]] &>/dev/null;then
+    WAN0DISPLAYSTATUS="${LIGHTRED}Disconnected${NOCOLOR}"
+  elif [[ "$WAN0STATE" == "4" ]] &>/dev/null;then
+    WAN0DISPLAYSTATUS="${LIGHTRED}Stopped${NOCOLOR}"
+  elif [[ "$WAN0STATE" == "5" ]] &>/dev/null;then
+    WAN0DISPLAYSTATUS="${LIGHTGRAY}Disabled${NOCOLOR}"
+  elif [[ "$WAN0STATE" == "6" ]] &>/dev/null;then
+    WAN0DISPLAYSTATUS="${LIGHTYELLOW}Stopping${NOCOLOR}"
+  fi
+
+  # Set WAN1 Status and Color
+  if [[ "$WAN1STATE" == "0" ]] &>/dev/null;then
+    WAN1DISPLAYSTATUS="${LIGHTMAGENTA}Initializing${NOCOLOR}"
+  elif [[ "$WAN1STATE" == "1" ]] &>/dev/null;then
+    WAN1DISPLAYSTATUS="${LIGHTCYAN}Connecting${NOCOLOR}"
+  elif [[ "$WAN1STATE" == "2" ]] &>/dev/null;then
+    WAN1DISPLAYSTATUS="${GREEN}Connected${NOCOLOR}"
+  elif [[ "$WAN1STATE" == "3" ]] &>/dev/null;then
+    WAN1DISPLAYSTATUS="${LIGHTRED}Disconnected${NOCOLOR}"
+  elif [[ "$WAN1STATE" == "4" ]] &>/dev/null;then
+    WAN1DISPLAYSTATUS="${LIGHTRED}Stopped${NOCOLOR}"
+  elif [[ "$WAN1STATE" == "5" ]] &>/dev/null;then
+    WAN1DISPLAYSTATUS="${LIGHTGRAY}Disabled${NOCOLOR}"
+  elif [[ "$WAN1STATE" == "6" ]] &>/dev/null;then
+    WAN1DISPLAYSTATUS="${LIGHTYELLOW}Stopping${NOCOLOR}"
+  fi
 
   # Determine Host Name
   if [[ "$DDNSENABLE" == "1" ]] &>/dev/null;then
@@ -5761,6 +5815,7 @@ while true &>/dev/null;do
     WAN1PACKETLOSSCOLOR="${NOCOLOR}"
     WAN1PINGTIMECOLOR="${NOCOLOR}" 
   fi
+
   # Update Status
   if [[ "$RUNNING" == "1" ]] &>/dev/null;then
     if [[ "$WAN0ENABLE" == "0" ]] &>/dev/null || [[ "$WAN1ENABLE" == "0" ]] &>/dev/null;then
@@ -5773,6 +5828,17 @@ while true &>/dev/null;do
     else
       RUNNING=2
     fi
+  fi
+
+  # Set Status Color and Message
+  if [[ "$RUNNING" == "0" ]] &>/dev/null;then
+    DISPLAYSTATUS="${LIGHTRED}Not Running${NOCOLOR}"
+  elif [[ "$RUNNING" == "1" ]] &>/dev/null;then
+    DISPLAYSTATUS="${LIGHTCYAN}Failover Monitoring${NOCOLOR}"
+  elif [[ "$RUNNING" == "2" ]] &>/dev/null;then
+    DISPLAYSTATUS="${LIGHTYELLOW}Unresponsive${NOCOLOR}"
+  elif [[ "$RUNNING" == "3" ]] &>/dev/null;then
+    DISPLAYSTATUS="${LIGHTRED}Failover Disabled${NOCOLOR}"
   fi
 
   # Buffer Status Output
@@ -5792,19 +5858,11 @@ while true &>/dev/null;do
   fi
   echo -e "${BOLD}WAN Failover Version: ${NOCOLOR}"$DISPLAYVERSION""
   [[ "$DEVMODE" == "1" ]] &>/dev/null && echo -e "${BOLD}Checksum: ${NOCOLOR}${LIGHTGRAY}"$CHECKSUM"${NOCOLOR}"
-  if [[ "$RUNNING" == "0" ]] &>/dev/null;then
-    echo -e "${BOLD}Status:${NOCOLOR} ${LIGHTRED}Not Running${NOCOLOR}"
-  elif [[ "$RUNNING" == "1" ]] &>/dev/null;then
-    echo -e "${BOLD}Status:${NOCOLOR} ${LIGHTCYAN}Failover Monitoring${NOCOLOR}"
-  elif [[ "$RUNNING" == "2" ]] &>/dev/null;then
-    echo -e "${BOLD}Status:${NOCOLOR} ${LIGHTYELLOW}Unresponsive${NOCOLOR}"
-  elif [[ "$RUNNING" == "3" ]] &>/dev/null;then
-    echo -e "${BOLD}Status:${NOCOLOR} ${LIGHTRED}Failover Disabled${NOCOLOR}"
-  fi
+  echo -e "${BOLD}Status: ${NOCOLOR}"$DISPLAYSTATUS""
   echo -e "${BOLD}Last Update: ${NOCOLOR}${NOCOLOR}$(date)${NOCOLOR}"
   printf "\n"
   echo -e "${BOLD}${UNDERLINE}WAN0:${NOCOLOR}"
-  [[ "$WAN0ENABLE" == "1" ]] &>/dev/null && echo -e "${BOLD}Status: ${NOCOLOR}${GREEN}Enabled${NOCOLOR}" || echo -e "${BOLD}Status: ${NOCOLOR}${RED}Disabled${NOCOLOR}"
+  echo -e "${BOLD}Status: ${NOCOLOR}"$WAN0DISPLAYSTATUS""
   [[ "$WANSMODE" != "lb" ]] &>/dev/null && { [[ "$WAN0PRIMARY" == "1" ]] &>/dev/null && echo -e "${BOLD}Primary: ${NOCOLOR}${LIGHTCYAN}Yes${NOCOLOR}" || echo -e "${BOLD}Primary: ${LIGHTRED}No${NOCOLOR}" ;}
   echo -e "${BOLD}IP Address: ${NOCOLOR}${LIGHTGRAY}"$WAN0IPADDR"${NOCOLOR}"
   echo -e "${BOLD}Gateway: ${NOCOLOR}${LIGHTGRAY}"$WAN0GATEWAY"${NOCOLOR}"
@@ -5817,7 +5875,7 @@ while true &>/dev/null;do
 
   printf "\n"
   echo -e "${BOLD}${UNDERLINE}WAN1:${NOCOLOR}"
-  [[ "$WAN1ENABLE" == "1" ]] &>/dev/null && echo -e "${BOLD}Status: ${NOCOLOR}${GREEN}Enabled${NOCOLOR}" || echo -e "${BOLD}Status: ${NOCOLOR}${RED}Disabled${NOCOLOR}"
+  echo -e "${BOLD}Status: ${NOCOLOR}"$WAN1DISPLAYSTATUS""
   [[ "$WANSMODE" != "lb" ]] &>/dev/null && { [[ "$WAN1PRIMARY" == "1" ]] &>/dev/null && echo -e "${BOLD}Primary: ${NOCOLOR}${LIGHTCYAN}Yes${NOCOLOR}" || echo -e "${BOLD}Primary: ${LIGHTRED}No${NOCOLOR}" ;}
   echo -e "${BOLD}IP Address: ${NOCOLOR}${LIGHTGRAY}"$WAN1IPADDR"${NOCOLOR}"
   echo -e "${BOLD}Gateway: ${NOCOLOR}${LIGHTGRAY}"$WAN1GATEWAY"${NOCOLOR}"
