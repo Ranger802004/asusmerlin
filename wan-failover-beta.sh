@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/20/2023
-# Version: v2.0.1-beta2
+# Date: 03/21/2023
+# Version: v2.0.1-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.1-beta2"
+VERSION="v2.0.1-beta3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -5365,17 +5365,31 @@ sendemail ()
 {
 logger -p 6 -t "$ALIAS" "Debug - Function: sendemail"
 
+# Check if Email Notifications are Enabled
+if [[ -z "${SENDEMAIL+x}" ]] &>/dev/null || [[ -z "${SKIPEMAILSYSTEMUPTIME+x}" ]] &>/dev/null || [[ -z "${BOOTDELAYTIMER+x}" ]] &>/dev/null;then
+  setvariables || return
+fi
+
+# Send email notification if Alert Preferences are configured if System Uptime is more than Boot Delay Timer + Variable SKIPEMAILSYSEMUPTIME seconds.
+if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$(($SKIPEMAILSYSTEMUPTIME+$BOOTDELAYTIMER))" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Email suppressed because System Uptime is less than "$(($SKIPEMAILSYSTEMUPTIME+$BOOTDELAYTIMER))" seconds"
+  return
+elif [[ "$SENDEMAIL" == "0" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Email Notifications are disabled"
+  return
+fi
+
 # Get System Parameters
 getsystemparameters || return
 
 # Get Global WAN Parameters
 if [[ -z "${globalwansync+x}" ]] &>/dev/null;then
-  GETWANMODE=2
+  GETWANMODE="2"
   getwanparameters || return
 fi
 
 # Getting Active WAN Parameters
-GETWANMODE=3
+GETWANMODE="3"
 getwanparameters || return
 
 # Check email notification state
@@ -5415,11 +5429,8 @@ if [[ -f "$AMTM_EMAILCONFIG" ]] &>/dev/null;then
   . "$AMTM_EMAILCONFIG"
 fi
 
-# Send email notification if Alert Preferences are configured if System Uptime is more than Boot Delay Timer + Variable SKIPEMAILSYSEMUPTIME seconds.
-if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$(($SKIPEMAILSYSTEMUPTIME+$BOOTDELAYTIMER))" ]] &>/dev/null;then
-  logger -p 6 -t "$ALIAS" "Debug - Email skipped, System Uptime is less than "$(($SKIPEMAILSYSTEMUPTIME+$BOOTDELAYTIMER))""
-  return
-elif [[ -f "$AIPROTECTION_EMAILCONFIG" ]] &>/dev/null || [[ -f "$AMTM_EMAILCONFIG" ]] &>/dev/null;then
+# Send email notification if AIProtection or AMTM Email Notifications are Configured
+if [[ -f "$AIPROTECTION_EMAILCONFIG" ]] &>/dev/null || [[ -f "$AMTM_EMAILCONFIG" ]] &>/dev/null;then
 
   # Check for old mail temp file and delete it or create file and set permissions
   logger -p 6 -t "$ALIAS" "Debug - Checking if "$TMPEMAILFILE" exists"
