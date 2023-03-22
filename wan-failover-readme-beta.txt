@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/21/2022
-# Version: v2.0.1-beta4
+# Date: 03/22/2022
+# Version: v2.0.1-beta5
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -87,16 +87,20 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - SCHEDULECRONJOB: This defines control whether the Cron Job is scheduled or not for WAN Failover to run.  Default: Enabled
 - PINGTIMEMIN: This defines a minimum threshold for the console showing the Ping Time Status as Green, above this value it will show Yellow. Default: 40ms
 - PINGTIMEMAX: This defines a maximum threshold for the console showing the Ping Time Status as Red. Default: 80ms
-- STATUSCHECK: This defines the refresh interval for the WAN Failover Status Console.  Default: 
+- STATUSCHECK: This defines the refresh interval for the WAN Failover Status Console.  Default: 30 Seconds
+- PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
+- FOBLOCKIPV6: This defines if WAN Failover will to block IPv6 in Failover Mode from traversing Secondary WAN.  Default: Disabled
 
 Release Notes:
-v2.0.1-beta4 - 03/21/2023
+v2.0.1-beta5 - 03/22/2023
 Enhancements:
-- Added Process Priority (Real Time, High, Normal, Low, Lowest) for WAN Failover.
+- Added Process Priority (Real Time, High, Normal, Low, Lowest) for WAN Failover.  Configuration Option: Process Priority
 - General Optimization.
 - CHECKNVRAM is Enabled by Default for the RT-AC86U and GT-AC2900 models on new installations.
 - Status Console now shows more descriptions for each WAN interface status.
 - Status Console will now passively check for updates every 4 hours while running.
+- Status Console will now show WAN Failover status as "Initializing" for start up of the script.
+- Added new option to block IPv6 in Failover Mode from traversing Secondary WAN. Configuration Option: Failover Block IPv6
 
 Fixes:
 - Corrected issues preventing Failback in v2.0.0.
