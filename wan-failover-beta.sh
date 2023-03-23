@@ -4066,7 +4066,7 @@ while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan1timeout" ]
   elif [[ "$wan1state" == "2" ]] &>/dev/null;then
     break
   elif  [[ "$wan1state" == "3" ]] &>/dev/null;then
-    nvram set "$wan1"_state_t="2"
+    nvram set "$WAN1"_state_t="2"
     sleep 1
     break
   elif [[ "$wan1state" == "5" ]] &>/dev/null;then
