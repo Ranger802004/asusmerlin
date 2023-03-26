@@ -1257,7 +1257,7 @@ logger -p 6 -t "$ALIAS" "Debug - Reading "$CONFIGFILE""
 if [[ "$configdefaultssync" == "0" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Checking for missing configuration options"
   [[ -n "${PRODUCTID+x}" ]] &>/dev/null || { getsystemparameters || return ;}
-  [[ -z "${WANDOGTARGET+x}" ]] &>/dev/null && WANDOGTARGET="$(nvram get wandog_target)"
+  [[ -z "${WANDOGTARGET+x}" ]] &>/dev/null && WANDOGTARGET="$(nvram get wandog_target & nvramcheck)"
   QOSENABLE="$(nvram get qos_enable & nvramcheck)"
   QOSIBW="$(nvram get qos_ibw & nvramcheck)"
   QOSOBW="$(nvram get qos_obw & nvramcheck)"
