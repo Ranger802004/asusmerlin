@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/24/2023
-# Version: v2.0.1
+# Date: 03/26/2023
+# Version: v2.0.2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.1"
+VERSION="v2.0.2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -1257,7 +1257,7 @@ logger -p 6 -t "$ALIAS" "Debug - Reading "$CONFIGFILE""
 if [[ "$configdefaultssync" == "0" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Checking for missing configuration options"
   [[ -n "${PRODUCTID+x}" ]] &>/dev/null || { getsystemparameters || return ;}
-  [[ -n "${WANDOGTARGET+x}" ]] &>/dev/null || { getsystemparameters || return ;}
+  [[ -z "${WANDOGTARGET+x}" ]] &>/dev/null && WANDOGTARGET="$(nvram get wandog_target)"
   QOSENABLE="$(nvram get qos_enable & nvramcheck)"
   QOSIBW="$(nvram get qos_ibw & nvramcheck)"
   QOSOBW="$(nvram get qos_obw & nvramcheck)"
