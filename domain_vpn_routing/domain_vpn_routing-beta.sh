@@ -211,7 +211,6 @@ menu ()
 			uninstall
 		;;
 		'5')    # config
-			mode="config"
                         config
 		;;
 		'6')    # update
@@ -704,7 +703,6 @@ else
     menu
     break
     ;;
-
     'e'|'E'|'exit' )
     clear
     if [[ "$mode" == "menu" ]] &>/dev/null;then
@@ -753,6 +751,11 @@ case "${configinput}" in
     esac
   done
   NEWVARIABLES="${NEWVARIABLES} DEVMODE=|$SETDEVMODE"
+  ;;
+  'r'|'R'|'menu'|'return'|'Return' )
+  clear
+  menu
+  break
   ;;
   'e'|'E'|'exit')
   clear
