@@ -210,9 +210,9 @@ menu ()
 			mode="uninstall"
 			uninstall
 		;;
-		'5')    # globalconfig
+		'5')    # config
 			mode="config"
-                        globalconfig
+                        config
 		;;
 		'6')    # update
 			mode="update"
