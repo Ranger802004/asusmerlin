@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/13/2022
-# Version: v1.4
+# Date: 04/25/2022
+# Version: v2.0.0-beta1
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -11,7 +11,7 @@ Requirements:
 - OpenVPN
 
 Installation Command:
-/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing.sh" -o "/jffs/scripts/domain_vpn_routing.sh" && chmod 755 /jffs/scripts/domain_vpn_routing.sh && sh /jffs/scripts/domain_vpn_routing.sh install
+/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing-beta.sh" -o "/jffs/scripts/domain_vpn_routing.sh" && chmod 755 /jffs/scripts/domain_vpn_routing.sh && sh /jffs/scripts/domain_vpn_routing.sh install
 
 Update Command:
 /jffs/scripts/domain_vpn_routing.sh update
@@ -19,20 +19,27 @@ Update Command:
 Uninstallation Command:
 /jffs/scripts/domain_vpn_routing.sh uninstall
 
+Accessing Menu:
+domain_vpn_routing
+
 Run Modes:
-- install - Install Domain VPN Routing and the configuration files necessary for it to run.
-- createpolicy - Create a new policy.
-- showpolicy - Show the policy specified or all policies. Use all as 2nd argument for All Policies.
-- querypolicy - Query domains from a policy or all policies and create IP Routes necessary. Use all as 2nd argument for All Policies.
-- adddomain - Add a domain to the policy specified.
-- editpolicy - Modify an existing policy.
-- update - Download and update to the latest version.
-- cron - Create the Cron Jobs to automate Query Policy functionality.
-- deletedomain - Delete a specified domain from a selected policy.
-- deletepolicy - Delete a specified policy or all policies. Use all as 2nd argument for All Policies.
-- deleteip - Delete a queried IP from a policy.
-- kill - Kill any instances of the script.
-- uninstall - Uninstall the configuration files necessary to stop the script from running.
+- Menu Mode: SSH User Interface for Domain VPN Routing, access by executing script without any arguments.
+- install: Install Domain VPN Routing and the configuration files necessary for it to run.
+- createpolicy: Create a new policy.
+- showpolicy: Show the policy specified or all policies. Use all as 2nd argument for All Policies.
+- querypolicy: Query domains from a policy or all policies and create IP Routes necessary. Use all as 2nd argument for All Policies.
+- adddomain: Add a domain to the policy specified.
+- editpolicy: Modify an existing policy.
+- update: Download and update to the latest version.
+- cron: Create the Cron Jobs to automate Query Policy functionality.
+- deletedomain: Delete a specified domain from a selected policy.
+- deletepolicy: Delete a specified policy or all policies. Use all as 2nd argument for All Policies.
+- deleteip: Delete a queried IP from a policy.
+- kill: Kill any instances of the script.
+- uninstall: Uninstall the configuration files necessary to stop the script from running.
+
+Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
+- DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
 
 Creating a Policy:
 Step 1: Create a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh createpolicy
@@ -99,6 +106,21 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
+v2.0.0-beta1 - 04/25/2023
+Enhancements:
+- SSH UI
+- Interfaces will now list the friendly name of the interface instead of the tunnel / physical interface name.
+- Querying policies will take low CPU priority automatically.
+- Cron Jobs will now be added to wan-event.
+- NVRAM Checks have been integrated to prevent lock ups.
+- Domain VPN Routing will now be called from wan-event in addition to openvpn-event.
+- Global Configuration Menu.
+- Developer Mode available for testing beta releases.
+- Enhanced update function.
+
+Fixes:
+- Visual errors when domain fails to perform DNS lookup.
+
 v1.4 - 03/13/2023
 Enhancements:
 - General optimization
