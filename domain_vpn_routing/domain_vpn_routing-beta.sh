@@ -2,7 +2,7 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 4/24/2023
+# Date: 4/25/2023
 # Version: v2.0.0-beta1
 
 # Cause the script to exit if errors are encountered
@@ -143,6 +143,11 @@ return
 # Menu
 menu ()
 {
+        # Load Global Configuration
+        if [[ -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
+          setglobalconfig
+        fi
+
         # Set Mode back to Menu if Changed
         [[ "$mode" != "menu" ]] &>/dev/null && mode="menu"
 
@@ -185,7 +190,12 @@ menu ()
                         return
 		;;
 		'1')    # readme
-                        README=""$REPO"readme.txt"
+                        # Determine if readme source is prod or beta
+                        if [[ "$DEVMODE" == "1" ]] &>/dev/null;then
+                          README="${REPO}readme-beta.txt"
+                        else
+                          README="${REPO}readme.txt"
+                        fi
                         clear
                         /usr/sbin/curl --connect-timeout 30 --max-time 30 --url $README --ssl-reqd 2>/dev/null || echo -e "${RED}***Unable to access Readme***${NOCOLOR}"
 		;;
@@ -594,8 +604,13 @@ return
 # Update Configuration from Pre-Version 2
 updateconfigprev2 ()
 {
-# Create Global Configuration File.
 if [[ -f "$CONFIGFILE" ]] &>/dev/null && [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
+  # Back up Policy Configuration File
+  /bin/cp -rf $CONFIGFILE ${CONFIGFILE}-$(date +"%F-%T-%Z").bak \
+  && logger -t "$ALIAS" "Install - Successfully backed up policy configuration" \
+  || logger -t "$ALIAS" "Install - Failed to back up policy configuration"
+
+  # Create Global Configuration File
   logger -t "$ALIAS" "Install - Creating "$GLOBALCONFIGFILE""
   if [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
     touch -a "$GLOBALCONFIGFILE"
@@ -626,10 +641,11 @@ if [[ -f "$CONFIGFILE" ]] &>/dev/null && [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/n
     echo -e "\r\n$cmdline # domain_vpn_routing_queryall" >> /jffs/scripts/wan-event
     logger -t "$ALIAS" "Install - ${0##*/} added to wan-event"
   fi
-fi
 
-if [[ -f "$CONFIGFILE" ]] &>/dev/null;then
+  # Read Configuration File for Policies
   Lines="$(cat $CONFIGFILE)"
+
+  # Identify OpenVPN Tunnel Interfaces
   c1="$(cat /etc/openvpn/client1/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
   c2="$(cat /etc/openvpn/client2/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
   c3="$(cat /etc/openvpn/client3/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
@@ -638,6 +654,7 @@ if [[ -f "$CONFIGFILE" ]] &>/dev/null;then
   s1="$(cat /etc/openvpn/server1/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
   s2="$(cat /etc/openvpn/server2/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
 
+  # Update Interfaces
   for Line in $Lines;do
     if [[ -n "$(echo $Line | grep -e "$c1\|$c2\|$c3\|$c4\|$c5\|$s1\|$s2\|$(nvram get wan0_gw_ifname & nvramcheck)\|$(nvram get wan1_gw_ifname & nvramcheck)")" ]] &>/dev/null;then
       fixpolicy="$(echo "$Line" | awk -F "|" '{print $1}')"
