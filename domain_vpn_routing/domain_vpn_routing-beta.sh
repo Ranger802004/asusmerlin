@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 4/25/2023
-# Version: v2.0.0-beta1
+# Date: 5/19/2023
+# Version: v2.0.0-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.0.0-beta1"
+VERSION="v2.0.0-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -122,7 +122,7 @@ elif [[ "${mode}" == "update" ]] &>/dev/null;then
 elif [[ "${mode}" == "config" ]] &>/dev/null;then 
   config
 fi
-exit
+return
 }
 
 # Cleanup
@@ -362,6 +362,7 @@ if [[ -z "$(cat /jffs/configs/profile.add | grep -w "# domain_vpn_routing")" ]] 
   || logger -p 2 -st "$ALIAS" "Alias Check - ***Error*** Unable to create Alias for "$0" as domain_vpn_routing"
   . /jffs/configs/profile.add
 fi
+return
 }
 
 # Install
@@ -1012,6 +1013,7 @@ INTERFACES=""
       logger -t "$ALIAS" "Create Policy - "$CREATEPOLICYNAME" already exists in $CONFIGFILE"
     fi
 fi
+return
 }
 
 # Show Policy
@@ -1225,6 +1227,7 @@ INTERFACES='
       done
   fi
 fi
+return
 }
 
 # Delete Policy
@@ -1305,7 +1308,7 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
     fi
   done
 fi
-exit
+return
 }
 
 # Add Domain to Policy
@@ -1344,7 +1347,7 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
 elif [[ -z "$DOMAIN" ]] &>/dev/null;then
   echo -e "${RED}***No Domain Specified***${NOCOLOR}"
 fi
-exit
+return
 }
 
 # Delete Domain from Policy
@@ -1429,7 +1432,7 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
     echo -e "${RED}***Domain not added to Policy: $POLICY***${NOCOLOR}"
   fi
 fi
-exit
+return
 }
 
 # Delete IP from Policy
@@ -1511,8 +1514,7 @@ if [[ -n "$IP" ]] &>/dev/null;then
     echo -e "${RED}***IP not added to Policy: $POLICY***${NOCOLOR}"
   fi
 fi
-exit
-
+return
 }
 
 # Query Policies for New IP Addresses
@@ -1521,6 +1523,9 @@ querypolicy ()
 checkalias || return
 
 renice -n 20 $$
+
+# Check if IPV6 enabled
+IPV6SERVICE="$(nvram get ipv6_service & nvramcheck)"
 
 if [[ "$POLICY" == "all" ]] &>/dev/null;then
   QUERYPOLICIES="$(cat "$CONFIGFILE" | awk -F"|" '{print $1}')"
@@ -1536,6 +1541,14 @@ else
   exit
 fi
 for QUERYPOLICY in ${QUERYPOLICIES};do
+  # Check if IPv6 IP Addresses are in policy file if IPv6 is Disabled and delete them
+  if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null && [[ -n "$(cat "$POLICYDIR/policy_"$QUERYPOLICY"_domaintoIP" | grep -m1 -o ":")" ]] &>/dev/null;then
+    logger -t "$ALIAS" "Query Policy - Removing IPv6 IP Addresses from Policy: ${QUERYPOLICY}***"
+    sed -i '/:/d' "$POLICYDIR/policy_"$QUERYPOLICY"_domaintoIP" \
+    && logger -t "$ALIAS" "Query Policy - Removed IPv6 IP Addresses from Policy: ${QUERYPOLICY}***" \
+    || logger -st "$ALIAS" "Query Policy - Failed to remove IPv6 IP Addresses from Policy: ${QUERYPOLICY}***"
+  fi
+
   # Create Temporary File for Sync
   if [[ ! -f "/tmp/policy_"$QUERYPOLICY"_domaintoIP" ]] &>/dev/null;then
     touch -a "/tmp/policy_"$QUERYPOLICY"_domaintoIP"
@@ -1563,20 +1576,38 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     if tty >/dev/null 2>&1;then
       printf '\033[K%b\r' ""${YELLOW}"Query Policy: $QUERYPOLICY Querying "$DOMAIN"..."${NOCOLOR}""
     fi
-    for IP in $(nslookup $DOMAIN 2>/dev/null | awk '(NR>2) && /^Address/ {print $3}' | sort); do
-      if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
-        echo $DOMAIN'>>'$IP >> "/tmp/policy_"$QUERYPOLICY"_domaintoIP"
-      elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
-        if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+    # Determine to query for IPv6 and IPv4 IP Addresses or only IPv4 Addresses
+    if [[ -z "$IPV6SERVICE" ]] &>/dev/null || [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null;then
+      for IP in $(nslookup $DOMAIN 2>/dev/null | awk '(NR>2) && /^Address/ {print $3}' | sort | grep -v ":"); do
+        if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
           echo $DOMAIN'>>'$IP >> "/tmp/policy_"$QUERYPOLICY"_domaintoIP"
-        elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-          [[ "$VERBOSELOGGING" == "1" ]] && logger -st "$ALIAS" "Query Policy - Domain: "$DOMAIN" queried "$IP" ***Excluded because Private IPs are disabled for Policy: "$QUERYPOLICY"***"
-          if tty >/dev/null 2>&1;then
-            printf '\033[K%b\r' ""${RED}"Query Policy: Domain: "$DOMAIN" queried "$IP" ***Excluded because Private IPs are disabled for Policy: "$QUERYPOLICY"***"${NOCOLOR}""
+        elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+          if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+            echo $DOMAIN'>>'$IP >> "/tmp/policy_"$QUERYPOLICY"_domaintoIP"
+          elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] && logger -st "$ALIAS" "Query Policy - Domain: "$DOMAIN" queried "$IP" ***Excluded because Private IPs are disabled for Policy: "$QUERYPOLICY"***"
+            if tty >/dev/null 2>&1;then
+              printf '\033[K%b\r' ""${RED}"Query Policy: Domain: "$DOMAIN" queried "$IP" ***Excluded because Private IPs are disabled for Policy: "$QUERYPOLICY"***"${NOCOLOR}""
+            fi
           fi
         fi
-      fi
-    done
+      done
+    else
+      for IP in $(nslookup $DOMAIN 2>/dev/null | awk '(NR>2) && /^Address/ {print $3}' | sort); do
+        if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
+          echo $DOMAIN'>>'$IP >> "/tmp/policy_"$QUERYPOLICY"_domaintoIP"
+        elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+          if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+            echo $DOMAIN'>>'$IP >> "/tmp/policy_"$QUERYPOLICY"_domaintoIP"
+          elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] && logger -st "$ALIAS" "Query Policy - Domain: "$DOMAIN" queried "$IP" ***Excluded because Private IPs are disabled for Policy: "$QUERYPOLICY"***"
+            if tty >/dev/null 2>&1;then
+              printf '\033[K%b\r' ""${RED}"Query Policy: Domain: "$DOMAIN" queried "$IP" ***Excluded because Private IPs are disabled for Policy: "$QUERYPOLICY"***"${NOCOLOR}""
+            fi
+          fi
+        fi
+      done
+    fi
   done
 
   # Remove duplicates from Temporary File
@@ -1649,12 +1680,12 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
 
   # Clear Parameters
-  unset VERBOSELOGGING PRIVATEIPS INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE
+  unset VERBOSELOGGING PRIVATEIPS INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE DOMAIN IP
 done
 if tty >/dev/null 2>&1;then
   printf '\033[K'
 fi
-exit
+return
 }
 
 # Cronjob
@@ -1701,7 +1732,7 @@ killscript ()
 echo -e "${RED}Killing ${0##*/}...${NOCOLOR}"
 logger -t "$ALIAS" "Kill - Killing ${0##*/}"
 sleep 3 && killall ${0##*/} 2>/dev/null
-exit
+return
 }
 
 # Update Script
