@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/31/2023
-# Version: v2.0.3
+# Date: 05/18/2023
+# Version: v2.0.4-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.3"
+VERSION="v2.0.4-beta1"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -725,12 +725,12 @@ read -n 1 -s -r -p "Press any key to continue to uninstall..."
     done
     [[ -z "${deleteconfig+x}" ]] &>/dev/null && deleteconfig="1"
     # Delete Config File or Retain
-    if [[ "$deleteconfig" == "1" ]] &>/dev/null;then
+    if [[ "$deleteconfig" == "0" ]] &>/dev/null;then
       echo -e "${LIGHTBLUE}"$ALIAS" - Uninstall: Deleting $CONFIGFILE...${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Uninstall - Deleting $CONFIGFILE"
       rm -f $CONFIGFILE \
       && { echo -e "${GREEN}"$ALIAS" - Uninstall: $CONFIGFILE deleted.${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Uninstall - $CONFIGFILE deleted" ;} \
       || { echo -e "${RED}"$ALIAS" - Uninstall: $CONFIGFILE failed to delete.${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Uninstall - $CONFIGFILE failed to delete" ;}
-    elif [[ "$deleteconfig" == "0" ]] &>/dev/null;then
+    elif [[ "$deleteconfig" == "1" ]] &>/dev/null;then
       echo -e "${GREEN}"$ALIAS" - Uninstall: Configuration file will be kept at $CONFIGFILE.${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Uninstall - Configuration file will be kept at $CONFIGFILE"
     fi
   fi
@@ -2355,6 +2355,9 @@ elif [[ "$WANDOGENABLE" != "0" ]] &>/dev/null;then
   wandisabled
 # Check if WAN Interfaces are Enabled and Connected
 else
+  # Check IP Rules and IPTables Rules
+  checkiprules || return
+
   for WANPREFIX in ${WANPREFIXES};do
     # Getting WAN Parameters
     GETWANMODE="1"
@@ -2703,37 +2706,37 @@ for WANPREFIX in ${WANPREFIXES};do
   getwanparameters || return
 
   # Check Rules if Status is Connected
-  if [[ "$STATUS" == "CONNECTED" ]] &>/dev/null || { [[ "$ENABLE" == "1" ]] &>/dev/null && { [[ "$STATE" == "2" ]] &>/dev/null || [[ "$AUXSTATE" != "1" ]] &>/dev/null ;} ;};then
+  if { [[ -n "${STATUS+x}" ]] &>/dev/null && [[ "$STATUS" == "CONNECTED" ]] &>/dev/null ;} || { [[ "$ENABLE" == "1" ]] &>/dev/null && { [[ "$STATE" == "2" ]] &>/dev/null || [[ "$AUXSTATE" != "1" ]] &>/dev/null ;} ;};then
     # Create WAN NAT Rules
     # Create VSERVER Rule if Web Access is Enabled for Adminstration GUI.
     if [[ "$HTTPENABLE" == "1" ]] &>/dev/null;then
-      logger -p 6 -t "$ALIAS" "Debug - HTTP Web Access: "$HTTPENABLE""
+      logger -p 6 -t "$ALIAS" "Debug - HTTP Web Access: $HTTPENABLE"
       # Create VSERVER Rule if Web Access is Enabled for Adminstration GUI.
       if [[ -z "$(iptables -t nat -L PREROUTING -v -n | awk '{ if( !/GAME_VSERVER/ && /VSERVER/ && /'$IPADDR'/ ) print}')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - "${WANPREFIX}" creating VSERVER Rule for "$IPADDR""
+        logger -p 5 -t "$ALIAS" "Check IP Rules - ${WANPREFIX} creating VSERVER Rule for $IPADDR"
         iptables -t nat -A PREROUTING -d $IPADDR -j VSERVER \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - "${WANPREFIX}" created VSERVER Rule for "$IPADDR"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** "${WANPREFIX}" unable to create VSERVER Rule for "$IPADDR""
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - ${WANPREFIX} created VSERVER Rule for $IPADDR" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** ${WANPREFIX} unable to create VSERVER Rule for $IPADDR"
       fi
     fi
     # Create UPNP Rules if Enabled
     if [[ "$UPNPENABLE" == "1" ]] &>/dev/null;then
-      logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" UPNP Enabled: "$UPNPENABLE""
+      logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} UPNP Enabled: $UPNPENABLE"
       if [[ -z "$(iptables -t nat -L POSTROUTING -v -n | awk '{ if( /PUPNP/ && /'$GWIFNAME'/ ) print}')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - "${WANPREFIX}" creating UPNP Rule for "$GWIFNAME""
+        logger -p 5 -t "$ALIAS" "Check IP Rules - ${WANPREFIX} creating UPNP Rule for $GWIFNAME"
         iptables -t nat -A POSTROUTING -o $GWIFNAME -j PUPNP \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - "${WANPREFIX}" created UPNP Rule for "$GWIFNAME"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - *** Error*** "${WANPREFIX}" unable to create UPNP Rule for "$GWIFNAME""
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - ${WANPREFIX} created UPNP Rule for $GWIFNAME" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - *** Error*** ${WANPREFIX} unable to create UPNP Rule for $GWIFNAME"
       fi
     fi
     # Create MASQUERADE Rules if NAT is Enabled
     if [[ "$NAT" == "1" ]] &>/dev/null;then
-      logger -p 6 -t "$ALIAS" "Debug - "${WANPREFIX}" NAT Enabled: "$NAT""
+      logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} NAT Enabled: $NAT"
       if [[ -z "$(iptables -t nat -L POSTROUTING -v -n | awk '{ if( /MASQUERADE/ && /'$GWIFNAME'/ && /'$IPADDR'/ ) print}')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding iptables MASQUERADE rule for excluding "$IPADDR" via "$GWIFNAME""
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding iptables MASQUERADE rule for excluding $IPADDR via $GWIFNAME"
         iptables -t nat -A POSTROUTING -o $GWIFNAME ! -s $IPADDR -j MASQUERADE \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added iptables MASQUERADE rule for excluding "$IPADDR" via "$GWIFNAME"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add iptables MASQUERADE rule for excluding "$IPADDR" via "$GWIFNAME""
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added iptables MASQUERADE rule for excluding $IPADDR via $GWIFNAME" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add iptables MASQUERADE rule for excluding $IPADDR via $GWIFNAME"
       fi
     fi
   fi
@@ -2760,100 +2763,108 @@ for WANPREFIX in ${WANPREFIXES};do
     logger -p 6 -t "$ALIAS" "Debug - Checking IPTables Mangle Rules"
     # Check IPTables Mangle Balance Rules for PREROUTING Table
     if [[ -z "$(iptables -t mangle -L PREROUTING -v -n | awk '{ if( /balance/ && /'$LANIFNAME'/ && /state/ && /NEW/ ) print}')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables MANGLE Balance Rule for "$LANIFNAME""
+      logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables MANGLE Balance Rule for $LANIFNAME"
       iptables -t mangle -A PREROUTING -i $LANIFNAME -m state --state NEW -j balance \
-      && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables MANGLE Balance Rule for "$LANIFNAME"" \
-      || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables MANGLE Balance Rule for "$LANIFNAME""
+      && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables MANGLE Balance Rule for $LANIFNAME" \
+      || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables MANGLE Balance Rule for $LANIFNAME"
     fi
 
     # Check Rules if Status is Connected
-    if [[ "$STATUS" == "CONNECTED" ]] &>/dev/null;then
+    if [[ -n "${STATUS+x}" ]] &>/dev/null && [[ "$STATUS" == "CONNECTED" ]] &>/dev/null;then
       # Check IPTables Mangle Match Rule for WAN for PREROUTING Table
       if [[ -z "$(iptables -t mangle -L PREROUTING -v -n | awk '{ if( /CONNMARK/ && /'$LANIFNAME'/ && /connmark match/ && /'$MARK'/ && /CONNMARK/ && /restore/ && /mask/ && /'$MASK'/ ) print}')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables - PREROUTING MANGLE match rule for "$LANIFNAME" marked with "$MARK""
-        iptables -t mangle -A PREROUTING -i $LANIFNAME -m connmark --mark "$MARK"/"$MARK" -j CONNMARK --restore-mark --mask "$MASK" \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables - PREROUTING MANGLE match rule for "$LANIFNAME" marked with "$MARK"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables - PREROUTING MANGLE match rule for "$LANIFNAME" marked with "$MARK""
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables - PREROUTING MANGLE match rule for $LANIFNAME marked with $MARK"
+        iptables -t mangle -A PREROUTING -i $LANIFNAME -m connmark --mark ${MARK}/${MARK} -j CONNMARK --restore-mark --mask $MASK \
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables - PREROUTING MANGLE match rule for $LANIFNAME marked with $MARK" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables - PREROUTING MANGLE match rule for $LANIFNAME marked with $MARK"
       fi
       # Check IPTables Mangle Match Rule for WAN for OUTPUT Table
       if [[ -z "$(iptables -t mangle -L OUTPUT -v -n | awk '{ if( /CONNMARK/ && /'$GWIFNAME'/ && /connmark match/ && /'$MARK'/ && /CONNMARK/ && /restore/ && /mask/ && /'$MASK'/ ) print}')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables - OUTPUT MANGLE match rule for "$GWIFNAME" marked with "$MARK""
-        iptables -t mangle -A OUTPUT -o $GWIFNAME -m connmark --mark "$MARK"/"$MARK" -j CONNMARK --restore-mark --mask "$MASK" \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables - OUTPUT MANGLE match rule for "$GWIFNAME" marked with "$MARK"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables - OUTPUT MANGLE match rule for "$GWIFNAME" marked with "$MARK""
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables - OUTPUT MANGLE match rule for $GWIFNAME marked with $MARK"
+        iptables -t mangle -A OUTPUT -o $GWIFNAME -m connmark --mark ${MARK}/${MARK} -j CONNMARK --restore-mark --mask $MASK \
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables - OUTPUT MANGLE match rule for $GWIFNAME marked with $MARK" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables - OUTPUT MANGLE match rule for $GWIFNAME marked with $MARK"
       fi
       if [[ -n "$(iptables -t mangle -L OUTPUT -v -n | awk '{ if( /CONNMARK/ && /'$GWIFNAME'/ && /connmark match/ && /'$DELETEMARK'/ && /CONNMARK/ && /restore/ && /mask/ && /'$MASK'/ ) print}')" ]] &>/dev/null;then
-        logger -p 6 -t "$ALIAS" "Check IP Rules - Deleting IPTables - OUTPUT MANGLE match rule for "$GWIFNAME" marked with "$DELETEMARK""
-        iptables -t mangle -D OUTPUT -o $GWIFNAME -m connmark --mark "$MARK"/"$MARK" -j CONNMARK --restore-mark --mask "$MASK" \
-        && logger -p 6 -t "$ALIAS" "Check IP Rules - Deleted IPTables - OUTPUT MANGLE match rule for "$GWIFNAME" marked with "$DELETEMARK"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to delete IPTables - OUTPUT MANGLE match rule for "$GWIFNAME" marked with "$DELETEMARK""
+        logger -p 6 -t "$ALIAS" "Check IP Rules - Deleting IPTables - OUTPUT MANGLE match rule for $GWIFNAME marked with $DELETEMARK"
+        iptables -t mangle -D OUTPUT -o $GWIFNAME -m connmark --mark ${MARK}/${MARK} -j CONNMARK --restore-mark --mask $MASK \
+        && logger -p 6 -t "$ALIAS" "Check IP Rules - Deleted IPTables - OUTPUT MANGLE match rule for $GWIFNAME marked with $DELETEMARK" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to delete IPTables - OUTPUT MANGLE match rule for $GWIFNAME marked with $DELETEMARK"
       fi
       # Check IPTables Mangle Set XMark Rule for WAN for PREROUTING Table
       if [[ -z "$(iptables -t mangle -L PREROUTING -v -n | awk '{ if( /CONNMARK/ && /'$GWIFNAME'/ && /state/ && /NEW/ && /CONNMARK/ && /xset/ && /'$MARK'/ ) print}')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables - PREROUTING MANGLE set xmark rule for "$GWIFNAME""
-        iptables -t mangle -A PREROUTING -i $GWIFNAME -m state --state NEW -j CONNMARK --set-xmark "$MARK"/"$MASK" \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables - PREROUTING MANGLE set xmark rule for "$GWIFNAME"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to delete IPTables - PREROUTING MANGLE set xmark rule for "$GWIFNAME""
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables - PREROUTING MANGLE set xmark rule for $GWIFNAME"
+        iptables -t mangle -A PREROUTING -i $GWIFNAME -m state --state NEW -j CONNMARK --set-xmark ${MARK}/${MASK} \
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables - PREROUTING MANGLE set xmark rule for $GWIFNAME" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to delete IPTables - PREROUTING MANGLE set xmark rule for $GWIFNAME"
       fi
       # Create WAN IP Address Rule
-      if { [[ "$IPADDR" != "0.0.0.0" ]] &>/dev/null && [[ -n "$IPADDR" ]] &>/dev/null ;} && [[ -z "$(ip rule list from $IPADDR lookup ${TABLE} priority "$FROMWANPRIORITY")" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for "$IPADDR" lookup "${TABLE}""
-        ip rule add from $IPADDR lookup ${TABLE} priority "$FROMWANPRIORITY" \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for "$IPADDR" lookup "${TABLE}"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for "$IPADDR" lookup "${TABLE}""
+      if { [[ "$IPADDR" != "0.0.0.0" ]] &>/dev/null && [[ -n "$IPADDR" ]] &>/dev/null ;} && [[ -z "$(ip rule list from $IPADDR lookup $TABLE priority $FROMWANPRIORITY)" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for $IPADDR lookup $TABLE"
+        ip rule add from $IPADDR lookup $TABLE priority $FROMWANPRIORITY \
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for $IPADDR lookup $TABLE" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for $IPADDR lookup $TABLE"
       fi
       # Create WAN Gateway IP Rule
-      if { [[ "$GATEWAY" != "0.0.0.0" ]] &>/dev/null && [[ -n "$GATEWAY" ]] &>/dev/null ;} && [[ -z "$(ip rule list from all to $GATEWAY lookup ${TABLE} priority "$TOWANPRIORITY")" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule from all to "$GATEWAY" lookup "${TABLE}""
-        ip rule add from all to $GATEWAY lookup ${TABLE} priority "$TOWANPRIORITY" \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule from all to "$GATEWAY" lookup "${TABLE}"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule from all to "$GATEWAY" lookup "${TABLE}""
+      if { [[ "$GATEWAY" != "0.0.0.0" ]] &>/dev/null && [[ -n "$GATEWAY" ]] &>/dev/null ;} && [[ -z "$(ip rule list from all to $GATEWAY lookup $TABLE priority $TOWANPRIORITY)" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule from all to $GATEWAY lookup $TABLE"
+        ip rule add from all to $GATEWAY lookup $TABLE priority $TOWANPRIORITY \
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule from all to $GATEWAY lookup $TABLE" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule from all to $GATEWAY lookup $TABLE"
       fi
       # Create WAN DNS IP Rules
       if [[ "$DNSENABLE" == "0" ]] &>/dev/null;then
         if [[ -n "$DNS1" ]] &>/dev/null;then
-          if [[ -z "$(ip rule list from "$DNS1" lookup ${TABLE} priority "$FROMWANPRIORITY")" ]] &>/dev/null;then
-            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for "$DNS1" lookup "${TABLE}""
-            ip rule add from $DNS1 lookup ${TABLE} priority "$FROMWANPRIORITY" \
-            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for "$DNS1" lookup "${TABLE}"" \
-            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for "$DNS1" lookup "${TABLE}""
+          if [[ -z "$(ip rule list from $DNS1 lookup $TABLE priority $FROMWANPRIORITY)" ]] &>/dev/null;then
+            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for $DNS1 lookup $TABLE"
+            ip rule add from $DNS1 lookup $TABLE priority $FROMWANPRIORITY \
+            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for $DNS1 lookup $TABLE" \
+            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for $DNS1 lookup $TABLE"
           fi
-          if [[ -z "$(ip rule list from all to "$DNS1" lookup ${TABLE} priority "$TOWANPRIORITY")" ]] &>/dev/null;then
-            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule from all to "$DNS1" lookup "${TABLE}""
-            ip rule add from all to $DNS1 lookup ${TABLE} priority "$TOWANPRIORITY" \
-            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule from all to "$DNS1" lookup "${TABLE}"" \
-            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule from all to "$DNS1" lookup "${TABLE}""
+          if [[ -z "$(ip rule list from all to $DNS1 lookup $TABLE priority $TOWANPRIORITY)" ]] &>/dev/null;then
+            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule from all to $DNS1 lookup $TABLE"
+            ip rule add from all to $DNS1 lookup $TABLE priority $TOWANPRIORITY \
+            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule from all to $DNS1 lookup $TABLE" \
+            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule from all to $DNS1 lookup $TABLE"
           fi
         fi
         if [[ -n "$DNS2" ]] &>/dev/null;then
-          if [[ -z "$(ip rule list from "$DNS2" lookup ${TABLE} priority "$FROMWANPRIORITY")" ]] &>/dev/null;then
-            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for "$DNS2" lookup "${TABLE}""
-            ip rule add from $DNS2 lookup ${TABLE} priority "$FROMWANPRIORITY" \
-            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for "$DNS2" lookup "${TABLE}"" \
-            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for "$DNS2" lookup "${TABLE}""
+          if [[ -z "$(ip rule list from $DNS2 lookup $TABLE priority $FROMWANPRIORITY)" ]] &>/dev/null;then
+            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for $DNS2 lookup $TABLE"
+            ip rule add from $DNS2 lookup $TABLE priority $FROMWANPRIORITY \
+            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for $DNS2 lookup $TABLE" \
+            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for $DNS2 lookup $TABLE"
           fi
-          if [[ -z "$(ip rule list from all to "$DNS2" lookup ${TABLE} priority "$TOWANPRIORITY")" ]] &>/dev/null;then
-            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule from all to "$DNS2" lookup "${TABLE}""
-            ip rule add from all to $DNS2 lookup ${TABLE} priority "$TOWANPRIORITY" \
-            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule from all to "$DNS2" lookup "${TABLE}"" \
-            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule from all to "$DNS2" lookup "${TABLE}""
+          if [[ -z "$(ip rule list from all to $DNS2 lookup $TABLE priority $TOWANPRIORITY)" ]] &>/dev/null;then
+            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule from all to $DNS2 lookup $TABLE"
+            ip rule add from all to $DNS2 lookup $TABLE priority $TOWANPRIORITY \
+            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule from all to $DNS2 lookup $TABLE" \
+            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule from all to $DNS2 lookup $TABLE"
           fi
         fi
       elif [[ "$DNSENABLE" == "1" ]] &>/dev/null;then
         if [[ -n "$AUTODNS1" ]] &>/dev/null;then
-          if [[ -z "$(ip rule list from "$AUTODNS1" lookup ${TABLE} priority "$FROMWANPRIORITY")" ]] &>/dev/null;then
-            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for "$AUTODNS1" lookup "${TABLE}""
-            ip rule add from $AUTODNS1 lookup ${TABLE} priority "$FROMWANPRIORITY" \
-            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for "$AUTODNS1" lookup "${TABLE}"" \
-            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for "$AUTODNS1" lookup "${TABLE}""
+          if [[ -z "$(ip rule list from $AUTODNS1 lookup $TABLE priority $FROMWANPRIORITY)" ]] &>/dev/null;then
+            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for $AUTODNS1 lookup $TABLE"
+            ip rule add from $AUTODNS1 lookup $TABLE priority $FROMWANPRIORITY \
+            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for $AUTODNS1 lookup $TABLE" \
+            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for $AUTODNS1 lookup $TABLE"
           fi
         fi
         if [[ -n "$AUTODNS2" ]] &>/dev/null;then
-          if [[ -z "$(ip rule list from "$AUTODNS2" lookup ${TABLE} priority "$FROMWANPRIORITY")" ]] &>/dev/null;then
-            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for "$AUTODNS2" lookup "${TABLE}""
-            ip rule add from $AUTODNS2 lookup ${TABLE} priority "$FROMWANPRIORITY" \
-            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for "$AUTODNS2" lookup "${TABLE}"" \
-            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for "$AUTODNS2" lookup "${TABLE}""
+          if [[ -z "$(ip rule list from $AUTODNS2 lookup $TABLE priority $FROMWANPRIORITY)" ]] &>/dev/null;then
+            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for $AUTODNS2 lookup $TABLE"
+            ip rule add from $AUTODNS2 lookup $TABLE priority $FROMWANPRIORITY \
+            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for $AUTODNS2 lookup $TABLE" \
+            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for $AUTODNS2 lookup $TABLE"
+          fi
+        fi
+        if [[ -n "$AUTODNS3" ]] &>/dev/null;then
+          if [[ -z "$(ip rule list from $AUTODNS3 lookup $TABLE priority $FROMWANPRIORITY)" ]] &>/dev/null;then
+            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for $AUTODNS3 lookup $TABLE"
+            ip rule add from $AUTODNS3 lookup $TABLE priority $FROMWANPRIORITY \
+            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for $AUTODNS3 lookup $TABLE" \
+            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for $AUTODNS3 lookup $TABLE"
           fi
         fi
       fi
@@ -2866,19 +2877,19 @@ for WANPREFIX in ${WANPREFIXES};do
         GUESTLANIFNAME="$(nvram get lan${i}_ifname & nvramcheck)"
         if [[ -n "$GUESTLANIFNAME" ]] &>/dev/null;then
           if [[ -z "$(iptables -t mangle -L PREROUTING -v -n | awk '{ if( /balance/ && /'$GUESTLANIFNAME'/ && /state/ && /NEW/ ) print}')" ]] &>/dev/null;then
-            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables MANGLE Balance Rule for "$GUESTLANIFNAME""
+            logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables MANGLE Balance Rule for $GUESTLANIFNAME"
             iptables -t mangle -A PREROUTING -i $GUESTLANIFNAME -m state --state NEW -j balance \
-            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables MANGLE Balance Rule for "$GUESTLANIFNAME"" \
-            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables MANGLE Balance Rule for "$GUESTLANIFNAME""
+            && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables MANGLE Balance Rule for $GUESTLANIFNAME" \
+            || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables MANGLE Balance Rule for $GUESTLANIFNAME"
           fi
         fi
   
         # Check IPTables Mangle Match Rule for WAN for PREROUTING Table
         if [[ -z "$(iptables -t mangle -L PREROUTING -v -n | awk '{ if( /CONNMARK/ && /'$GUESTLANIFNAME'/ && /connmark match/ && /'$MARK'/ && /CONNMARK/ && /restore/ && /mask/ && /'$MASK'/ ) print}')" ]] &>/dev/null;then
-          logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables MANGLE match rule for "$GUESTLANIFNAME" marked with "$MARK""
-          iptables -t mangle -A PREROUTING -i $GUESTLANIFNAME -m connmark --mark "$MARK"/"$MARK" -j CONNMARK --restore-mark --mask "$MASK" \
-          && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables MANGLE match rule for "$GUESTLANIFNAME" marked with "$MARK"" \
-          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables MANGLE match rule for "$GUESTLANIFNAME" marked with "$MARK""
+          logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IPTables MANGLE match rule for $GUESTLANIFNAME marked with $MARK"
+          iptables -t mangle -A PREROUTING -i $GUESTLANIFNAME -m connmark --mark ${MARK}/${MARK} -j CONNMARK --restore-mark --mask $MASK \
+          && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IPTables MANGLE match rule for $GUESTLANIFNAME marked with $MARK" \
+          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IPTables MANGLE match rule for $GUESTLANIFNAME marked with $MARK"
         fi
       done
       unset GUESTLANIFNAME
@@ -2886,74 +2897,74 @@ for WANPREFIX in ${WANPREFIXES};do
 
       # Create fwmark IP Rules
       logger -p 6 -t "$ALIAS" "Debug - Checking fwmark IP Rules"
-      if [[ -z "$(ip rule list from all fwmark "$MARK"/"$MASK" lookup "$TABLE" priority "$LBRULEPRIORITY")" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for fwmark "$MARK"/"$MASK" lookup "$TABLE""
-        ip rule add from all fwmark "$MARK"/"$MASK" lookup "$TABLE" priority "$LBRULEPRIORITY" \
-          && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for fwmark "$MARK"/"$MASK" lookup "$TABLE"" \
-          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for fwmark "$MARK"/"$MASK" lookup "$TABLE""
+      if [[ -z "$(ip rule list from all fwmark ${MARK}/${MASK} lookup $TABLE priority $LBRULEPRIORITY)" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE"
+        ip rule add from all fwmark ${MARK}/${MASK} lookup $TABLE priority $LBRULEPRIORITY \
+          && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE" \
+          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE"
       fi
-      if [[ -n "$(ip rule list from all fwmark "$MARK"/"$MASK" | grep -w "blackhole")" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Removing Blackhole IP Rule for fwmark "$MARK"/"$MASK""
-        ip rule del blackhole from all fwmark "$MARK"/"$MASK" priority "$LBRULEPRIORITY" \
-          && logger -p 4 -t "$ALIAS" "Check IP Rules - Removed Blackhole IP Rule for fwmark "$MARK"/"$MASK"" \
-          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to remove Blackhole IP Rule for fwmark "$MARK"/"$MASK""
+      if [[ -n "$(ip rule list from all fwmark ${MARK}/${MASK} | grep -w "blackhole")" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Removing Blackhole IP Rule for fwmark ${MARK}/${MASK}"
+        ip rule del blackhole from all fwmark ${MARK}/${MASK} priority $LBRULEPRIORITY \
+          && logger -p 4 -t "$ALIAS" "Check IP Rules - Removed Blackhole IP Rule for fwmark ${MARK}/${MASK}" \
+          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to remove Blackhole IP Rule for fwmark ${MARK}/${MASK}"
       fi
 
       # If OVPN Split Tunneling is Disabled in Configuration, create rules for WAN Interface.
-      logger -p 6 -t "$ALIAS" "Debug - OVPNSPLITTUNNEL Enabled: "$OVPNSPLITTUNNEL""
+      logger -p 6 -t "$ALIAS" "Debug - OVPNSPLITTUNNEL Enabled: $OVPNSPLITTUNNEL"
       if [[ "$OVPNSPLITTUNNEL" == "0" ]] &>/dev/null;then
         # Create IP Rules for OVPN Remote Addresses
           for REMOTEADDRESS in ${REMOTEADDRESSES};do
             REMOTEIP="$(nslookup $REMOTEADDRESS | awk '(NR>2) && /^Address/ {print $3}' | awk '!/:/')"
-            logger -p 6 -t "$ALIAS" "Debug - OVPN Remote Address: "$REMOTEADDRESS""
+            logger -p 6 -t "$ALIAS" "Debug - OVPN Remote Address: $REMOTEADDRESS"
             if [[ -n "$REMOTEIP" ]] &>/dev/null;then
-              logger -p 6 -t "$ALIAS" "Debug - Remote IP Address: "$REMOTEIP""
-              if [[ -z "$(ip rule list from all to $REMOTEIP lookup "$TABLE" priority "$OVPNWANPRIORITY")" ]] &>/dev/null;then
-                logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule from all to "$REMOTEIP" lookup "$TABLE" priority "$OVPNWANPRIORITY""
-                ip rule add from all to $REMOTEIP lookup "$TABLE" priority "$OVPNWANPRIORITY" \
-                && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule from all to "$REMOTEIP" lookup "$TABLE" priority "$OVPNWANPRIORITY"" \
-                || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule from all to "$REMOTEIP" lookup "$TABLE" priority "$OVPNWANPRIORITY""
+              logger -p 6 -t "$ALIAS" "Debug - Remote IP Address: $REMOTEIP"
+              if [[ -z "$(ip rule list from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY)" ]] &>/dev/null;then
+                logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY"
+                ip rule add from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY \
+                && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY" \
+                || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY"
               fi
             else
-              logger -p 6 -t "$ALIAS" "Debug - Unable to query "$REMOTEADDRESS""
+              logger -p 6 -t "$ALIAS" "Debug - Unable to query $REMOTEADDRESS"
             fi
           done
       fi
 
     # Check Rules if Status is Disconnected
-    elif [[ "$STATUS" != "CONNECTED" ]] &>/dev/null;then
+    elif [[ -n "${STATUS+x}" ]] &>/dev/null && [[ "$STATUS" != "CONNECTED" ]] &>/dev/null;then
       # Create fwmark IP Rules
       logger -p 6 -t "$ALIAS" "Debug - Checking fwmark IP Rules"
-      if [[ -n "$(ip rule list from all fwmark "$MARK"/"$MASK" lookup "$TABLE" priority "$LBRULEPRIORITY")" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Removing IP Rule for fwmark "$MARK"/"$MASK" lookup "$TABLE""
-        ip rule del from all fwmark "$MARK"/"$MASK" lookup "$TABLE" priority "$LBRULEPRIORITY" \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - Removed IP Rule for fwmark "$MARK"/"$MASK" lookup "$TABLE"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to remove IP Rule for fwmark "$MARK"/"$MASK" lookup "$TABLE""
+      if [[ -n "$(ip rule list from all fwmark ${MARK}/${MASK} lookup $TABLE priority $LBRULEPRIORITY)" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Removing IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE"
+        ip rule del from all fwmark ${MARK}/${MASK} lookup $TABLE priority $LBRULEPRIORITY \
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - Removed IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to remove IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE"
       fi
-      if [[ -z "$(ip rule list from all fwmark "$MARK"/"$MASK" | grep -w "blackhole")" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding Blackhole IP Rule for fwmark "$MARK"/"$MASK""
-        ip rule add blackhole from all fwmark "$MARK"/"$MASK" priority "$LBRULEPRIORITY" \
-        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added Blackhole IP Rule for fwmark "$MARK"/"$MASK"" \
-        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add Blackhole IP Rule for fwmark "$MARK"/"$MASK""
+      if [[ -z "$(ip rule list from all fwmark ${MARK}/${MASK} | grep -w "blackhole")" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding Blackhole IP Rule for fwmark ${MARK}/${MASK}"
+        ip rule add blackhole from all fwmark ${MARK}/${MASK} priority $LBRULEPRIORITY \
+        && logger -p 4 -t "$ALIAS" "Check IP Rules - Added Blackhole IP Rule for fwmark ${MARK}/${MASK}" \
+        || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add Blackhole IP Rule for fwmark ${MARK}/${MASK}"
       fi
       
       # If OVPN Split Tunneling is Disabled in Configuration, delete rules for down WAN Interface.
-      logger -p 6 -t "$ALIAS" "Debug - OVPNSPLITTUNNEL Enabled: "$OVPNSPLITTUNNEL""
+      logger -p 6 -t "$ALIAS" "Debug - OVPNSPLITTUNNEL Enabled: $OVPNSPLITTUNNEL"
       if [[ "$OVPNSPLITTUNNEL" == "0" ]] &>/dev/null;then
         # Create IP Rules for OVPN Remote Addresses
         for REMOTEADDRESS in ${REMOTEADDRESSES};do
-          logger -p 6 -t "$ALIAS" "Debug - OVPN Remote Address: "$REMOTEADDRESS""
+          logger -p 6 -t "$ALIAS" "Debug - OVPN Remote Address: $REMOTEADDRESS"
           REMOTEIP="$(nslookup $REMOTEADDRESS | awk '(NR>2) && /^Address/ {print $3}' | awk '!/:/')"
           if [[ -n "$REMOTEIP" ]] &>/dev/null;then
-            logger -p 6 -t "$ALIAS" "Debug - Remote IP Address: "$REMOTEIP""
-            if [[ -n "$(ip rule list from all to $REMOTEIP lookup "$TABLE" priority "$OVPNWANPRIORITY")" ]] &>/dev/null;then
-              logger -p 5 -t "$ALIAS" "Check IP Rules - Removing IP Rule from all to "$REMOTEIP" lookup "$TABLE" priority "$OVPNWANPRIORITY""
-              ip rule del from all to $REMOTEIP lookup "$TABLE" priority "$OVPNWANPRIORITY" \
-              && logger -p 4 -t "$ALIAS" "Check IP Rules - Removed IP Rule from all to "$REMOTEIP" lookup "$TABLE" priority "$OVPNWANPRIORITY"" \
-              || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to remove IP Rule from all to "$REMOTEIP" lookup "$TABLE" priority "$OVPNWANPRIORITY""
+            logger -p 6 -t "$ALIAS" "Debug - Remote IP Address: $REMOTEIP"
+            if [[ -n "$(ip rule list from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY)" ]] &>/dev/null;then
+              logger -p 5 -t "$ALIAS" "Check IP Rules - Removing IP Rule from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY"
+              ip rule del from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY \
+              && logger -p 4 -t "$ALIAS" "Check IP Rules - Removed IP Rule from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY" \
+              || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to remove IP Rule from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY"
             fi
           else
-            logger -p 6 -t "$ALIAS" "Debug - Unable to query "$REMOTEADDRESS""
+            logger -p 6 -t "$ALIAS" "Debug - Unable to query $REMOTEADDRESS"
           fi
         done
       fi
@@ -2975,71 +2986,74 @@ getwanparameters ()
 # Set WAN Interface Parameters
 if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
 
-  logger -p 6 -t "$ALIAS" "Debug - Setting parameters for "${WANPREFIX}""
+  logger -p 6 -t "$ALIAS" "Debug - Setting parameters for ${WANPREFIX}"
 
   while [[ -z "${wansync+x}" ]] &>/dev/null || [[ "$wansync" == "0" ]] &>/dev/null;do
     wansync="0"
     sleep 1
 
     # ENABLE
-    ENABLE="$(nvram get ${WANPREFIX}_enable & nvramcheck)" && { [[ -n "$ENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set ENABLE for "${WANPREFIX}"" && unset ENABLE && continue ;} ;}
+    ENABLE="$(nvram get ${WANPREFIX}_enable & nvramcheck)" && { [[ -n "$ENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set ENABLE for ${WANPREFIX}" && unset ENABLE && continue ;} ;}
 
     # STATE
-    STATE="$(nvram get ${WANPREFIX}_state_t & nvramcheck)" && { [[ -n "$STATE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set STATE for "${WANPREFIX}"" && unset STATE && continue ;} ;}
+    STATE="$(nvram get ${WANPREFIX}_state_t & nvramcheck)" && { [[ -n "$STATE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set STATE for ${WANPREFIX}" && unset STATE && continue ;} ;}
 
     # AUXSTATE
-    AUXSTATE="$(nvram get ${WANPREFIX}_auxstate_t & nvramcheck)" && { [[ -n "$AUXSTATE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUXSTATE for "${WANPREFIX}"" && unset AUXSTATE && continue ;} ;}
+    AUXSTATE="$(nvram get ${WANPREFIX}_auxstate_t & nvramcheck)" && { [[ -n "$AUXSTATE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUXSTATE for ${WANPREFIX}" && unset AUXSTATE && continue ;} ;}
 
     # SBSTATE
-    SBSTATE="$(nvram get ${WANPREFIX}_sbstate_t & nvramcheck)" && { [[ -n "$SBSTATE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set SBSTATE for "${WANPREFIX}"" && unset SBSTATE && continue ;} ;}
+    SBSTATE="$(nvram get ${WANPREFIX}_sbstate_t & nvramcheck)" && { [[ -n "$SBSTATE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set SBSTATE for ${WANPREFIX}" && unset SBSTATE && continue ;} ;}
   
     # IPADDR
-    IPADDR="$(nvram get ${WANPREFIX}_ipaddr & nvramcheck)" && { { [[ -n "$IPADDR" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null || [[ "$ENABLE" == "0" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPADDR for "${WANPREFIX}"" && unset IPADDR && continue ;} ;}
+    IPADDR="$(nvram get ${WANPREFIX}_ipaddr & nvramcheck)" && { { [[ -n "$IPADDR" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null || [[ "$ENABLE" == "0" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPADDR for ${WANPREFIX}" && unset IPADDR && continue ;} ;}
 
     # GATEWAY
-    GATEWAY="$(nvram get ${WANPREFIX}_gateway & nvramcheck)" && { { [[ -n "$GATEWAY" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null || [[ "$ENABLE" == "0" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set GATEWAY for "${WANPREFIX}"" && unset GATEWAY && continue ;} ;}
+    GATEWAY="$(nvram get ${WANPREFIX}_gateway & nvramcheck)" && { { [[ -n "$GATEWAY" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null || [[ "$ENABLE" == "0" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set GATEWAY for ${WANPREFIX}" && unset GATEWAY && continue ;} ;}
 
     # GWIFNAME
-    GWIFNAME="$(nvram get ${WANPREFIX}_gw_ifname & nvramcheck)" && { { [[ -n "$GWIFNAME" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set GWIFNAME for "${WANPREFIX}"" && unset GWIFNAME && continue ;} ;}
+    GWIFNAME="$(nvram get ${WANPREFIX}_gw_ifname & nvramcheck)" && { { [[ -n "$GWIFNAME" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set GWIFNAME for ${WANPREFIX}" && unset GWIFNAME && continue ;} ;}
 
     # IFNAME
-    IFNAME="$(nvram get ${WANPREFIX}_ifname & nvramcheck)" && { { [[ -n "$IFNAME" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_ifname & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set IFNAME for "${WANPREFIX}"" && unset IFNAME && continue ;} ;}
+    IFNAME="$(nvram get ${WANPREFIX}_ifname & nvramcheck)" && { { [[ -n "$IFNAME" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_ifname & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set IFNAME for ${WANPREFIX}" && unset IFNAME && continue ;} ;}
 
     # REALIPSTATE
-    REALIPSTATE="$(nvram get ${WANPREFIX}_realip_state & nvramcheck)" && { [[ -n "$REALIPSTATE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set REALIPSTATE for "${WANPREFIX}"" && unset REALIPSTATE && continue ;} ;}
+    REALIPSTATE="$(nvram get ${WANPREFIX}_realip_state & nvramcheck)" && { [[ -n "$REALIPSTATE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set REALIPSTATE for ${WANPREFIX}" && unset REALIPSTATE && continue ;} ;}
 
     # REALIPADDR
-    REALIPADDR="$(nvram get ${WANPREFIX}_realip_ip & nvramcheck)" && { { [[ -n "$REALIPADDR" ]] &>/dev/null || [[ "$REALIPSTATE" != "2" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_realip_ip & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set REALIPADDR for "${WANPREFIX}"" && unset REALIPADDR && continue ;} ;}
+    REALIPADDR="$(nvram get ${WANPREFIX}_realip_ip & nvramcheck)" && { { [[ -n "$REALIPADDR" ]] &>/dev/null || [[ "$REALIPSTATE" != "2" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_realip_ip & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set REALIPADDR for ${WANPREFIX}" && unset REALIPADDR && continue ;} ;}
 
     # PRIMARY
-    PRIMARY="$(nvram get ${WANPREFIX}_primary & nvramcheck)" && { [[ -n "$PRIMARY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set PRIMARY for "${WANPREFIX}"" && unset PRIMARY && continue ;} ;}
+    PRIMARY="$(nvram get ${WANPREFIX}_primary & nvramcheck)" && { [[ -n "$PRIMARY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set PRIMARY for ${WANPREFIX}" && unset PRIMARY && continue ;} ;}
 
     # USBMODEMREADY
-    USBMODEMREADY="$(nvram get ${WANPREFIX}_is_usb_modem_ready & nvramcheck)" && { { [[ -n "$USBMODEMREADY" ]] &>/dev/null || [[ -z "$(echo $WANSCAP | grep -o "usb")" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set USBMODEMREADY for "${WANPREFIX}"" && unset USBMODEMREADY && continue ;} ;}
+    USBMODEMREADY="$(nvram get ${WANPREFIX}_is_usb_modem_ready & nvramcheck)" && { { [[ -n "$USBMODEMREADY" ]] &>/dev/null || [[ -z "$(echo $WANSCAP | grep -o "usb")" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set USBMODEMREADY for ${WANPREFIX}" && unset USBMODEMREADY && continue ;} ;}
 
     # DNSENABLE
-    DNSENABLE="$(nvram get ${WANPREFIX}_dnsenable_x & nvramcheck)" && { [[ -n "$DNSENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNSENABLE for "${WANPREFIX}"" && unset DNSENABLE && continue ;} ;}
+    DNSENABLE="$(nvram get ${WANPREFIX}_dnsenable_x & nvramcheck)" && { [[ -n "$DNSENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNSENABLE for ${WANPREFIX}" && unset DNSENABLE && continue ;} ;}
 
     # DNS
-    DNS="$(nvram get ${WANPREFIX}_dns & nvramcheck)" && { { [[ -n "$DNS" ]] &>/dev/null || [[ "$DNSENABLE" == "0" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_dns & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS for "${WANPREFIX}"" && unset DNS && continue ;} ;}
+    DNS="$(nvram get ${WANPREFIX}_dns & nvramcheck)" && { { [[ -n "$DNS" ]] &>/dev/null || [[ "$DNSENABLE" == "0" ]] &>/dev/null || [[ "$AUXSTATE" != "0" ]] &>/dev/null || [[ "$STATE" != "2" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_dns & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS for ${WANPREFIX}" && unset DNS && continue ;} ;}
 
     # AUTODNS1
-    AUTODNS1="$(echo $DNS | awk '{print $1}')" && { { [[ -n "$AUTODNS1" ]] &>/dev/null || [[ -z "$DNS" ]] &>/dev/null || [[ -z "$(echo $DNS | awk '{print $1}')" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS1 for "${WANPREFIX}"" && unset AUTODNS1 && continue ;} ;}
+    AUTODNS1="$(echo $DNS | awk '{print $1}')" && { { [[ -n "$AUTODNS1" ]] &>/dev/null || [[ -z "$DNS" ]] &>/dev/null || [[ -z "$(echo $DNS | awk '{print $1}')" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS1 for ${WANPREFIX}" && unset AUTODNS1 && continue ;} ;}
 
     # AUTODNS2
-    AUTODNS2="$(echo $DNS | awk '{print $2}')" && { { [[ -n "$AUTODNS2" ]] &>/dev/null || [[ -z "$DNS" ]] &>/dev/null || [[ -z "$(echo $DNS | awk '{print $2}')" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS2 for "${WANPREFIX}"" && unset AUTODNS2DNS && continue ;} ;}
+    AUTODNS2="$(echo $DNS | awk '{print $2}')" && { { [[ -n "$AUTODNS2" ]] &>/dev/null || [[ -z "$DNS" ]] &>/dev/null || [[ -z "$(echo $DNS | awk '{print $2}')" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS2 for ${WANPREFIX}" && unset AUTODNS2 && continue ;} ;}
+
+    # AUTODNS3
+    AUTODNS3="$(echo $DNS | awk '{print $3}')" && { { [[ -n "$AUTODNS3" ]] &>/dev/null || [[ -z "$DNS" ]] &>/dev/null || [[ -z "$(echo $DNS | awk '{print $3}')" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set AUTODNS3 for ${WANPREFIX}" && unset AUTODNS3 && continue ;} ;}
 
     # DNS1
-    DNS1="$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" && { { [[ -n "$DNS1" ]] &>/dev/null || [[ "$DNSENABLE" == "1" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS1 for "${WANPREFIX}"" && unset DNS1 && continue ;} ;}
+    DNS1="$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" && { { [[ -n "$DNS1" ]] &>/dev/null || [[ "$DNSENABLE" == "1" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_dns1_x & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS1 for ${WANPREFIX}" && unset DNS1 && continue ;} ;}
 
     # DNS2
-    DNS2="$(nvram get ${WANPREFIX}_dns2_x & nvramcheck)" && { { [[ -n "$DNS2" ]] &>/dev/null || [[ "$DNSENABLE" == "1" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_dns2_x & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS2 for "${WANPREFIX}"" && unset DNS2 && continue ;} ;}
+    DNS2="$(nvram get ${WANPREFIX}_dns2_x & nvramcheck)" && { { [[ -n "$DNS2" ]] &>/dev/null || [[ "$DNSENABLE" == "1" ]] &>/dev/null || [[ -z "$(nvram get ${WANPREFIX}_dns2_x & nvramcheck)" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set DNS2 for ${WANPREFIX}" && unset DNS2 && continue ;} ;}
 
     # UPNPENABLE
-    UPNPENABLE="$(nvram get ${WANPREFIX}_upnp_enable & nvramcheck)" && { [[ -n "$UPNPENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set UPNPENABLE for "${WANPREFIX}"" && unset UPNPENABLE && continue ;} ;}
+    UPNPENABLE="$(nvram get ${WANPREFIX}_upnp_enable & nvramcheck)" && { [[ -n "$UPNPENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set UPNPENABLE for ${WANPREFIX}" && unset UPNPENABLE && continue ;} ;}
 
     # NAT
-    NAT="$(nvram get ${WANPREFIX}_nat_x & nvramcheck)" && { [[ -n "$NAT" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set NAT for "${WANPREFIX}"" && unset NAT && continue ;} ;}
+    NAT="$(nvram get ${WANPREFIX}_nat_x & nvramcheck)" && { [[ -n "$NAT" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set NAT for ${WANPREFIX}" && unset NAT && continue ;} ;}
 
     if [[ "${WANPREFIX}" == "$WAN0" ]] &>/dev/null;then
 
@@ -3047,11 +3061,11 @@ if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
       if [[ -n "${WAN0DUALWANDEV+x}" ]] &>/dev/null;then
         DUALWANDEV="$WAN0DUALWANDEV"
       else
-        DUALWANDEV="$(nvram get wans_dualwan | awk '{print $1}' & nvramcheck)" && { [[ -n "$DUALWANDEV" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set DUALWANDEV for "${WANPREFIX}"" && unset DUALWANDEV && continue ;} ;}
+        DUALWANDEV="$(nvram get wans_dualwan | awk '{print $1}' & nvramcheck)" && { [[ -n "$DUALWANDEV" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set DUALWANDEV for ${WANPREFIX}" && unset DUALWANDEV && continue ;} ;}
       fi
 
       # LINKWAN
-      LINKWAN="$(nvram get link_wan & nvramcheck)" && { [[ -n "$LINKWAN" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set LINKWAN for "${WANPREFIX}"" && unset LINKWAN && continue ;} ;}
+      LINKWAN="$(nvram get link_wan & nvramcheck)" && { [[ -n "$LINKWAN" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set LINKWAN for ${WANPREFIX}" && unset LINKWAN && continue ;} ;}
 
       # PINGPATH
       if [[ -n "${WAN0PINGPATH+x}" ]] &>/dev/null;then
@@ -5189,25 +5203,32 @@ for WANPREFIX in ${WANPREFIXES};do
     elif [[ "$DNSENABLE" == "1" ]] &>/dev/null;then
       logger -p 6 -t "$ALIAS" "Debug - Automatic DNS Settings from ${WANPREFIX} ISP: "$DNS""
       if [[ "$DNS" != "$DNS" ]] &>/dev/null && { [[ "$WANSMODE" != "lb" ]] &>/dev/null && [[ "$PRIMARY" == "1" ]] &>/dev/null ;};then
-        logger -p 5 -st "$ALIAS" "DNS Switch - Updating WAN DNS Servers in NVRAM: "$DNS""
+        logger -p 5 -st "$ALIAS" "DNS Switch - Updating WAN DNS Servers in NVRAM: $DNS"
         nvram set wan_dns="$DNS" \
-        && logger -p 4 -st "$ALIAS" "DNS Switch - Updated WAN DNS Servers in NVRAM: "$DNS"" \
-        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to update WAN DNS Servers in NVRAM: "$DNS""
+        && logger -p 4 -st "$ALIAS" "DNS Switch - Updated WAN DNS Servers in NVRAM: $DNS" \
+        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to update WAN DNS Servers in NVRAM: $DNS"
       fi
       # Change Automatic DNS1 Server
       if [[ -n "$AUTODNS1" ]] &>/dev/null && [[ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS1")" ]] &>/dev/null;then
-        logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS1 Server: "$AUTODNS1""
+        logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS1 Server: $AUTODNS1"
         sed -i '1i nameserver '$AUTODNS1'' $DNSRESOLVFILE \
-        && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS1 Server: "$AUTODNS1"" \
-        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to add ${WANPREFIX} DNS1 Server: "$AUTODNS1""
+        && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS1 Server: $AUTODNS1" \
+        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to add ${WANPREFIX} DNS1 Server: $AUTODNS1"
 
       fi
       # Change Automatic DNS2 Server
       if [[ -n "$AUTODNS2" ]] &>/dev/null && [[ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS2")" ]] &>/dev/null;then
-        logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS2 Server: "$AUTODNS2""
+        logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS2 Server: $AUTODNS2"
         sed -i '2i nameserver '$AUTODNS2'' $DNSRESOLVFILE \
-        && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS2 Server: "$AUTODNS2"" \
-        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to add ${WANPREFIX} DNS2 Server: "$AUTODNS2""
+        && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS2 Server: $AUTODNS2" \
+        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to add ${WANPREFIX} DNS2 Server: $AUTODNS2"
+      fi
+      # Change Automatic DNS3 Server
+      if [[ -n "$AUTODNS3" ]] &>/dev/null && [[ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS3")" ]] &>/dev/null;then
+        logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS3 Server: $AUTODNS3"
+        sed -i '3i nameserver '$AUTODNS3'' $DNSRESOLVFILE \
+        && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS3 Server: $AUTODNS3" \
+        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to add ${WANPREFIX} DNS3 Server: $AUTODNS3"
       fi
     fi
   # Check DNS if Status is Disconnected or not Primary WAN
@@ -5233,17 +5254,24 @@ for WANPREFIX in ${WANPREFIXES};do
     elif [[ "$DNSENABLE" == "1" ]] &>/dev/null;then
       # Remove Automatic DNS1 Server
       if [[ -n "$AUTODNS1" ]] &>/dev/null && [[ -n "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS1")" ]] &>/dev/null;then
-        logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS1 Server: "$AUTODNS1""
+        logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS1 Server: $AUTODNS1"
         sed -i '/nameserver '$AUTODNS1'/d' $DNSRESOLVFILE \
-        && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS1 Server: "$AUTODNS1"" \
-        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to remove ${WANPREFIX} DNS1 Server: "$AUTODNS1""
+        && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS1 Server: $AUTODNS1" \
+        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to remove ${WANPREFIX} DNS1 Server: $AUTODNS1"
       fi
       # Remove Automatic DNS2 Server
       if [[ -n "$AUTODNS2" ]] &>/dev/null && [[ -n "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS2")" ]] &>/dev/null;then
-        logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS2 Server: "$AUTODNS2""
+        logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS2 Server: $AUTODNS2"
         sed -i '/nameserver '$AUTODNS2'/d' $DNSRESOLVFILE \
-        && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS2 Server: "$AUTODNS2"" \
-        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to remove ${WANPREFIX} DNS2 Server: "$AUTODNS2""
+        && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS2 Server: $AUTODNS2" \
+        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to remove ${WANPREFIX} DNS2 Server: $AUTODNS2"
+      fi
+      # Remove Automatic DNS3 Server
+      if [[ -n "$AUTODNS3" ]] &>/dev/null && [[ -n "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS3")" ]] &>/dev/null;then
+        logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS2 Server: $AUTODNS3"
+        sed -i '/nameserver '$AUTODNS3'/d' $DNSRESOLVFILE \
+        && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS3 Server: $AUTODNS3" \
+        || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to remove ${WANPREFIX} DNS3 Server: $AUTODNS3"
       fi
     fi
   fi
@@ -5581,6 +5609,7 @@ if [[ -f "$AIPROTECTION_EMAILCONFIG" ]] &>/dev/null || [[ -f "$AMTM_EMAILCONFIG"
           logger -p 6 -t "$ALIAS" "Debug - Automatic DNS Servers: $DNS"
           [[ -n "$AUTODNS1" ]] &>/dev/null && echo "DNS Server 1: $AUTODNS1" >>"$TMPEMAILFILE"
           [[ -n "$AUTODNS2" ]] &>/dev/null && echo "DNS Server 2: $AUTODNS2" >>"$TMPEMAILFILE"
+          [[ -n "$AUTODNS3" ]] &>/dev/null && echo "DNS Server 3: $AUTODNS3" >>"$TMPEMAILFILE"
         fi
         [[ "$PRIMARY" == "1" ]] &>/dev/null && break
       done
