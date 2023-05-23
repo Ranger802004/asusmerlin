@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/18/2023
-# Version: v2.0.4-beta1
+# Date: 05/23/2023
+# Version: v2.0.4-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.4-beta1"
+VERSION="v2.0.4-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -342,9 +342,9 @@ logger -p 5 -t "$ALIAS" "System Check - Checksum: "$CHECKSUM""
 
 # Supported Firmware Versions
 FWVERSIONS='
-386.5
-386.7
 386.9
+386.10
+386.11
 388.1
 388.2
 '

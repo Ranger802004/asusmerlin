@@ -1,12 +1,12 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/18/2023
-# Version: v2.0.4-beta1
+# Date: 05/23/2023
+# Version: v2.0.4-beta2
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
 Requirements:
-- ASUS Merlin Firmware v386.5 or higher
+- ASUS Merlin Firmware v386.9 or higher
 - JFFS custom scripts and configs Enabled
 - Dual WAN Enabled
 - ASUS Factory Failover Disabled (Network Monitoring Options, Allow Failback Option under WAN > Dual WAN)
@@ -92,10 +92,12 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - FOBLOCKIPV6: This defines if WAN Failover will to block IPv6 in Failover Mode from traversing Secondary WAN.  Default: Disabled
 
 Release Notes:
-v2.0.4-beta1 - 05/18/2023
+v2.0.4-beta2 - 05/23/2023
 Enhancements:
 - Added 3rd DNS Server from Automatic Settings to be factored into WAN Failover events.
 - The checkiprules function will now be checked at the beginning of WAN Status checks to ensure NAT rules are created if necessary prior to performing packet loss checks.
+- Added 386.10 and 386.11 to supported firmware list
+- Removed 386.5 and 386.7 from supported firmware list.
 
 Fixes:
 - Corrected issue during uninstall when logic was reversed for retaining configuration file or to delete.
