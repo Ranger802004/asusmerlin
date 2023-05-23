@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 5/19/2023
-# Version: v2.0.0-beta2
+# Date: 5/23/2023
+# Version: v2.0.0-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.0.0-beta2"
+VERSION="v2.0.0-beta3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -371,7 +371,7 @@ install ()
 if [[ "${mode}" == "install" ]] &>/dev/null;then
   read -n 1 -s -r -p "Press any key to continue to install..."
   # Create Policy Directory
-  echo -e "${BLUE}${0##*/} - Install: Creating "$POLICYDIR"...${NOCOLOR}"
+  echo -e "${LIGHTCYAN}${0##*/} - Install: Creating "$POLICYDIR"...${NOCOLOR}"
   logger -t "$ALIAS" "Install - Creating "$POLICYDIR""
   if [[ ! -d "$POLICYDIR" ]] &>/dev/null;then
     mkdir -m 666 -p "$POLICYDIR"
@@ -383,7 +383,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
   fi
 
   # Create Global Configuration File.
-  echo -e "${BLUE}${0##*/} - Install: Creating "$GLOBALCONFIGFILE"...${NOCOLOR}"
+  echo -e "${LIGHTCYAN}${0##*/} - Install: Creating "$GLOBALCONFIGFILE"...${NOCOLOR}"
   logger -t "$ALIAS" "Install - Creating "$GLOBALCONFIGFILE""
   if [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
     touch -a "$GLOBALCONFIGFILE"
@@ -397,7 +397,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
   fi
 
   # Create Configuration File.
-  echo -e "${BLUE}${0##*/} - Install: Creating "$CONFIGFILE"...${NOCOLOR}"
+  echo -e "${LIGHTCYAN}${0##*/} - Install: Creating "$CONFIGFILE"...${NOCOLOR}"
   logger -t "$ALIAS" "Install - Creating "$CONFIGFILE""
   if [[ ! -f "$CONFIGFILE" ]] &>/dev/null;then
     touch -a "$CONFIGFILE"
@@ -410,7 +410,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
   fi
 
   # Create wan-event if it doesn't exist
-  echo -e "${BLUE}Creating wan-event script...${NOCOLOR}"
+  echo -e "${LIGHTCYAN}Creating wan-event script...${NOCOLOR}"
   logger -t "$ALIAS" "Install - Creating wan-event script"
     if [[ ! -f "/jffs/scripts/wan-event" ]] &>/dev/null;then
       touch -a /jffs/scripts/wan-event
@@ -429,7 +429,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     logger -t "$ALIAS" "Install - ${0##*/} already added to wan-Event"
   else
     cmdline="sh $0 cron"
-    echo -e "${BLUE}Adding ${0##*/} to wan-event...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}Adding ${0##*/} to wan-event...${NOCOLOR}"
     logger -t "$ALIAS" "Install - Adding ${0##*/} to wan-event"
     echo -e "\r\n$cmdline # domain_vpn_routing" >> /jffs/scripts/wan-event
     echo -e "${GREEN}${0##*/} added to wan-event.${NOCOLOR}"
@@ -440,7 +440,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     logger -t "$ALIAS" "Install - ${0##*/} already added to wan-event"
   else
     cmdline="sh $0 querypolicy all"
-    echo -e "${BLUE}Adding ${0##*/} to wan-event...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}Adding ${0##*/} to wan-event...${NOCOLOR}"
     logger -t "$ALIAS" "Install - Adding ${0##*/} to wan-event"
     echo -e "\r\n$cmdline # domain_vpn_routing_queryall" >> /jffs/scripts/wan-event
     echo -e "${GREEN}${0##*/} added to wan-event.${NOCOLOR}"
@@ -448,7 +448,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
   fi
 
   # Create openvpn-event if it doesn't exist
-  echo -e "${BLUE}Creating openvpn-event script...${NOCOLOR}"
+  echo -e "${LIGHTCYAN}Creating openvpn-event script...${NOCOLOR}"
   logger -t "$ALIAS" "Install - Creating openvpn-event script"
     if [[ ! -f "/jffs/scripts/openvpn-event" ]] &>/dev/null;then
       touch -a /jffs/scripts/openvpn-event
@@ -467,7 +467,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     logger -t "$ALIAS" "Install - ${0##*/} already added to Openvpn-Event"
   else
     cmdline="sh $0 cron"
-    echo -e "${BLUE}Adding ${0##*/} to Openvpn-Event...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}Adding ${0##*/} to Openvpn-Event...${NOCOLOR}"
     logger -t "$ALIAS" "Install - Adding ${0##*/} to Openvpn-Event"
     echo -e "\r\n$cmdline # domain_vpn_routing" >> /jffs/scripts/openvpn-event
     echo -e "${GREEN}${0##*/} added to Openvpn-event.${NOCOLOR}"
@@ -478,7 +478,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     logger -t "$ALIAS" "Install - ${0##*/} already added to Openvpn-Event"
   else
     cmdline="sh $0 querypolicy all"
-    echo -e "${BLUE}Adding ${0##*/} to Openvpn-Event...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}Adding ${0##*/} to Openvpn-Event...${NOCOLOR}"
     logger -t "$ALIAS" "Install - Adding ${0##*/} to Openvpn-Event"
     echo -e "\r\n$cmdline # domain_vpn_routing_queryall" >> /jffs/scripts/openvpn-event
     echo -e "${GREEN}${0##*/} added to Openvpn-event.${NOCOLOR}"
@@ -511,7 +511,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   # Remove Script from wan-event
   cmdline="sh $0 cron"
   if [[ -n "$(cat /jffs/scripts/wan-event | grep -e "^$cmdline")" ]] &>/dev/null;then 
-    echo -e "${BLUE}${0##*/} - Uninstall: Removing Cron Job from wan-event...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Removing Cron Job from wan-event...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Removing Cron Job from wan-event"
     sed -i '\~# domain_vpn_routing~d' /jffs/scripts/wan-event
     echo -e "${GREEN}${0##*/} - Uninstall: Removed Cron Job from wan-event.${NOCOLOR}"
@@ -522,7 +522,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   fi
   cmdline="sh $0 querypolicy all"
   if [[ -n "$(cat /jffs/scripts/wan-event | grep -e "^$cmdline")" ]] &>/dev/null;then 
-    echo -e "${BLUE}${0##*/} - Uninstall: Removing Cron Job from wan-event...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Removing Cron Job from wan-event...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Removing Cron Job from wan-event"
     sed -i '\~# domain_vpn_routing_queryall~d' /jffs/scripts/wan-event
     echo -e "${GREEN}${0##*/} - Uninstall: Removed Cron Job from wan-event.${NOCOLOR}"
@@ -535,7 +535,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   # Remove Script from Openvpn-event
   cmdline="sh $0 cron"
   if [[ -n "$(cat /jffs/scripts/openvpn-event | grep -e "^$cmdline")" ]] &>/dev/null;then 
-    echo -e "${BLUE}${0##*/} - Uninstall: Removing Cron Job from Openvpn-Event...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Removing Cron Job from Openvpn-Event...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Removing Cron Job from Openvpn-Event"
     sed -i '\~# domain_vpn_routing~d' /jffs/scripts/openvpn-event
     echo -e "${GREEN}${0##*/} - Uninstall: Removed Cron Job from Openvpn-Event.${NOCOLOR}"
@@ -546,7 +546,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   fi
   cmdline="sh $0 querypolicy all"
   if [[ -n "$(cat /jffs/scripts/openvpn-event | grep -e "^$cmdline")" ]] &>/dev/null;then 
-    echo -e "${BLUE}${0##*/} - Uninstall: Removing Cron Job from Openvpn-Event...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Removing Cron Job from Openvpn-Event...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Removing Cron Job from Openvpn-Event"
     sed -i '\~# domain_vpn_routing_queryall~d' /jffs/scripts/openvpn-event
     echo -e "${GREEN}${0##*/} - Uninstall: Removed Cron Job from Openvpn-Event.${NOCOLOR}"
@@ -560,7 +560,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   $0 deletepolicy all
   # Delete Policy Directory
   if [[ -d "$POLICYDIR" ]] &>/dev/null;then
-    echo -e "${BLUE}${0##*/} - Uninstall: Deleting "$POLICYDIR"...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Deleting "$POLICYDIR"...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Creating "$POLICYDIR""
     rm -rf "$POLICYDIR"
     echo -e "${GREEN}${0##*/} - Uninstall: "$POLICYDIR" deleted.${NOCOLOR}"
@@ -568,7 +568,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   fi
   # Remove Lock File
   if [[ -f "$LOCKFILE" ]] &>/dev/null;then
-    echo -e "${BLUE}${0##*/} - Uninstall: Removing "$LOCKFILE"...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Removing "$LOCKFILE"...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Removing "$LOCKFILE""
     rm -f "$LOCKFILE" 
     echo -e "${GREEN}${0##*/} - Uninstall: Removed "$LOCKFILE"...${NOCOLOR}"
@@ -856,6 +856,31 @@ elif [[ "$INTERFACE" == "ovpns2" ]] &>/dev/null;then
   ROUTETABLE=main
   RGW="0"
   PRIORITY="0"
+elif [[ "$INTERFACE" == "wgc1" ]] &>/dev/null;then
+  IFNAME="wgc1"
+  RGW="2"
+  ROUTETABLE="wgc1"
+  PRIORITY="6000"
+elif [[ "$INTERFACE" == "wgc2" ]] &>/dev/null;then
+  IFNAME="wgc2"
+  RGW="2"
+  ROUTETABLE="wgc2"
+  PRIORITY="7000"
+elif [[ "$INTERFACE" == "wgc3" ]] &>/dev/null;then
+  IFNAME="wgc3"
+  RGW="2"
+  ROUTETABLE="wgc3"
+  PRIORITY="8000"
+elif [[ "$INTERFACE" == "wgc4" ]] &>/dev/null;then
+  IFNAME="wgc4"
+  RGW="2"
+  ROUTETABLE="wgc4"
+  PRIORITY="9000"
+elif [[ "$INTERFACE" == "wgc5" ]] &>/dev/null;then
+  IFNAME="wgc5"
+  RGW="2"
+  ROUTETABLE="wgc5"
+  PRIORITY="10000"
 elif [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
   if [[ "$(nvram get wan0_primary & nvramcheck)" == "1" ]] &>/dev/null;then
     IFNAME="$(nvram get wan0_gw_ifname & nvramcheck)"
@@ -923,6 +948,14 @@ OVPNCONFIGFILES='
 /etc/openvpn/server2/config.ovpn
 '
 
+WGFILES='
+/etc/wg/wgc1_status
+/etc/wg/wgc2_status
+/etc/wg/wgc3_status
+/etc/wg/wgc4_status
+/etc/wg/wgc5_status
+'
+
 INTERFACES=""  
   for OVPNCONFIGFILE in ${OVPNCONFIGFILES};do
     if [[ -f "$OVPNCONFIGFILE" ]] &>/dev/null;then
@@ -931,6 +964,13 @@ INTERFACES=""
       elif [[ -n "$(echo $OVPNCONFIGFILE | grep -e "server")" ]] &>/dev/null;then
         INTERFACE="ovpns"$(echo $OVPNCONFIGFILE | grep -o '[0-9]')""
       fi
+      INTERFACES="${INTERFACES} ${INTERFACE}"
+    fi
+  done
+
+  for WGFILE in ${WGFILES};do
+    if [[ -f "$WGFILE" ]] &>/dev/null && [[ -s "$WGFILE" ]] &>/dev/null;then
+      INTERFACE="wgc"$(echo $WGFILE | grep -o '[0-9]')""
       INTERFACES="${INTERFACES} ${INTERFACE}"
     fi
   done
@@ -986,7 +1026,7 @@ INTERFACES=""
 
   # Create Policy Files
     if [[ ! -f $POLICYDIR/'policy_'$CREATEPOLICYNAME'_domainlist' ]] &>/dev/null;then
-      echo -e "${BLUE}${0##*/} - Create Policy: Creating "$POLICYDIR"/policy_"$CREATEPOLICYNAME"_domainlist...${NOCOLOR}"
+      echo -e "${LIGHTCYAN}${0##*/} - Create Policy: Creating "$POLICYDIR"/policy_"$CREATEPOLICYNAME"_domainlist...${NOCOLOR}"
       logger -t "$ALIAS" "Create Policy - Creating "$POLICYDIR"/policy_"$CREATEPOLICYNAME"_domainlist"
       touch -a $POLICYDIR/'policy_'$CREATEPOLICYNAME'_domainlist'
       chmod 666 $POLICYDIR/'policy_'$CREATEPOLICYNAME'_domainlist'
@@ -994,7 +1034,7 @@ INTERFACES=""
       logger -t "$ALIAS" "Create Policy - "$POLICYDIR"/policy_"$CREATEPOLICYNAME"_domainlist created"
     fi
     if [[ ! -f $POLICYDIR/'policy_'$CREATEPOLICYNAME'_domaintoIP' ]] &>/dev/null;then
-      echo -e "${BLUE}${0##*/} - Create Policy: Creating "$POLICYDIR"/policy_"$CREATEPOLICYNAME"_domaintoIP...${NOCOLOR}"
+      echo -e "${LIGHTCYAN}${0##*/} - Create Policy: Creating "$POLICYDIR"/policy_"$CREATEPOLICYNAME"_domaintoIP...${NOCOLOR}"
       logger -t "$ALIAS" "Create Policy - Creating "$POLICYDIR"/policy_"$CREATEPOLICYNAME"_domaintoIP"
       touch -a $POLICYDIR/'policy_'$CREATEPOLICYNAME'_domaintoIP'
       chmod 666 $POLICYDIR/'policy_'$CREATEPOLICYNAME'_domaintoIP'
@@ -1002,7 +1042,7 @@ INTERFACES=""
       logger -t "$ALIAS" "Create Policy - "$POLICYDIR"/policy_"$CREATEPOLICYNAME"_domaintoIP created"
     fi
   # Adding Policy to Config File
-  echo -e "${BLUE}Create Policy - Adding "$CREATEPOLICYNAME" to "$CONFIGFILE"...${NOCOLOR}"
+  echo -e "${LIGHTCYAN}Create Policy - Adding "$CREATEPOLICYNAME" to "$CONFIGFILE"...${NOCOLOR}"
   logger -t "$ALIAS" "Create Policy - Adding "$CREATEPOLICYNAME" to "$CONFIGFILE""
     if [[ -z "$(cat $CONFIGFILE | grep -w "$(echo $CREATEPOLICYNAME | awk -F"|" '{print $1}')")" ]] &>/dev/null;then
       echo -e ""$CREATEPOLICYNAME"|"$POLICYDIR"/policy_"$CREATEPOLICYNAME"_domainlist|"$POLICYDIR"/policy_"$CREATEPOLICYNAME"_"domaintoIP"|"$CREATEPOLICYINTERFACE"|"$SETVERBOSELOGGING"|"$SETPRIVATEIPS"" >> $CONFIGFILE
@@ -1073,6 +1113,15 @@ OVPNCONFIGFILES='
 /etc/openvpn/server1/config.ovpn
 /etc/openvpn/server2/config.ovpn
 '
+
+WGFILES='
+/etc/wg/wgc1_status
+/etc/wg/wgc2_status
+/etc/wg/wgc3_status
+/etc/wg/wgc4_status
+/etc/wg/wgc5_status
+'
+
 INTERFACES=""  
   for OVPNCONFIGFILE in ${OVPNCONFIGFILES};do
     if [[ -f "$OVPNCONFIGFILE" ]] &>/dev/null;then
@@ -1081,6 +1130,13 @@ INTERFACES=""
       elif [[ -n "$(echo $OVPNCONFIGFILE | grep -e "server")" ]] &>/dev/null;then
         INTERFACE="ovpns"$(echo $OVPNCONFIGFILE | grep -o '[0-9]')""
       fi
+      INTERFACES="${INTERFACES} ${INTERFACE}"
+    fi
+  done
+
+  for WGFILE in ${WGFILES};do
+    if [[ -f "$WGFILE" ]] &>/dev/null && [[ -s "$WGFILE" ]] &>/dev/null;then
+      INTERFACE="wgc"$(echo $WGFILE | grep -o '[0-9]')""
       INTERFACES="${INTERFACES} ${INTERFACE}"
     fi
   done
@@ -1136,7 +1192,7 @@ INTERFACES=""
   done
 
   # Editing Policy in Config File
-  echo -e "${BLUE}Edit Policy - Modifying "$EDITPOLICY" in "$CONFIGFILE"...${NOCOLOR}"
+  echo -e "${LIGHTCYAN}Edit Policy - Modifying "$EDITPOLICY" in "$CONFIGFILE"...${NOCOLOR}"
   logger -t "$ALIAS" "Edit Policy - Modifying "$EDITPOLICY" in "$CONFIGFILE""
   if [[ -n "$(cat $CONFIGFILE | grep -w "$(echo $EDITPOLICY | awk -F"|" '{print $1}')")" ]] &>/dev/null;then
     OLDINTERFACE="$(cat "$CONFIGFILE" | grep -w "$EDITPOLICY" | awk -F"|" '{print $4}')"
@@ -1284,14 +1340,14 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
 
     # Removing Policy Files
     if [[ -f ""$POLICYDIR"/policy_"$DELETEPOLICY"_domainlist" ]] &>/dev/null;then
-      echo -e "${BLUE}${0##*/} - Delete Policy: Deleting "$POLICYDIR"/policy_"$DELETEPOLICY"_domainlist...${NOCOLOR}"
+      echo -e "${LIGHTCYAN}${0##*/} - Delete Policy: Deleting "$POLICYDIR"/policy_"$DELETEPOLICY"_domainlist...${NOCOLOR}"
       logger -t "$ALIAS" "Delete Policy - Deleting "$POLICYDIR"/policy_"$DELETEPOLICY"_domainlist"
       rm -f "$POLICYDIR"/policy_"$DELETEPOLICY"_domainlist
       echo -e "${GREEN}${0##*/} - Delete Policy: "$POLICYDIR"/policy_"$DELETEPOLICY"_domainlist deleted.${NOCOLOR}"
       logger -t "$ALIAS" "Delete Policy - "$POLICYDIR"/policy_"$DELETEPOLICY"_domainlist deleted"
     fi
     if [[ -f ""$POLICYDIR"/policy_"$DELETEPOLICY"_domaintoIP" ]] &>/dev/null;then
-      echo -e "${BLUE}${0##*/} - Delete Policy: Deleting "$POLICYDIR"/policy_"$DELETEPOLICY"_domaintoIP...${NOCOLOR}"
+      echo -e "${LIGHTCYAN}${0##*/} - Delete Policy: Deleting "$POLICYDIR"/policy_"$DELETEPOLICY"_domaintoIP...${NOCOLOR}"
       logger -t "$ALIAS" "Delete Policy - Deleting "$POLICYDIR"/policy_"$DELETEPOLICY"_domaintoIP"
       rm -f "$POLICYDIR"/policy_"$DELETEPOLICY"_domaintoIP
       echo -e "${GREEN}${0##*/} - Delete Policy: "$POLICYDIR"/policy_"$DELETEPOLICY"_domaintoIP deleted.${NOCOLOR}"
@@ -1299,7 +1355,7 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
     fi
     # Removing Policy from Config File
     if [[ -n "$(cat "$CONFIGFILE" | grep -w "$(echo "$DELETEPOLICY" | awk -F"|" '{print $1}')")" ]] &>/dev/null;then
-      echo -e "${BLUE}Delete Policy - Deleting "$DELETEPOLICY" from "$CONFIGFILE"...${NOCOLOR}"
+      echo -e "${LIGHTCYAN}Delete Policy - Deleting "$DELETEPOLICY" from "$CONFIGFILE"...${NOCOLOR}"
       logger -t "$ALIAS" "Delete Policy - Deleting "$DELETEPOLICY" to "$CONFIGFILE""
       POLICYTODELETE="$(cat "$CONFIGFILE" | grep -w "$DELETEPOLICY")"
       sed -i "\:"$POLICYTODELETE":d" "$CONFIGFILE"
@@ -1317,7 +1373,7 @@ adddomain ()
 if [[ -n "$DOMAIN" ]] &>/dev/null;then
   # Select Policy for New Domain
   POLICIES="$(cat $CONFIGFILE | awk -F"|" '{print $1}')"
-  echo -e "${BLUE}Select a Policy for the new Domain:${NOCOLOR} \r\n"$POLICIES""
+  echo -e "${LIGHTCYAN}Select a Policy for the new Domain:${NOCOLOR} \r\n$POLICIES"
   # User Input for Policy for New Domain
   while true;do  
     read -p "Policy: " NEWDOMAINPOLICY
@@ -1355,7 +1411,7 @@ deletedomain ()
 {
 # Select Policy for Domain to Delete
 POLICIES="$(cat $CONFIGFILE | awk -F"|" '{print $1}')"
-echo -e "Select a Policy to delete $DOMAIN: \r\n"$POLICIES""
+echo -e "Select a Policy to delete $DOMAIN: \r\n$POLICIES"
   # User Input for Policy for Deleting Domain
   while true;do  
     read -p "Policy: " DELETEDOMAINPOLICY
@@ -1440,7 +1496,7 @@ deleteip ()
 {
 # Select Policy for Domain to Delete
 POLICIES="$(cat $CONFIGFILE | awk -F"|" '{print $1}')"
-echo -e "Select a Policy to delete $IP: \r\n"$POLICIES""
+echo -e "Select a Policy to delete $IP: \r\n$POLICIES"
   # User Input for Policy for Deleting IP
   while true;do  
     read -p "Policy: " DELETEIPPOLICY
@@ -1659,7 +1715,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         || logger -st "$ALIAS" "Query Policy - ***Error*** Unable to add route for $IPV4 dev $IFNAME table $ROUTETABLE"
       fi
       if [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
-        if [[ -n "$(ip route list $IPV$ dev $OLDIFNAME table $ROUTETABLE)" ]] &>/dev/null;then
+        if [[ -n "$(ip route list $IPV4 dev $OLDIFNAME table $ROUTETABLE)" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] && logger -t "$ALIAS" "Query Policy - Deleting route for $IPV4 dev $OLDIFNAME table $ROUTETABLE"
           ip route del $IPV4 dev $OLDIFNAME table $ROUTETABLE \
           && { [[ "$VERBOSELOGGING" == "1" ]] && logger -t "$ALIAS" "Query Policy - Route deleted for $IPV4 dev $OLDIFNAME table $ROUTETABLE" ;} \
@@ -1694,11 +1750,11 @@ cronjob ()
 # Create Cron Job
 if [[ "${mode}" != "uninstall" ]] &>/dev/null;then
   if tty &>/dev/null;then
-    echo -e "${BLUE}Checking if Cron Job is Scheduled...${NOCOLOR}"
+    echo -e "${LIGHTCYAN}Checking if Cron Job is Scheduled...${NOCOLOR}"
   fi
   if [[ -z "$(cru l | grep -w "$0" | grep -w "setup_domain_vpn_routing")" ]] &>/dev/null;then
     if tty &>/dev/null;then
-      echo -e "${BLUE}Creating Cron Job...${NOCOLOR}"
+      echo -e "${LIGHTCYAN}Creating Cron Job...${NOCOLOR}"
     fi
     logger -p 5 -st "$ALIAS" "Cron - Creating Cron Job"
     $(cru a setup_domain_vpn_routing "*/15 * * * *" $0 querypolicy all) \
