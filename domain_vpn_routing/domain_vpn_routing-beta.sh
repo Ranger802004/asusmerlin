@@ -485,11 +485,11 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     logger -t "$ALIAS" "Install - ${0##*/} added to Openvpn-Event"
   fi
 
-  # Create Initial Cron Jobs
-  cronjob || return
-
   # Check Alias
   checkalias || return
+
+  # Create Initial Cron Jobs
+  cronjob || return
 
 fi
 return
