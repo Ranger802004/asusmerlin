@@ -3,7 +3,7 @@
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 06/04/2023
-# Version: v2.0.5-beta1
+# Version: v2.0.5-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.5-beta1"
+VERSION="v2.0.5-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -4311,11 +4311,15 @@ fi
 # Set Status for Email Notification On if Unset
 [[ -z "${email+x}" ]] &>/dev/null && email="1"
 
-[[ "$WANSMODE" != "lb" ]] &>/dev/null && switchwan || return
+[[ "$WANSMODE" != "lb" ]] &>/dev/null && { switchwan || return ;}
+
 switchdns || return
+
 restartservices || return
+
 checkiprules || return
-[[ "$email" == "1" ]] &>/dev/null && { sendemail && email="0" ;} || return
+
+[[ "$email" == "1" ]] &>/dev/null && { sendemail && email="0" || return ;}
 return
 }
 
@@ -4361,7 +4365,7 @@ while { [[ "$WANSMODE" == "lb" ]] &>/dev/null && [[ "$WAN0ENABLE" == "1" ]] &>/d
   fi
 
   # Get Active WAN Parameters
-  GETWANMODE=3
+  GETWANMODE="3"
   getwanparameters || return
 
   # Ping WAN Targets
