@@ -1948,13 +1948,13 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
   # WAN1GWIFNAME
   if [[ -z "${WAN1GWIFNAME+x}" ]] &>/dev/null;then
     WAN1GWIFNAME="$(nvram get wan1_gw_ifname & nvramcheck)"
-    { [[ "$WANSDUALWANENABLE" == "1" ]] && [[ -n "$WAN1GWIFNAME" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME && continue ;}
+    { [[ "$WANSDUALWANENABLE" == "0" ]] || [[ -n "$WAN1GWIFNAME" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME && continue ;}
   fi
 
   # WAN1GATEWAY
   if [[ -z "${WAN1GATEWAY+x}" ]] &>/dev/null;then
     WAN1GATEWAY="$(nvram get wan1_gateway & nvramcheck)"
-    { [[ "$WANSDUALWANENABLE" == "1" ]] && [[ -n "$WAN1GATEWAY" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GATEWAY" && unset WAN1GATEWAY && continue ;}
+    { [[ "$WANSDUALWANENABLE" == "0" ]] || [[ -n "$WAN1GATEWAY" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GATEWAY" && unset WAN1GATEWAY && continue ;}
   fi
 
   # WAN1PRIMARY
