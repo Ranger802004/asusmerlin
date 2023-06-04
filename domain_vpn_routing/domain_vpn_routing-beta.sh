@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/01/2023
-# Version: v2.0.0-beta4
+# Date: 06/04/2023
+# Version: v2.0.0-beta5
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.0.0-beta4"
+VERSION="v2.0.0-beta5"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -338,6 +338,7 @@ PressEnter()
 			;;
 		esac
 	done
+        getsystemparameters || return
         [[ "$mode" != "menu" ]] &>/dev/null && mode="menu"
 	return 0
 }
@@ -657,7 +658,7 @@ if [[ -f "$CONFIGFILE" ]] &>/dev/null && [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/n
 
   # Update Interfaces
   for Line in $Lines;do
-    if [[ -n "$(echo $Line | grep -e "$c1\|$c2\|$c3\|$c4\|$c5\|$s1\|$s2\|$(nvram get wan0_gw_ifname & nvramcheck)\|$(nvram get wan1_gw_ifname & nvramcheck)")" ]] &>/dev/null;then
+    if [[ -n "$(echo $Line | grep -e "$c1\|$c2\|$c3\|$c4\|$c5\|$s1\|$s2\|$WAN0GWIFNAME\|$WAN1GWIFNAME")" ]] &>/dev/null;then
       fixpolicy="$(echo "$Line" | awk -F "|" '{print $1}')"
       fixpolicydomainlist="$(echo "$Line" | awk -F "|" '{print $2}')"
       fixpolicydomainiplist="$(echo "$Line" | awk -F "|" '{print $3}')"
@@ -678,9 +679,9 @@ if [[ -f "$CONFIGFILE" ]] &>/dev/null && [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/n
         fixpolicyinterface="ovpns1"
       elif [[ "$fixpolicyinterface" == "$s2" ]] &>/dev/null;then
         fixpolicyinterface="ovpns2"
-      elif [[ "$fixpolicyinterface" == "$(nvram get wan0_gw_ifname & nvramcheck)" ]] &>/dev/null;then
+      elif [[ "$fixpolicyinterface" == "$WAN0GWIFNAME" ]] &>/dev/null;then
         fixpolicyinterface="wan0"
-      elif [[ "$fixpolicyinterface" == "$(nvram get wan1_gw_ifname & nvramcheck)" ]] &>/dev/null;then
+      elif [[ "$fixpolicyinterface" == "$WAN1GWIFNAME" ]] &>/dev/null;then
         fixpolicyinterface="wan1"
       fi
       sed -i "\:"$Line":d" "$CONFIGFILE"
@@ -823,27 +824,27 @@ logger -p 6 -t "$ALIAS" "Debug - Routing Director Interface: $INTERFACE"
 
 if [[ "$INTERFACE" == "ovpnc1" ]] &>/dev/null;then
   IFNAME="$(cat /etc/openvpn/client1/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
-  RGW="$(nvram get vpn_client1_rgw & nvramcheck)"
+  RGW="$OVPNC1RGW"
   ROUTETABLE="ovpnc1"
   PRIORITY="1000"
 elif [[ "$INTERFACE" == "ovpnc2" ]] &>/dev/null;then
   IFNAME="$(cat /etc/openvpn/client2/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
-  RGW="$(nvram get vpn_client2_rgw & nvramcheck)"
+  RGW="$OVPNC2RGW"
   ROUTETABLE="ovpnc2"
   PRIORITY="2000"
 elif [[ "$INTERFACE" == "ovpnc3" ]] &>/dev/null;then
   IFNAME="$(cat /etc/openvpn/client3/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
-  RGW="$(nvram get vpn_client3_rgw & nvramcheck)"
+  RGW="$OVPNC3RGW"
   ROUTETABLE="ovpnc3"
   PRIORITY="3000"
 elif [[ "$INTERFACE" == "ovpnc4" ]] &>/dev/null;then
   IFNAME="$(cat /etc/openvpn/client4/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
-  RGW="$(nvram get vpn_client4_rgw & nvramcheck)"
+  RGW="$OVPNC4RGW"
   ROUTETABLE="ovpnc4"
   PRIORITY="4000"
 elif [[ "$INTERFACE" == "ovpnc5" ]] &>/dev/null;then
   IFNAME="$(cat /etc/openvpn/client5/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
-  RGW="$(nvram get vpn_client5_rgw & nvramcheck)"
+  RGW="$OVPNC5RGW"
   ROUTETABLE="ovpnc5"
   PRIORITY="5000"
 elif [[ "$INTERFACE" == "ovpns1" ]] &>/dev/null;then
@@ -882,12 +883,12 @@ elif [[ "$INTERFACE" == "wgc5" ]] &>/dev/null;then
   ROUTETABLE="wgc5"
   PRIORITY="10000"
 elif [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
-  if [[ "$(nvram get wan0_primary & nvramcheck)" == "1" ]] &>/dev/null;then
-    IFNAME="$(nvram get wan0_gw_ifname & nvramcheck)"
-    OLDIFNAME="$(nvram get wan1_gw_ifname & nvramcheck)"
-  elif [[ "$(nvram get wan1_primary & nvramcheck)" == "1" ]] &>/dev/null;then
-    IFNAME="$(nvram get wan1_gw_ifname & nvramcheck)"
-    OLDIFNAME="$(nvram get wan0_gw_ifname & nvramcheck)"
+  if [[ "$WAN0PRIMARY" == "1" ]] &>/dev/null;then
+    IFNAME="$WAN0GWIFNAME"
+    OLDIFNAME="$WAN1GWIFNAME"
+  elif [[ "$WAN1PRIMARY" == "1" ]] &>/dev/null;then
+    IFNAME="$WAN1GWIFNAME"
+    OLDIFNAME="$WAN0GWIFNAME"
   fi
   ROUTETABLE=main
   RGW="2"
@@ -896,25 +897,25 @@ elif [[ "$INTERFACE" == "wan0" ]] &>/dev/null;then
   ROUTETABLE="100"
   RGW="2"
   PRIORITY="150"
-  IFNAME="$(nvram get wan0_gw_ifname & nvramcheck)"
-  logger -p 6 -t "$ALIAS" "Debug - Checking WAN0 for Default Route in Routing Table 100"
-  if [[ -z "$(ip route list default table 100 | grep -w "$(nvram get wan0_gw_ifname & nvramcheck)")" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Routing Director - Adding default route for WAN0 Routing Table via "$(nvram get wan0_gateway & nvramcheck)" dev "$(nvram get wan0_gw_ifname & nvramcheck)""
-    ip route add default via $(nvram get wan0_gateway & nvramcheck) dev $(nvram get wan0_gw_ifname & nvramcheck) table 100 \
-    && logger -p 4 -t "$ALIAS" "Routing Director - Added default route for WAN0 Routing Table via "$(nvram get wan0_gateway & nvramcheck)" dev "$(nvram get wan0_gw_ifname & nvramcheck)"" \
-    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Unable to add default route for WAN0 Routing Table via "$(nvram get wan0_gateway & nvramcheck)" dev "$(nvram get wan0_gw_ifname & nvramcheck)""
+  IFNAME="$WAN0GWIFNAME"
+  logger -p 6 -t "$ALIAS" "Debug - Checking WAN0 for Default Route in Routing Table $ROUTETABLE"
+  if [[ -z "$(ip route list default table $ROUTETABLE | grep -w "$WAN0GWIFNAME")" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Routing Director - Adding default route for WAN0 Routing Table via $WAN0GATEWAY dev $WAN0GWIFNAME"
+    ip route add default via $WAN0GATEWAY dev $WAN0GWIFNAME table $ROUTETABLE \
+    && logger -p 4 -t "$ALIAS" "Routing Director - Added default route for WAN0 Routing Table via $WAN0GATEWAY dev $WAN0GWIFNAME" \
+    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Unable to add default route for WAN0 Routing Table via $GATEWAY dev $WAN0GWIFNAME"
   fi
 elif [[ "$INTERFACE" == "wan1" ]] &>/dev/null;then
   ROUTETABLE="200"
   RGW="2"
   PRIORITY="150"
-  IFNAME="$(nvram get wan1_gw_ifname & nvramcheck)"
-  logger -p 6 -t "$ALIAS" "Debug - Checking WAN1 for Default Route in Routing Table 200"
-  if [[ -z "$(ip route list default table 200 | grep -w "$(nvram get wan1_gw_ifname & nvramcheck)")" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Routing Director - Adding default route for WAN1 Routing Table via "$(nvram get wan1_gateway & nvramcheck)" dev "$(nvram get wan1_gw_ifname & nvramcheck)""
-    ip route add default via $(nvram get wan1_gateway & nvramcheck) dev $(nvram get wan1_gw_ifname & nvramcheck) table 200 \
-    && logger -p 4 -t "$ALIAS" "Routing Director - Added default route for WAN1 Routing Table via "$(nvram get wan1_gateway & nvramcheck)" dev "$(nvram get wan1_gw_ifname & nvramcheck)"" \
-    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Unable to add default route for WAN1 Routing Table via "$(nvram get wan1_gateway & nvramcheck)" dev "$(nvram get wan1_gw_ifname & nvramcheck)""
+  IFNAME="$WAN1GWIFNAME"
+  logger -p 6 -t "$ALIAS" "Debug - Checking WAN1 for Default Route in Routing Table $ROUTETABLE"
+  if [[ -z "$(ip route list default table $ROUTETABLE | grep -w "$WAN1GWIFNAME")" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Routing Director - Adding default route for WAN1 Routing Table via $WAN1GATEWAY dev $WAN1GWIFNAME"
+    ip route add default via $WAN1GATEWAY dev $WAN1GWIFNAME table $ROUTETABLE \
+    && logger -p 4 -t "$ALIAS" "Routing Director - Added default route for WAN1 Routing Table via $WAN1GATEWAY dev $WAN1GWIFNAME" \
+    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Unable to add default route for WAN1 Routing Table via $WAN1GATEWAY dev $WAN1GWIFNAME"
   fi
 
 else
@@ -978,9 +979,9 @@ INTERFACES=""
   done
 
   # Check if WAN is configured in Single or Dual WAN
-  if [[ "$(nvram get wans_dualwan & nvramcheck | awk '{print $2}')" == "none" ]] &>/dev/null;then
+  if [[ "$WANSDUALWANENABLE" == "0" ]] &>/dev/null;then
     INTERFACES="${INTERFACES} wan"
-  elif [[ "$(nvram get wans_dualwan & nvramcheck | awk '{print $2}')" != "none" ]] &>/dev/null;then
+  elif [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
     INTERFACES="${INTERFACES} wan"
     INTERFACES="${INTERFACES} wan0"
     INTERFACES="${INTERFACES} wan1"
@@ -1104,10 +1105,10 @@ editpolicy ()
 if [[ "${mode}" == "editpolicy" ]] &>/dev/null;then
   if [[ "$POLICY" == "$(cat "$CONFIGFILE" | awk -F"|" '{print $1}' | grep -w "$POLICY")" ]] &>/dev/null;then
     read -n 1 -s -r -p "Press any key to continue to edit Policy: $POLICY"
-    EDITPOLICY=$POLICY
+    EDITPOLICY="$POLICY"
   else
-    echo -e "${RED}Policy: "$POLICY" not found${NOCOLOR}"
-    exit
+    echo -e "${RED}Policy: $POLICY not found${NOCOLOR}"
+    return
   fi
 # Select VPN Interface for Policy
 OVPNCONFIGFILES='
@@ -1147,9 +1148,9 @@ INTERFACES=""
     fi
   done
 
-  if [[ "$(nvram get wans_dualwan & nvramcheck | awk '{print $2}')" == "none" ]] &>/dev/null;then
+  if [[ "$WANSDUALWANENABLE" == "0" ]] &>/dev/null;then
     INTERFACES="${INTERFACES} wan"
-  elif [[ "$(nvram get wans_dualwan & nvramcheck | awk '{print $2}')" != "none" ]] &>/dev/null;then
+  elif [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
     INTERFACES="${INTERFACES} wan"
     INTERFACES="${INTERFACES} wan0"
     INTERFACES="${INTERFACES} wan1"
@@ -1246,9 +1247,9 @@ INTERFACES='
           && logger -t "$ALIAS" "Edit Policy - Route deleted for $IPV6 dev $OLDIFNAME" \
           || logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to delete route for $IPV6 dev $OLDIFNAME"
         fi
-        if [[ -z "$(ip -6 route list $IPV6 dev $NEWPOLICYIFNAME)" ]] &>/dev/null;then
-          logger -t "$ALIAS" "Edit Policy - Adding route for $IPV6 dev $EDITPOLICYIFNAME"
-          ip -6 route add $IPV6 dev $NEWIFNAME \
+        if [[ -z "$(ip -6 route list $IPV6 dev $NEWIFNAME)" ]] &>/dev/null;then
+          logger -t "$ALIAS" "Edit Policy - Adding route for $IPV6 dev $NEWIFNAME"
+          $(ip -6 route add $IPV6 dev $NEWIFNAME) \
           && logger -t "$ALIAS" "Edit Policy - Route added for $IPV6 dev $NEWIFNAME" \
           || logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for $IPV6 dev $NEWIFNAME"
         fi
@@ -1274,7 +1275,7 @@ INTERFACES='
         if [[ "$NEWRGW" == "0" ]] &>/dev/null;then
           if [[ -z "$(ip route list $IPV4 dev $NEWIFNAME table $NEWROUTETABLE)" ]] &>/dev/null;then
             logger -t "$ALIAS" "Edit Policy - Adding route for $IPV4 dev $NEWIFNAME table $NEWROUTETABLE"
-            ip route add $IPV4 dev $NEWIFNAME table $NEWROUTETABLE \
+            $(ip route add $IPV4 dev $NEWIFNAME table $NEWROUTETABLE) \
             && logger -t "$ALIAS" "Edit Policy - Route added for $IPV4 dev $NEWIFNAME table $NEWROUTETABLE" \
             || logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for $IPV4 dev $NEWIFNAME table $NEWROUTETABLE"
           fi
@@ -1304,7 +1305,7 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
     DELETEPOLICIES=$POLICY
   else
     echo -e "${RED}Policy: "$POLICY" not found${NOCOLOR}"
-    exit
+    return
   fi
   for DELETEPOLICY in ${DELETEPOLICIES};do
     # Determine Interface and Route Table for IP Routes to delete.
@@ -1604,21 +1605,18 @@ checkalias || return
 
 renice -n 20 $$
 
-# Check if IPV6 enabled
-IPV6SERVICE="$(nvram get ipv6_service & nvramcheck)"
-
 if [[ "$POLICY" == "all" ]] &>/dev/null;then
   QUERYPOLICIES="$(cat "$CONFIGFILE" | awk -F"|" '{print $1}')"
   if [[ -z "$QUERYPOLICIES" ]] &>/dev/null;then
     echo -e "${RED}***No Policies Detected***${NOCOLOR}"
     logger -t "$ALIAS" "Query Policy - ***No Policies Detected***"
-    exit
+    return
   fi
 elif [[ "$POLICY" == "$(cat "$CONFIGFILE" | awk -F"|" '{print $1}' | grep -w "$POLICY")" ]] &>/dev/null;then
   QUERYPOLICIES=$POLICY
 else
   echo -e "${RED}Policy: "$POLICY" not found${NOCOLOR}"
-  exit
+  return
 fi
 for QUERYPOLICY in ${QUERYPOLICIES};do
   # Check if IPv6 IP Addresses are in policy file if IPv6 is Disabled and delete them
@@ -1905,6 +1903,104 @@ fi
 return
 }
 
+# Get System Parameters
+getsystemparameters ()
+{
+# Get Global System Parameters
+while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterssync" == "0" ]] &>/dev/null;do
+  if [[ -z "${systemparameterssync+x}" ]] &>/dev/null;then
+    systemparameterssync="0"
+  elif [[ "$systemparameterssync" == "1" ]] &>/dev/null;then
+    break
+  fi
+  sleep 1
+
+  # WANSDUALWANENABLE
+  if [[ -z "${WANSDUALWANENABLE+x}" ]] &>/dev/null;then
+    { [[ -n "$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" ]] && [[ "$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" == "none" ]] &>/dev/null ;} && WANSDUALWANENABLE="0" || WANSDUALWANENABLE="1"
+    [[ -n "$WANSDUALWANENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WANSDUALWANENABLE" && unset WANSDUALWANENABLE && continue ;}
+  fi
+
+  # IPV6SERVICE
+  if [[ -z "${IPV6SERVICE+x}" ]] &>/dev/null;then
+    IPV6SERVICE="$(nvram get ipv6_service & nvramcheck)"
+    [[ -n "$IPV6SERVICE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6SERVICE" && unset IPV6SERVICE && continue ;}
+  fi
+
+  # WAN0GWIFNAME
+  if [[ -z "${WAN0GWIFNAME+x}" ]] &>/dev/null;then
+    WAN0GWIFNAME="$(nvram get wan0_gw_ifname & nvramcheck)"
+    [[ -n "$WAN0GWIFNAME" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GWIFNAME" && unset WAN0GWIFNAME && continue ;}
+  fi
+
+  # WAN0GATEWAY
+  if [[ -z "${WAN0GATEWAY+x}" ]] &>/dev/null;then
+    WAN0GATEWAY="$(nvram get wan0_gateway & nvramcheck)"
+    [[ -n "$WAN0GATEWAY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GATEWAY" && unset WAN0GATEWAY && continue ;}
+  fi
+
+  # WAN0PRIMARY
+  if [[ -z "${WAN0PRIMARY+x}" ]] &>/dev/null;then
+    WAN0PRIMARY="$(nvram get wan0_primary & nvramcheck)"
+    [[ -n "$WAN0PRIMARY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0PRIMARY" && unset WAN0PRIMARY && continue ;}
+  fi
+
+  # WAN1GWIFNAME
+  if [[ -z "${WAN1GWIFNAME+x}" ]] &>/dev/null;then
+    WAN1GWIFNAME="$(nvram get wan1_gw_ifname & nvramcheck)"
+    { [[ "$WANSDUALWANENABLE" == "1" ]] && [[ -n "$WAN1GWIFNAME" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME && continue ;}
+  fi
+
+  # WAN1GATEWAY
+  if [[ -z "${WAN1GATEWAY+x}" ]] &>/dev/null;then
+    WAN1GATEWAY="$(nvram get wan1_gateway & nvramcheck)"
+    { [[ "$WANSDUALWANENABLE" == "1" ]] && [[ -n "$WAN1GATEWAY" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GATEWAY" && unset WAN1GATEWAY && continue ;}
+  fi
+
+  # WAN1PRIMARY
+  if [[ -z "${WAN1PRIMARY+x}" ]] &>/dev/null;then
+    WAN1PRIMARY="$(nvram get wan1_primary & nvramcheck)"
+    [[ -n "$WAN1PRIMARY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1PRIMARY" && unset WAN1PRIMARY && continue ;}
+  fi
+
+  # OVPNC1RGW
+  if [[ -z "${OVPNC1RGW+x}" ]] &>/dev/null;then
+    OVPNC1RGW="$(nvram get vpn_client1_rgw & nvramcheck)"
+    [[ -n "$OVPNC1RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC1RGW" && unset OVPNC1RGW && continue ;}
+  fi
+
+  # OVPNC2RGW
+  if [[ -z "${OVPNC2RGW+x}" ]] &>/dev/null;then
+    OVPNC2RGW="$(nvram get vpn_client2_rgw & nvramcheck)"
+    [[ -n "$OVPNC2RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC2RGW" && unset OVPNC2RGW && continue ;}
+  fi
+
+  # OVPNC3RGW
+  if [[ -z "${OVPNC3RGW+x}" ]] &>/dev/null;then
+    OVPNC3RGW="$(nvram get vpn_client3_rgw & nvramcheck)"
+    [[ -n "$OVPNC3RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC3RGW" && unset OVPNC3RGW && continue ;}
+  fi
+
+  # OVPNC1RGW
+  if [[ -z "${OVPNC4RGW+x}" ]] &>/dev/null;then
+    OVPNC4RGW="$(nvram get vpn_client4_rgw & nvramcheck)"
+    [[ -n "$OVPNC4RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC4RGW" && unset OVPNC4RGW && continue ;}
+  fi
+
+  # OVPNC1RGW
+  if [[ -z "${OVPNC5RGW+x}" ]] &>/dev/null;then
+    OVPNC5RGW="$(nvram get vpn_client5_rgw & nvramcheck)"
+    [[ -n "$OVPNC5RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC5RGW" && unset OVPNC5RGW && continue ;}
+  fi
+
+ systemparameterssync="1"
+done
+
+unset systemparameterssync
+
+return
+}
+
 # Check if NVRAM Background Process is Stuck if CHECKNVRAM is Enabled
 nvramcheck ()
 {
@@ -1923,6 +2019,7 @@ fi
 return
 }
 
+getsystemparameters || return
 updateconfigprev2 || return
 [[ -d "$POLICYDIR" ]] &>/dev/null && { checkalias || return ;}
 scriptmode

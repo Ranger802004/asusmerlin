@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/01/2023
-# Version: v2.0.4
+# Date: 06/04/2023
+# Version: v2.0.5-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.4"
+VERSION="v2.0.5-beta1"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -3377,7 +3377,7 @@ elif [[ "$GETWANMODE" == "2" ]] &>/dev/null;then
     # WANSDUALWANENABLE
     if [[ -z "${WANSDUALWANENABLE+x}" ]] &>/dev/null;then
       { [[ -n "$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" ]] && [[ "$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" == "none" ]] &>/dev/null ;} && WANSDUALWANENABLE="0" || WANSDUALWANENABLE="1"
-      [[ -n "$WANSDUALWANENABLE" ]] &>/dev/null || { unset logger -p 6 -t "$ALIAS" "Debug - failed to set WANSDUALWANENABLE" && WANSDUALWANENABLE && continue ;}
+      [[ -n "$WANSDUALWANENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WANSDUALWANENABLE" && unset WANSDUALWANENABLE && continue ;}
     fi
 
     # WANSMODE
@@ -3538,7 +3538,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
     # WAN0USBMODEMREADY
     if [[ -z "${WAN0USBMODEMREADY+x}" ]] &>/dev/null || [[ -z "${zWAN0USBMODEMREADY+x}" ]] &>/dev/null;then
       WAN0USBMODEMREADY="$(nvram get wan0_is_usb_modem_ready & nvramcheck)"
-      [[ -n "$WAN0USBMODEMREADY" ]] &>/dev/null \
+      { [[ -n "$WAN0USBMODEMREADY" ]] &>/dev/null || [[ -z "$(echo $WANSCAP | grep -o "usb")" ]] &>/dev/null ;} \
       && zWAN0USBMODEMREADY="$WAN0USBMODEMREADY" \
       || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0USBMODEMREADY" && unset WAN0USBMODEMREADY ; unset zWAN0USBMODEMREADY && continue ;}
     elif [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null;then
@@ -3724,7 +3724,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
     # WAN1USBMODEMREADY
     if [[ -z "${WAN1USBMODEMREADY+x}" ]] &>/dev/null || [[ -z "${zWAN1USBMODEMREADY+x}" ]] &>/dev/null;then
       WAN1USBMODEMREADY="$(nvram get wan1_is_usb_modem_ready & nvramcheck)"
-      [[ -n "$WAN1USBMODEMREADY" ]] &>/dev/null \
+      { [[ -n "$WAN1USBMODEMREADY" ]] &>/dev/null || [[ -z "$(echo $WANSCAP | grep -o "usb")" ]] &>/dev/null ;} \
       && zWAN1USBMODEMREADY="$WAN1USBMODEMREADY" \
       || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1USBMODEMREADY" && unset WAN1USBMODEMREADY ; unset zWAN1USBMODEMREADY && continue ;}
     elif [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null;then
