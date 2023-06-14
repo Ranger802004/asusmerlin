@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/01/2023
-# Version: v2.0.4
+# Date: 06/13/2023
+# Version: v2.0.5
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.4"
+VERSION="v2.0.5"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -483,7 +483,7 @@ while [[ -z "${activesystemsync+x}" ]] &>/dev/null || [[ "$activesystemsync" == 
     HTTPENABLE="$(nvram get misc_http_x & nvramcheck)"
     [[ -n "$HTTPENABLE" ]] &>/dev/null \
     && zHTTPENABLE="$HTTPENABLE" \
-    || { logger -p 6 -t "$ALIAS" "Debug - failed to set HTTPENABLE" && unset HTTPENABLE ; unset zHTTPENABLE && continue ;}
+    || { logger -p 6 -t "$ALIAS" "Debug - failed to set HTTPENABLE" && unset HTTPENABLE zHTTPENABLE && continue ;}
   else
     [[ "$zHTTPENABLE" != "$HTTPENABLE" ]] &>/dev/null && zHTTPENABLE="$HTTPENABLE"
     HTTPENABLE="$(nvram get misc_http_x & nvramcheck)"
@@ -495,7 +495,7 @@ while [[ -z "${activesystemsync+x}" ]] &>/dev/null || [[ "$activesystemsync" == 
     FIREWALLENABLE="$(nvram get fw_enable_x & nvramcheck)"
     [[ -n "$FIREWALLENABLE" ]] &>/dev/null \
     && zFIREWALLENABLE="$FIREWALLENABLE" \
-    || { logger -p 6 -t "$ALIAS" "Debug - failed to set FIREWALLENABLE" && unset FIREWALLENABLE ; unset zFIREWALLENABLE && continue ;}
+    || { logger -p 6 -t "$ALIAS" "Debug - failed to set FIREWALLENABLE" && unset FIREWALLENABLE zFIREWALLENABLE && continue ;}
   else
     [[ "$zFIREWALLENABLE" != "$FIREWALLENABLE" ]] &>/dev/null && zFIREWALLENABLE="$FIREWALLENABLE"
     FIREWALLENABLE="$(nvram get fw_enable_x & nvramcheck)"
@@ -507,7 +507,7 @@ while [[ -z "${activesystemsync+x}" ]] &>/dev/null || [[ "$activesystemsync" == 
     IPV6FIREWALLENABLE="$(nvram get ipv6_fw_enable & nvramcheck)"
     [[ -n "$IPV6FIREWALLENABLE" ]] &>/dev/null \
     && zIPV6FIREWALLENABLE="$IPV6FIREWALLENABLE" \
-    || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6FIREWALLENABLE" && unset IPV6FIREWALLENABLE ; unset zIPV6FIREWALLENABLE && continue ;}
+    || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6FIREWALLENABLE" && unset IPV6FIREWALLENABLE zIPV6FIREWALLENABLE && continue ;}
   else
     [[ "$zIPV6FIREWALLENABLE" != "$IPV6FIREWALLENABLE" ]] &>/dev/null && zIPV6FIREWALLENABLE="$IPV6FIREWALLENABLE"
     IPV6FIREWALLENABLE="$(nvram get ipv6_fw_enable & nvramcheck)"
@@ -519,7 +519,7 @@ while [[ -z "${activesystemsync+x}" ]] &>/dev/null || [[ "$activesystemsync" == 
     LEDDISABLE="$(nvram get led_disable & nvramcheck)"
     [[ -n "$LEDDISABLE" ]] &>/dev/null \
     && zLEDDISABLE="$LEDDISABLE" \
-    || { logger -p 6 -t "$ALIAS" "Debug - failed to set LEDDISABLE" && unset LEDDISABLE ; unset zLEDDISABLE && continue ;}
+    || { logger -p 6 -t "$ALIAS" "Debug - failed to set LEDDISABLE" && unset LEDDISABLE zLEDDISABLE && continue ;}
   else
     [[ "$zLEDDISABLE" != "$LEDDISABLE" ]] &>/dev/null && zLEDDISABLE="$LEDDISABLE"
     LEDDISABLE="$(nvram get led_disable & nvramcheck)"
@@ -531,7 +531,7 @@ while [[ -z "${activesystemsync+x}" ]] &>/dev/null || [[ "$activesystemsync" == 
     LOGLEVEL="$(nvram get log_level & nvramcheck)"
     [[ -n "$LOGLEVEL" ]] &>/dev/null \
     && zLOGLEVEL="$LOGLEVEL" \
-    || { logger -p 6 -t "$ALIAS" "Debug - failed to set LOGLEVEL" && unset LOGLEVEL ; unset zLOGLEVEL && continue ;}
+    || { logger -p 6 -t "$ALIAS" "Debug - failed to set LOGLEVEL" && unset LOGLEVEL zLOGLEVEL && continue ;}
   else
     [[ "$zLOGLEVEL" != "$LOGLEVEL" ]] &>/dev/null && zLOGLEVEL="$LOGLEVEL"
     LOGLEVEL="$(nvram get log_level & nvramcheck)"
@@ -543,7 +543,7 @@ while [[ -z "${activesystemsync+x}" ]] &>/dev/null || [[ "$activesystemsync" == 
     DDNSENABLE="$(nvram get ddns_enable_x & nvramcheck)"
     [[ -n "$DDNSENABLE" ]] &>/dev/null \
     && zDDNSENABLE="$DDNSENABLE" \
-    || { logger -p 6 -t "$ALIAS" "Debug - failed to set DDNSENABLE" && unset DDNSENABLE ; unset zDDNSENABLE && continue ;}
+    || { logger -p 6 -t "$ALIAS" "Debug - failed to set DDNSENABLE" && unset DDNSENABLE zDDNSENABLE && continue ;}
   else
     [[ "$zDDNSENABLE" != "$DDNSENABLE" ]] &>/dev/null && zDDNSENABLE="$DDNSENABLE"
     DDNSENABLE="$(nvram get ddns_enable_x & nvramcheck)"
@@ -553,9 +553,9 @@ while [[ -z "${activesystemsync+x}" ]] &>/dev/null || [[ "$activesystemsync" == 
   # DDNSHOSTNAME
   if [[ -z "${DDNSHOSTNAME+x}" ]] &>/dev/null || [[ -z "${zDDNSHOSTNAME+x}" ]] &>/dev/null;then
     DDNSHOSTNAME="$(nvram get ddns_hostname_x & nvramcheck)"
-    [[ -n "$DDNSHOSTNAME" ]] &>/dev/null || [[ "$DDNSENABLE" == "0" ]] &>/dev/null \
+    { [[ -n "$DDNSHOSTNAME" ]] &>/dev/null || [[ "$DDNSENABLE" == "0" ]] &>/dev/null ;} \
     && zDDNSHOSTNAME="$DDNSHOSTNAME" \
-    || { logger -p 6 -t "$ALIAS" "Debug - failed to set DDNSHOSTNAME" && unset DDNSHOSTNAME ; unset zDDNSHOSTNAME && continue ;}
+    || { logger -p 6 -t "$ALIAS" "Debug - failed to set DDNSHOSTNAME" && unset DDNSHOSTNAME zDDNSHOSTNAME && continue ;}
   elif [[ "$DDNSENABLE" == "1" ]] &>/dev/null;then
     [[ "$zDDNSHOSTNAME" != "$DDNSHOSTNAME" ]] &>/dev/null && zDDNSHOSTNAME="$DDNSHOSTNAME"
     DDNSHOSTNAME="$(nvram get ddns_hostname_x & nvramcheck)"
@@ -565,16 +565,16 @@ while [[ -z "${activesystemsync+x}" ]] &>/dev/null || [[ "$activesystemsync" == 
   # OVPNSERVERINSTANCES
   if [[ -z "${OVPNSERVERINSTANCES+x}" ]] &>/dev/null || [[ -z "${zOVPNSERVERINSTANCES+x}" ]] &>/dev/null;then
     OVPNSERVERINSTANCES="$(nvram get vpn_serverx_start & nvramcheck)"
-    [[ -n "$OVPNSERVERINSTANCES" ]] &>/dev/null || { [[ "$(nvram get vpn_server1_state & nvramcheck)" == "0" ]] &>/dev/null && [[ "$(nvram get vpn_server2_state & nvramcheck)" == "0" ]] &>/dev/null ;} \
+    { [[ -n "$OVPNSERVERINSTANCES" ]] &>/dev/null || { [[ "$(nvram get vpn_server1_state & nvramcheck)" == "0" ]] &>/dev/null && [[ "$(nvram get vpn_server2_state & nvramcheck)" == "0" ]] &>/dev/null ;} ;} \
     && zOVPNSERVERINSTANCES="$OVPNSERVERINSTANCES" \
-    || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNSERVERINSTANCES" && unset OVPNSERVERINSTANCES ; unset zOVPNSERVERINSTANCES && continue ;}
+    || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNSERVERINSTANCES" && unset OVPNSERVERINSTANCES zOVPNSERVERINSTANCES && continue ;}
   else
     [[ "$zOVPNSERVERINSTANCES" != "$OVPNSERVERINSTANCES" ]] &>/dev/null && zOVPNSERVERINSTANCES="$OVPNSERVERINSTANCES"
     OVPNSERVERINSTANCES="$(nvram get vpn_serverx_start & nvramcheck)"
     [[ -n "$OVPNSERVERINSTANCES" ]] &>/dev/null || OVPNSERVERINSTANCES="$zOVPNSERVERINSTANCES"
   fi
 
-  activesystemsync=1
+  activesystemsync="1"
 done
 
 # Unset Variables
@@ -1262,7 +1262,7 @@ if [[ "$configdefaultssync" == "0" ]] &>/dev/null;then
   QOSIBW="$(nvram get qos_ibw & nvramcheck)"
   QOSOBW="$(nvram get qos_obw & nvramcheck)"
   if [[ -z "$(sed -n '/\bWAN0TARGET=\b/p' "$CONFIGFILE")" ]] &>/dev/null;then
-    if [[ -n "$WANDOGTARGET" ]] &>/dev/null;then
+    if [[ -n "$WANDOGTARGET" ]] &>/dev/null && expr "$WANDOGTARGET" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
       logger -p 6 -t "$ALIAS" "Debug - Setting WAN0TARGET Default: "$WANDOGTARGET""
       echo -e "WAN0TARGET=$WANDOGTARGET" >> $CONFIGFILE
     else
@@ -3377,7 +3377,7 @@ elif [[ "$GETWANMODE" == "2" ]] &>/dev/null;then
     # WANSDUALWANENABLE
     if [[ -z "${WANSDUALWANENABLE+x}" ]] &>/dev/null;then
       { [[ -n "$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" ]] && [[ "$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" == "none" ]] &>/dev/null ;} && WANSDUALWANENABLE="0" || WANSDUALWANENABLE="1"
-      [[ -n "$WANSDUALWANENABLE" ]] &>/dev/null || { unset logger -p 6 -t "$ALIAS" "Debug - failed to set WANSDUALWANENABLE" && WANSDUALWANENABLE && continue ;}
+      [[ -n "$WANSDUALWANENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WANSDUALWANENABLE" && unset WANSDUALWANENABLE && continue ;}
     fi
 
     # WANSMODE
@@ -3468,7 +3468,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0ENABLE="$(nvram get wan0_enable & nvramcheck)"
       [[ -n "$WAN0ENABLE" ]] &>/dev/null \
       && zWAN0ENABLE="$WAN0ENABLE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0ENABLE" && unset WAN0ENABLE ; unset zWAN0ENABLE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0ENABLE" && unset WAN0ENABLE zWAN0ENABLE && continue ;}
     else
       [[ "$zWAN0ENABLE" != "$WAN0ENABLE" ]] &>/dev/null && zWAN0ENABLE="$WAN0ENABLE"
       WAN0ENABLE="$(nvram get wan0_enable & nvramcheck)"
@@ -3480,7 +3480,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0STATE="$(nvram get wan0_state_t & nvramcheck)"
       [[ -n "$WAN0STATE" ]] &>/dev/null \
       && zWAN0STATE="$WAN0STATE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0STATE" && unset WAN0STATE ; unset zWAN0STATE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0STATE" && unset WAN0STATE zWAN0STATE && continue ;}
     else
       [[ "$zWAN0STATE" != "$WAN0STATE" ]] &>/dev/null && zWAN0STATE="$WAN0STATE"
       WAN0STATE="$(nvram get wan0_state_t & nvramcheck)"
@@ -3492,7 +3492,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0AUXSTATE="$(nvram get wan0_auxstate_t & nvramcheck)"
       [[ -n "$WAN0AUXSTATE" ]] &>/dev/null \
       && zWAN0AUXSTATE="$WAN0AUXSTATE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0AUXSTATE" && unset WAN0AUXSTATE ; unset zWAN0AUXSTATE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0AUXSTATE" && unset WAN0AUXSTATE zWAN0AUXSTATE && continue ;}
     else
       [[ "$zWAN0AUXSTATE" != "$WAN0AUXSTATE" ]] &>/dev/null && zWAN0AUXSTATE="$WAN0AUXSTATE"
       WAN0AUXSTATE="$(nvram get wan0_auxstate_t & nvramcheck)"
@@ -3504,7 +3504,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0SBSTATE="$(nvram get wan0_sbstate_t & nvramcheck)"
       [[ -n "$WAN0SBSTATE" ]] &>/dev/null \
       && zWAN0SBSTATE="$WAN0SBSTATE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0SBSTATE" && unset WAN0SBSTATE ; unset zWAN0SBSTATE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0SBSTATE" && unset WAN0SBSTATE zWAN0SBSTATE && continue ;}
     else
       [[ "$zWAN0SBSTATE" != "$WAN0SBSTATE" ]] &>/dev/null && zWAN0SBSTATE="$WAN0SBSTATE"
       WAN0SBSTATE="$(nvram get wan0_sbstate_t & nvramcheck)"
@@ -3516,7 +3516,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0REALIPSTATE="$(nvram get wan0_realip_state & nvramcheck)"
       [[ -n "$WAN0REALIPSTATE" ]] &>/dev/null \
       && zWAN0REALIPSTATE="$WAN0REALIPSTATE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0REALIPSTATE" && unset WAN0REALIPSTATE ; unset zWAN0REALIPSTATE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0REALIPSTATE" && unset WAN0REALIPSTATE zWAN0REALIPSTATE && continue ;}
     else
       [[ "$zWAN0REALIPSTATE" != "$WAN0REALIPSTATE" ]] &>/dev/null && zWAN0REALIPSTATE="$WAN0REALIPSTATE"
       WAN0REALIPSTATE="$(nvram get wan0_realip_state & nvramcheck)"
@@ -3528,7 +3528,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0LINKWAN="$(nvram get link_wan & nvramcheck)"
       [[ -n "$WAN0LINKWAN" ]] &>/dev/null \
       && zWAN0LINKWAN="$WAN0LINKWAN" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0LINKWAN" && unset WAN0LINKWAN ; unset zWAN0LINKWAN && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0LINKWAN" && unset WAN0LINKWAN zWAN0LINKWAN && continue ;}
     else
       [[ "$zWAN0LINKWAN" != "$WAN0LINKWAN" ]] &>/dev/null && zWAN0LINKWAN="$WAN0LINKWAN"
       WAN0LINKWAN="$(nvram get link_wan & nvramcheck)"
@@ -3538,9 +3538,9 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
     # WAN0USBMODEMREADY
     if [[ -z "${WAN0USBMODEMREADY+x}" ]] &>/dev/null || [[ -z "${zWAN0USBMODEMREADY+x}" ]] &>/dev/null;then
       WAN0USBMODEMREADY="$(nvram get wan0_is_usb_modem_ready & nvramcheck)"
-      [[ -n "$WAN0USBMODEMREADY" ]] &>/dev/null \
+      { [[ -n "$WAN0USBMODEMREADY" ]] &>/dev/null || [[ -z "$(echo $WANSCAP | grep -o "usb")" ]] &>/dev/null ;} \
       && zWAN0USBMODEMREADY="$WAN0USBMODEMREADY" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0USBMODEMREADY" && unset WAN0USBMODEMREADY ; unset zWAN0USBMODEMREADY && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0USBMODEMREADY" && unset WAN0USBMODEMREADY zWAN0USBMODEMREADY && continue ;}
     elif [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null;then
       [[ "$zWAN0USBMODEMREADY" != "$WAN0USBMODEMREADY" ]] &>/dev/null && zWAN0USBMODEMREADY="$WAN0USBMODEMREADY"
       WAN0USBMODEMREADY="$(nvram get wan0_is_usb_modem_ready & nvramcheck)"
@@ -3552,7 +3552,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0IFNAME="$(nvram get wan0_ifname & nvramcheck)"
       { [[ -n "$WAN0IFNAME" ]] &>/dev/null || [[ "$WAN0AUXSTATE" != "0" ]] &>/dev/null || { [[ "$WAN0DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN0USBMODEMREADY" == "0" ]] &>/dev/null ;} || [[ "$WAN0LINKWAN" == "0" ]] &>/dev/null || [[ -z "$(nvram get wan0_ifname & nvramcheck)" ]] &>/dev/null ;} \
       && zWAN0IFNAME="$WAN0IFNAME" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0IFNAME" && unset WAN0IFNAME ; unset zWAN0IFNAME && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0IFNAME" && unset WAN0IFNAME zWAN0IFNAME && continue ;}
     else
       [[ "$zWAN0IFNAME" != "$WAN0IFNAME" ]] &>/dev/null && zWAN0IFNAME="$WAN0IFNAME"
       WAN0IFNAME="$(nvram get wan0_ifname & nvramcheck)"
@@ -3564,9 +3564,9 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0GWIFNAME="$(nvram get wan0_gw_ifname & nvramcheck)"
       { [[ -n "$WAN0GWIFNAME" ]] &>/dev/null || [[ "$WAN0AUXSTATE" != "0" ]] &>/dev/null ;} \
       && zWAN0GWIFNAME="$WAN0GWIFNAME" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GWIFNAME" && unset WAN0GWIFNAME ; unset zWAN0GWIFNAME && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GWIFNAME" && unset WAN0GWIFNAME zWAN0GWIFNAME && continue ;}
     elif { [[ -z "$WAN0GWIFNAME" ]] &>/dev/null || [[ -z "$zWAN0GWIFNAME" ]] &>/dev/null ;} && [[ "$WAN0AUXSTATE" == "0" ]] &>/dev/null;then
-      { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GWIFNAME" && unset WAN0GWIFNAME ; unset zWAN0GWIFNAME ;} && continue
+      { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GWIFNAME" && unset WAN0GWIFNAME zWAN0GWIFNAME ;} && continue
     else
       [[ "$zWAN0GWIFNAME" != "$WAN0GWIFNAME" ]] &>/dev/null && zWAN0GWIFNAME="$WAN0GWIFNAME"
       WAN0GWIFNAME="$(nvram get wan0_gw_ifname & nvramcheck)"
@@ -3605,7 +3605,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0PRIMARY="$(nvram get wan0_primary & nvramcheck)"
       [[ -n "$WAN0PRIMARY" ]] &>/dev/null \
       && zWAN0PRIMARY="$WAN0PRIMARY" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0PRIMARY" && unset WAN0PRIMARY ; unset zWAN0PRIMARY && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0PRIMARY" && unset WAN0PRIMARY zWAN0PRIMARY && continue ;}
     elif [[ "$WANSMODE" != "lb" ]] &>/dev/null;then
       [[ "$zWAN0PRIMARY" != "$WAN0PRIMARY" ]] &>/dev/null && zWAN0PRIMARY="$WAN0PRIMARY"
       WAN0PRIMARY="$(nvram get wan0_primary & nvramcheck)"
@@ -3617,7 +3617,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0IPADDR="$(nvram get wan0_ipaddr & nvramcheck)"
       { [[ -n "$WAN0IPADDR" ]] &>/dev/null || [[ "$WAN0STATE" != "2" ]] &>/dev/null ;} \
       && zWAN0IPADDR="$WAN0IPADDR" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0IPADDR" && unset WAN0IPADDR ; unset zWAN0IPADDR && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0IPADDR" && unset WAN0IPADDR zWAN0IPADDR && continue ;}
     else
       [[ "$zWAN0IPADDR" != "$WAN0IPADDR" ]] &>/dev/null && zWAN0IPADDR="$WAN0IPADDR"
       WAN0IPADDR="$(nvram get wan0_ipaddr & nvramcheck)"
@@ -3629,7 +3629,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0GATEWAY="$(nvram get wan0_gateway & nvramcheck)"
       { [[ -n "$WAN0GATEWAY" ]] &>/dev/null || [[ "$WAN0STATE" != "2" ]] &>/dev/null ;} \
       && zWAN0GATEWAY="$WAN0GATEWAY" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GATEWAY" && unset WAN0GATEWAY ; unset zWAN0GATEWAY && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0GATEWAY" && unset WAN0GATEWAY zWAN0GATEWAY && continue ;}
     else
       [[ "$zWAN0GATEWAY" != "$WAN0GATEWAY" ]] &>/dev/null && zWAN0GATEWAY="$WAN0GATEWAY"
       WAN0GATEWAY="$(nvram get wan0_gateway & nvramcheck)"
@@ -3641,7 +3641,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN0REALIPADDR="$(nvram get wan0_realip_ip & nvramcheck)"
       { [[ -n "$WAN0REALIPADDR" ]] &>/dev/null || [[ "$WAN0REALIPSTATE" != "2" ]] &>/dev/null ;} \
       && zWAN0REALIPADDR="$WAN0REALIPADDR" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0REALIPADDR" && unset WAN0REALIPADDR ; unset zWAN0REALIPADDR && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0REALIPADDR" && unset WAN0REALIPADDR zWAN0REALIPADDR && continue ;}
     elif [[ "$WAN0REALIPSTATE" != "0" ]] &>/dev/null;then
       [[ "$zWAN0REALIPADDR" != "$WAN0REALIPADDR" ]] &>/dev/null && zWAN0REALIPADDR="$WAN0REALIPADDR"
       WAN0REALIPADDR="$(nvram get wan0_realip_ip & nvramcheck)"
@@ -3654,7 +3654,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1ENABLE="$(nvram get wan1_enable & nvramcheck)"
       [[ -n "$WAN1ENABLE" ]] &>/dev/null \
       && zWAN1ENABLE="$WAN1ENABLE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WANENABLE" && unset WAN1ENABLE ; unset zWAN1ENABLE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WANENABLE" && unset WAN1ENABLE zWAN1ENABLE && continue ;}
     else
       [[ "$zWAN1ENABLE" != "$WAN1ENABLE" ]] &>/dev/null && zWAN1ENABLE="$WAN1ENABLE"
       WAN1ENABLE="$(nvram get wan1_enable & nvramcheck)"
@@ -3666,7 +3666,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1STATE="$(nvram get wan1_state_t & nvramcheck)"
       [[ -n "$WAN1STATE" ]] &>/dev/null \
       && zWAN1STATE="$WAN1STATE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1STATE" && unset WAN1STATE ; unset zWAN1STATE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1STATE" && unset WAN1STATE zWAN1STATE && continue ;}
     else
       [[ "$zWAN1STATE" != "$WAN1STATE" ]] &>/dev/null && zWAN1STATE="$WAN1STATE"
       WAN1STATE="$(nvram get wan1_state_t & nvramcheck)"
@@ -3678,7 +3678,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1AUXSTATE="$(nvram get wan1_auxstate_t & nvramcheck)"
       [[ -n "$WAN1AUXSTATE" ]] &>/dev/null \
       && zWAN1AUXSTATE="$WAN1AUXSTATE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1AUXSTATE" && unset WAN1AUXSTATE ; unset zWAN1AUXSTATE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1AUXSTATE" && unset WAN1AUXSTATE zWAN1AUXSTATE && continue ;}
     else
       [[ "$zWAN1AUXSTATE" != "$WAN1AUXSTATE" ]] &>/dev/null && zWAN1AUXSTATE="$WAN1AUXSTATE"
       WAN1AUXSTATE="$(nvram get wan1_auxstate_t & nvramcheck)"
@@ -3690,7 +3690,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1SBSTATE="$(nvram get wan1_sbstate_t & nvramcheck)"
       [[ -n "$WAN1SBSTATE" ]] &>/dev/null \
       && zWAN1SBSTATE="$WAN1SBSTATE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1SBSTATE" && unset WAN1SBSTATE ; unset zWAN1SBSTATE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1SBSTATE" && unset WAN1SBSTATE zWAN1SBSTATE && continue ;}
     else
       [[ "$zWAN1SBSTATE" != "$WAN1SBSTATE" ]] &>/dev/null && zWAN1SBSTATE="$WAN1SBSTATE"
       WAN1SBSTATE="$(nvram get wan1_sbstate_t & nvramcheck)"
@@ -3702,7 +3702,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1REALIPSTATE="$(nvram get wan1_realip_state & nvramcheck)"
       [[ -n "$WAN1REALIPSTATE" ]] &>/dev/null \
       && zWAN1REALIPSTATE="$WAN1REALIPSTATE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1REALIPSTATE" && unset WAN1REALIPSTATE ; unset zWAN1REALIPSTATE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1REALIPSTATE" && unset WAN1REALIPSTATE zWAN1REALIPSTATE && continue ;}
     else
       [[ "$zWAN1REALIPSTATE" != "$WAN1REALIPSTATE" ]] &>/dev/null && zWAN1REALIPSTATE="$WAN1REALIPSTATE"
       WAN1REALIPSTATE="$(nvram get wan1_realip_state & nvramcheck)"
@@ -3714,7 +3714,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1LINKWAN="$(nvram get link_wan1 & nvramcheck)"
       [[ -n "$WAN1LINKWAN" ]] &>/dev/null \
       && zWAN1LINKWAN="$WAN1LINKWAN" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1LINKWAN" && unset WAN1LINKWAN ; unset zWAN1LINKWAN && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1LINKWAN" && unset WAN1LINKWAN zWAN1LINKWAN && continue ;}
     else
       [[ "$zWAN1LINKWAN" != "$WAN1LINKWAN" ]] &>/dev/null && zWAN1LINKWAN="$WAN1LINKWAN"
       WAN1LINKWAN="$(nvram get link_wan1 & nvramcheck)"
@@ -3724,9 +3724,9 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
     # WAN1USBMODEMREADY
     if [[ -z "${WAN1USBMODEMREADY+x}" ]] &>/dev/null || [[ -z "${zWAN1USBMODEMREADY+x}" ]] &>/dev/null;then
       WAN1USBMODEMREADY="$(nvram get wan1_is_usb_modem_ready & nvramcheck)"
-      [[ -n "$WAN1USBMODEMREADY" ]] &>/dev/null \
+      { [[ -n "$WAN1USBMODEMREADY" ]] &>/dev/null || [[ -z "$(echo $WANSCAP | grep -o "usb")" ]] &>/dev/null ;} \
       && zWAN1USBMODEMREADY="$WAN1USBMODEMREADY" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1USBMODEMREADY" && unset WAN1USBMODEMREADY ; unset zWAN1USBMODEMREADY && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1USBMODEMREADY" && unset WAN1USBMODEMREADY zWAN1USBMODEMREADY && continue ;}
     elif [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null;then
       [[ "$zWAN1USBMODEMREADY" != "$WAN1USBMODEMREADY" ]] &>/dev/null && zWAN1USBMODEMREADY="$WAN1USBMODEMREADY"
       WAN1USBMODEMREADY="$(nvram get wan1_is_usb_modem_ready & nvramcheck)"
@@ -3738,7 +3738,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1IFNAME="$(nvram get wan1_ifname & nvramcheck)"
       { [[ -n "$WAN1IFNAME" ]] &>/dev/null || [[ "$WAN1AUXSTATE" != "0" ]] &>/dev/null || { [[ "$WAN1DUALWANDEV" == "usb" ]] &>/dev/null && [[ "$WAN1USBMODEMREADY" == "0" ]] &>/dev/null ;} || [[ "$WAN1LINKWAN" == "0" ]] &>/dev/null || [[ -z "$(nvram get wan0_ifname & nvramcheck)" ]] &>/dev/null ;} \
       && zWAN1IFNAME="$WAN1IFNAME" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1IFNAME" && unset WAN1IFNAME ; unset zWAN1IFNAME && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1IFNAME" && unset WAN1IFNAME zWAN1IFNAME && continue ;}
     else
       [[ "$zWAN1IFNAME" != "$WAN1IFNAME" ]] &>/dev/null && zWAN1IFNAME="$WAN1IFNAME"
       WAN1IFNAME="$(nvram get wan1_ifname & nvramcheck)"
@@ -3750,9 +3750,9 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1GWIFNAME="$(nvram get wan1_gw_ifname & nvramcheck)"
       { [[ -n "$WAN1GWIFNAME" ]] &>/dev/null || [[ "$WAN1AUXSTATE" != "0" ]] &>/dev/null ;} \
       && zWAN1GWIFNAME="$WAN1GWIFNAME" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME ; unset zWAN1GWIFNAME && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME zWAN1GWIFNAME && continue ;}
     elif { [[ -z "$WAN1GWIFNAME" ]] &>/dev/null || [[ -z "$zWAN1GWIFNAME" ]] &>/dev/null ;} && [[ "$WAN1AUXSTATE" == "0" ]] &>/dev/null;then
-      { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME ; unset zWAN1GWIFNAME ;} && continue
+      { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME zWAN1GWIFNAME ;} && continue
     else
       [[ "$zWAN1GWIFNAME" != "$WAN1GWIFNAME" ]] &>/dev/null && zWAN1GWIFNAME="$WAN1GWIFNAME"
       WAN1GWIFNAME="$(nvram get wan1_gw_ifname & nvramcheck)"
@@ -3791,7 +3791,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1PRIMARY="$(nvram get wan1_primary & nvramcheck)"
       [[ -n "$WAN1PRIMARY" ]] &>/dev/null \
       && zWAN1PRIMARY="$WAN1PRIMARY" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1PRIMARY" && unset WAN1PRIMARY ; unset zWAN1PRIMARY && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1PRIMARY" && unset WAN1PRIMARY zWAN1PRIMARY && continue ;}
     elif [[ "$WANSMODE" != "lb" ]] &>/dev/null;then
       [[ "$zWAN1PRIMARY" != "$WAN1PRIMARY" ]] &>/dev/null && zWAN1PRIMARY="$WAN1PRIMARY"
       WAN1PRIMARY="$(nvram get wan1_primary & nvramcheck)"
@@ -3803,7 +3803,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1IPADDR="$(nvram get wan1_ipaddr & nvramcheck)"
       { [[ -n "$WAN1IPADDR" ]] &>/dev/null || [[ "$WAN1STATE" != "2" ]] &>/dev/null ;} \
       && zWAN1IPADDR="$WAN1IPADDR" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1IPADDR" && unset WAN1IPADDR ; unset zWAN1IPADDR && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1IPADDR" && unset WAN1IPADDR zWAN1IPADDR && continue ;}
     else
       [[ "$zWAN1IPADDR" != "$WAN1IPADDR" ]] &>/dev/null && zWAN1IPADDR="$WAN1IPADDR"
       WAN1IPADDR="$(nvram get wan1_ipaddr & nvramcheck)"
@@ -3815,7 +3815,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1GATEWAY="$(nvram get wan1_gateway & nvramcheck)"
       { [[ -n "$WAN1GATEWAY" ]] &>/dev/null || [[ "$WAN1STATE" != "2" ]] &>/dev/null ;} \
       && zWAN1GATEWAY="$WAN1GATEWAY" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GATEWAY" && unset WAN1GATEWAY ; unset zWAN1GATEWAY && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GATEWAY" && unset WAN1GATEWAY zWAN1GATEWAY && continue ;}
     else
       [[ "$zWAN1GATEWAY" != "$WAN1GATEWAY" ]] &>/dev/null && zWAN1GATEWAY="$WAN1GATEWAY"
       WAN1GATEWAY="$(nvram get wan1_gateway & nvramcheck)"
@@ -3827,7 +3827,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       WAN1REALIPADDR="$(nvram get wan1_realip_ip & nvramcheck)"
       { [[ -n "$WAN1REALIPADDR" ]] &>/dev/null || [[ "$WAN1REALIPSTATE" != "2" ]] &>/dev/null ;} \
       && zWAN1REALIPADDR="$WAN1REALIPADDR" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1REALIPADDR" && unset WAN1REALIPADDR ; unset zWAN1REALIPADDR && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1REALIPADDR" && unset WAN1REALIPADDR zWAN1REALIPADDR && continue ;}
     elif [[ "$WAN1REALIPSTATE" != "0" ]] &>/dev/null;then
       [[ "$zWAN1REALIPADDR" != "$WAN1REALIPADDR" ]] &>/dev/null && zWAN1REALIPADDR="$WAN1REALIPADDR"
       WAN1REALIPADDR="$(nvram get wan1_realip_ip & nvramcheck)"
@@ -3840,7 +3840,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       IPV6STATE="$(nvram get ipv6_state_t & nvramcheck)"
       [[ -n "$IPV6STATE" ]] &>/dev/null \
       && zIPV6STATE="$IPV6STATE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6STATE" && unset IPV6STATE ; unset zIPV6STATE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6STATE" && unset IPV6STATE zIPV6STATE && continue ;}
     elif [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null;then
       [[ "$zIPV6STATE" != "$IPV6STATE" ]] &>/dev/null && zIPV6STATE="$IPV6STATE"
       IPV6STATE="$(nvram get ipv6_state_t & nvramcheck)"
@@ -3852,7 +3852,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       IPV6IPADDR="$(nvram get ipv6_wan_addr & nvramcheck)"
       { [[ -n "$IPV6IPADDR" ]] &>/dev/null || [[ "$IPV6SERVICE" == "disabled" ]] || [[ -z "$(nvram get ipv6_wan_addr & nvramcheck)" ]] &>/dev/null ;} \
       && zIPV6IPADDR="$IPV6IPADDR" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6IPADDR" && unset IPV6IPADDR ; unset zIPV6IPADDR && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6IPADDR" && unset IPV6IPADDR zIPV6IPADDR && continue ;}
     elif [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null;then
       [[ "$zIPV6IPADDR" != "$IPV6IPADDR" ]] &>/dev/null && zIPV6IPADDR="$IPV6IPADDR"
       IPV6IPADDR="$(nvram get ipv6_wan_addr & nvramcheck)"
@@ -3865,7 +3865,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       QOSENABLE="$(nvram get qos_enable & nvramcheck)"
       [[ -n "$QOSENABLE" ]] &>/dev/null \
       && zQOSENABLE="$QOSENABLE" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOSENABLE" && unset QOSENABLE ; unset zQOSENABLE && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOSENABLE" && unset QOSENABLE zQOSENABLE && continue ;}
     elif [[ "$WANSMODE" != "lb" ]] &>/dev/null;then
       [[ "$zQOSENABLE" != "$QOSENABLE" ]] &>/dev/null && zQOSENABLE="$QOSENABLE"
       QOSENABLE="$(nvram get qos_enable & nvramcheck)"
@@ -3877,7 +3877,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       QOS_OBW="$(nvram get qos_obw & nvramcheck)"
       { [[ -n "$QOS_OBW" ]] || [[ "$QOSENABLE" == "0" ]] ;} &>/dev/null \
       && zQOS_OBW="$QOS_OBW" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOS_OBW" && unset QOS_OBW ; unset zQOS_OBW && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOS_OBW" && unset QOS_OBW zQOS_OBW && continue ;}
     elif [[ "$QOSENABLE" == "1" ]] &>/dev/null;then
       [[ "$zQOS_OBW" != "$QOS_OBW" ]] &>/dev/null && zQOS_OBW="$QOS_OBW"
       QOS_OBW="$(nvram get qos_obw & nvramcheck)"
@@ -3889,7 +3889,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       QOS_IBW="$(nvram get qos_ibw & nvramcheck)"
       { [[ -n "$QOS_IBW" ]] || [[ "$QOSENABLE" == "0" ]] ;} &>/dev/null \
       && zQOS_IBW="$QOS_IBW" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOS_IBW" && unset QOS_IBW ; unset zQOS_IBW && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOS_IBW" && unset QOS_IBW zQOS_IBW && continue ;}
     elif [[ "$QOSENABLE" == "1" ]] &>/dev/null;then
       [[ "$zQOS_IBW" != "$QOS_IBW" ]] &>/dev/null && zQOS_IBW="$QOS_IBW"
       QOS_IBW="$(nvram get qos_ibw & nvramcheck)"
@@ -3901,7 +3901,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       QOSOVERHEAD="$(nvram get qos_overhead & nvramcheck)"
       { [[ -n "$QOSOVERHEAD" ]] || [[ "$QOSENABLE" == "0" ]] ;} &>/dev/null \
       && zQOSOVERHEAD="$QOSOVERHEAD" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOSOVERHEAD" && unset QOSOVERHEAD ; unset zQOSOVERHEAD && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOSOVERHEAD" && unset QOSOVERHEAD zQOSOVERHEAD && continue ;}
     elif [[ "$QOSENABLE" == "1" ]] &>/dev/null;then
       [[ "$zQOSOVERHEAD" != "$QOSOVERHEAD" ]] &>/dev/null && zQOSOVERHEAD="$QOSOVERHEAD"
       QOSOVERHEAD="$(nvram get qos_overhead & nvramcheck)"
@@ -3913,7 +3913,7 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       QOSATM="$(nvram get qos_atm & nvramcheck)"
       { [[ -n "$QOSATM" ]] || [[ "$QOSENABLE" == "0" ]] ;} &>/dev/null \
       && zQOSATM="$QOSATM" \
-      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOSATM" && unset QOSATM ; unset zQOSATM && continue ;}
+      || { logger -p 6 -t "$ALIAS" "Debug - failed to set QOSATM" && unset QOSATM zQOSATM && continue ;}
     elif [[ "$QOSENABLE" == "1" ]] &>/dev/null;then
       [[ "$zQOSATM" != "$QOSATM" ]] &>/dev/null && zQOSATM="$QOSATM"
       QOSATM="$(nvram get qos_atm & nvramcheck)"
@@ -4311,11 +4311,15 @@ fi
 # Set Status for Email Notification On if Unset
 [[ -z "${email+x}" ]] &>/dev/null && email="1"
 
-[[ "$WANSMODE" != "lb" ]] &>/dev/null && switchwan || return
+[[ "$WANSMODE" != "lb" ]] &>/dev/null && { switchwan || return ;}
+
 switchdns || return
+
 restartservices || return
+
 checkiprules || return
-[[ "$email" == "1" ]] &>/dev/null && { sendemail && email="0" ;} || return
+
+[[ "$email" == "1" ]] &>/dev/null && { sendemail && email="0" || return ;}
 return
 }
 
@@ -4361,7 +4365,7 @@ while { [[ "$WANSMODE" == "lb" ]] &>/dev/null && [[ "$WAN0ENABLE" == "1" ]] &>/d
   fi
 
   # Get Active WAN Parameters
-  GETWANMODE=3
+  GETWANMODE="3"
   getwanparameters || return
 
   # Ping WAN Targets
