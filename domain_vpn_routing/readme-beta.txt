@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/04/2023
-# Version: v2.0.0-beta5
+# Date: 07/06/2023
+# Version: v2.0.0
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -106,7 +106,7 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
-v2.0.0-beta5 - 06/04/2023
+v2.0.0 - 07/06/2023
 Enhancements:
 - SSH UI
 - Interfaces will now list the friendly name of the interface instead of the tunnel / physical interface name.
@@ -126,9 +126,10 @@ Enhancements:
 Fixes:
 - Visual errors when domain fails to perform DNS lookup.
 - Visual bugs when Query Policy was executing domain queries.
-- Fixed bug introducted in earlier beta for deleting old routes when WAN interface was selected.
+- Fixed bug introducted in beta for deleting old routes when WAN interface was selected.
 - False positive errors stating IP routes failed to create.
 - Fixed issue with Edit Policy Mode erroring out due to unset parameters.
+- False positive errors for IP rules / routes being created.
 
 v1.4 - 03/13/2023
 Enhancements:

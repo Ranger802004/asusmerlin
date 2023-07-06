@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/13/2022
-# Version: v1.4
+# Date: 07/06/2023
+# Version: v2.0
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -99,6 +99,31 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
+v2.0.0 - 07/26/2023
+Enhancements:
+- SSH UI
+- Interfaces will now list the friendly name of the interface instead of the tunnel / physical interface name.
+- Querying policies will take low CPU priority automatically.
+- Cron Jobs will now be added to wan-event.
+- NVRAM Checks have been integrated to prevent lock ups.
+- Domain VPN Routing will now be called from wan-event in addition to openvpn-event.
+- Global Configuration Menu.
+- Developer Mode available for testing beta releases.
+- Enhanced update function.
+- If the IPV6 Service is disabled, IPV6 IP Addresses will not be queried or added to policies.  In addition, existing IPv6 IP Addresses in policy files will be removed for optimization.
+- Added WireGuard VPN Clients for support
+- Changed dark blue text prompts to light cyan for easier reading.
+- NVRAM variables are now synchronized with error checking during initial load of Domain VPN Routing in order to reduce nvram calls and reduce potential failures during operation.
+- General optimization.
+
+Fixes:
+- Visual errors when domain fails to perform DNS lookup.
+- Visual bugs when Query Policy was executing domain queries.
+- Fixed bug introducted in beta for deleting old routes when WAN interface was selected.
+- False positive errors stating IP routes failed to create.
+- Fixed issue with Edit Policy Mode erroring out due to unset parameters.
+- False positive errors for IP rules / routes being created.
+
 v1.4 - 03/13/2023
 Enhancements:
 - General optimization
