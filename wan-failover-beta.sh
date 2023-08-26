@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 07/06/2023
-# Version: v2.0.6-beta1
+# Date: 08/25/2023
+# Version: v2.0.6
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.6-beta1"
+VERSION="v2.0.6"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -347,6 +347,7 @@ FWVERSIONS='
 386.11
 388.1
 388.2
+388.4
 '
 
 # Firmware Version Check
@@ -565,7 +566,7 @@ while [[ -z "${activesystemsync+x}" ]] &>/dev/null || [[ "$activesystemsync" == 
   # OVPNSERVERINSTANCES
   if [[ -z "${OVPNSERVERINSTANCES+x}" ]] &>/dev/null || [[ -z "${zOVPNSERVERINSTANCES+x}" ]] &>/dev/null;then
     OVPNSERVERINSTANCES="$(nvram get vpn_serverx_start & nvramcheck)"
-    { [[ -n "$OVPNSERVERINSTANCES" ]] &>/dev/null || { [[ "$(nvram get vpn_server1_state & nvramcheck)" == "0" ]] &>/dev/null && [[ "$(nvram get vpn_server2_state & nvramcheck)" == "0" ]] &>/dev/null ;} ;} \
+    { [[ -n "$OVPNSERVERINSTANCES" ]] &>/dev/null || { { [[ "$(nvram get vpn_server1_state & nvramcheck)" == "0" ]] &>/dev/null || [[ -z "$(nvram get vpn_server1_state & nvramcheck)" ]] &>/dev/null ;} && { [[ "$(nvram get vpn_server2_state & nvramcheck)" == "0" ]] &>/dev/null || [[ -z "$(nvram get vpn_server2_state & nvramcheck)" ]] &>/dev/null ;} ;} ;} \
     && zOVPNSERVERINSTANCES="$OVPNSERVERINSTANCES" \
     || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNSERVERINSTANCES" && unset OVPNSERVERINSTANCES zOVPNSERVERINSTANCES && continue ;}
   else
