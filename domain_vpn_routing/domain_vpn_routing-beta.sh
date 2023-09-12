@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 07/06/2023
-# Version: v2.0.0
+# Date: 09/12/2023
+# Version: v2.0.1-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.0.0"
+VERSION="v2.0.1-beta1"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -49,7 +49,7 @@ LIGHTCYAN="\033[96m"
 WHITE="\033[97m"
 
 if [[ "$(dirname "$0")" == "." ]] &>/dev/null;then
-  if [[ -n "$(cat /jffs/configs/profile.add | grep -w "# domain_vpn_routing")" ]] &>/dev/null;then
+  if [[ -n "$(grep -w "# domain_vpn_routing" /jffs/configs/profile.add)" ]] &>/dev/null;then
     echo -e "${BOLD}${RED}***WARNING*** Execute using Alias: ${LIGHTBLUE}${ALIAS}${RED}${NOCOLOR}.${NOCOLOR}"
   else
     SCRIPTPATH="/jffs/scripts/${0##*/}"
@@ -352,7 +352,7 @@ if [[ ! -f "/jffs/configs/profile.add" ]] &>/dev/null;then
   && logger -p 4 -st "$ALIAS" "Alias Check - Created /jffs/configs/profile.add" \
   || logger -p 2 -st "$ALIAS" "Alias Check - ***Error*** Unable to create /jffs/configs/profile.add"
 fi
-if [[ -z "$(cat /jffs/configs/profile.add | grep -w "# domain_vpn_routing")" ]] &>/dev/null;then
+if [[ -z "$(grep -w "# domain_vpn_routing" /jffs/configs/profile.add)" ]] &>/dev/null;then
   logger -p 5 -st "$ALIAS" "Alias Check - Creating Alias for $0 as domain_vpn_routing"
   echo -e "alias domain_vpn_routing=\"sh $0\" # domain_vpn_routing" >> /jffs/configs/profile.add \
   && source /jffs/configs/profile.add \
@@ -422,7 +422,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     fi
 
   # Add Script to wan-event
-  if [[ -n "$(cat /jffs/scripts/wan-event | grep -w "# domain_vpn_routing")" ]] &>/dev/null;then 
+  if [[ -n "$(grep -w "# domain_vpn_routing" /jffs/scripts/wan-event)" ]] &>/dev/null;then 
     echo -e "${YELLOW}${0##*/} already added to wan-Event...${NOCOLOR}"
     logger -t "$ALIAS" "Install - $ALIAS already added to wan-event"
   else
@@ -433,7 +433,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     echo -e "${GREEN}${ALIAS} added to wan-event.${NOCOLOR}"
     logger -t "$ALIAS" "Install - $ALIAS added to wan-event"
   fi
-  if [[ -n "$(cat /jffs/scripts/wan-event | grep -w "# domain_vpn_routing_queryall")" ]] &>/dev/null;then 
+  if [[ -n "$(grep -w "# domain_vpn_routing_queryall" /jffs/scripts/wan-event)" ]] &>/dev/null;then 
     echo -e "${YELLOW}${ALIAS} already added to wan-event...${NOCOLOR}"
     logger -t "$ALIAS" "Install - $ALIAS already added to wan-event"
   else
@@ -460,7 +460,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     fi
 
   # Add Script to Openvpn-event
-  if [[ -n "$(cat /jffs/scripts/openvpn-event | grep -w "# domain_vpn_routing")" ]] &>/dev/null;then 
+  if [[ -n "$(grep -w "# domain_vpn_routing" /jffs/scripts/openvpn-event)" ]] &>/dev/null;then 
     echo -e "${YELLOW}${ALIAS} already added to openvpn-event...${NOCOLOR}"
     logger -t "$ALIAS" "Install - $ALIAS already added to openvpn-event"
   else
@@ -471,7 +471,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     echo -e "${GREEN}${0##*/} added to openvpn-event.${NOCOLOR}"
     logger -t "$ALIAS" "Install - $ALIAS added to openvpn-event"
   fi
-  if [[ -n "$(cat /jffs/scripts/openvpn-event | grep -w "# domain_vpn_routing_queryall")" ]] &>/dev/null;then 
+  if [[ -n "$(grep -w "# domain_vpn_routing_queryall" /jffs/scripts/openvpn-event)" ]] &>/dev/null;then 
     echo -e "${YELLOW}${ALIAS} already added to openvpn-event...${NOCOLOR}"
     logger -t "$ALIAS" "Install - $ALIAS already added to openvpn-event"
   else
@@ -508,7 +508,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
 
   # Remove Script from wan-event
   cmdline="sh $0 cron"
-  if [[ -n "$(cat /jffs/scripts/wan-event | grep -e "^$cmdline")" ]] &>/dev/null;then 
+  if [[ -n "$(grep -e "^$cmdline" /jffs/scripts/wan-event)" ]] &>/dev/null;then 
     echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Removing Cron Job from wan-event...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Removing Cron Job from wan-event"
     sed -i '\~# domain_vpn_routing~d' /jffs/scripts/wan-event
@@ -519,7 +519,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
     logger -t "$ALIAS" "Uninstall - Cron Job doesn't exist in wan-event"
   fi
   cmdline="sh $0 querypolicy all"
-  if [[ -n "$(cat /jffs/scripts/wan-event | grep -e "^$cmdline")" ]] &>/dev/null;then 
+  if [[ -n "$(grep -e "^$cmdline" /jffs/scripts/wan-event)" ]] &>/dev/null;then 
     echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Removing Cron Job from wan-event...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Removing Cron Job from wan-event"
     sed -i '\~# domain_vpn_routing_queryall~d' /jffs/scripts/wan-event
@@ -532,7 +532,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
 
   # Remove Script from Openvpn-event
   cmdline="sh $0 cron"
-  if [[ -n "$(cat /jffs/scripts/openvpn-event | grep -e "^$cmdline")" ]] &>/dev/null;then 
+  if [[ -n "$(grep -e "^$cmdline" /jffs/scripts/openvpn-event)" ]] &>/dev/null;then 
     echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Removing Cron Job from Openvpn-Event...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Removing Cron Job from Openvpn-Event"
     sed -i '\~# domain_vpn_routing~d' /jffs/scripts/openvpn-event
@@ -543,7 +543,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
     logger -t "$ALIAS" "Uninstall - Cron Job doesn't exist in Openvpn-Event"
   fi
   cmdline="sh $0 querypolicy all"
-  if [[ -n "$(cat /jffs/scripts/openvpn-event | grep -e "^$cmdline")" ]] &>/dev/null;then 
+  if [[ -n "$(grep -e "^$cmdline" /jffs/scripts/openvpn-event)" ]] &>/dev/null;then 
     echo -e "${LIGHTCYAN}${0##*/} - Uninstall: Removing Cron Job from Openvpn-Event...${NOCOLOR}"
     logger -t "$ALIAS" "Uninstall - Removing Cron Job from Openvpn-Event"
     sed -i '\~# domain_vpn_routing_queryall~d' /jffs/scripts/openvpn-event
@@ -628,13 +628,13 @@ if [[ -f "$CONFIGFILE" ]] &>/dev/null && [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/n
   fi
 
   # Add Script to wan-event
-  if [[ -z "$(cat /jffs/scripts/wan-event | grep -w "# domain_vpn_routing")" ]] &>/dev/null;then 
+  if [[ -z "$(grep -w "# domain_vpn_routing" /jffs/scripts/wan-event)" ]] &>/dev/null;then 
     cmdline="sh $0 cron"
     logger -t "$ALIAS" "Install - Adding ${0##*/} to wan-event"
     echo -e "\r\n$cmdline # domain_vpn_routing" >> /jffs/scripts/wan-event
     logger -t "$ALIAS" "Install - ${0##*/} added to wan-event"
   fi
-  if [[ -z "$(cat /jffs/scripts/wan-event | grep -w "# domain_vpn_routing_queryall")" ]] &>/dev/null;then 
+  if [[ -z "$(grep -w "# domain_vpn_routing_queryall" /jffs/scripts/wan-event)" ]] &>/dev/null;then 
     cmdline="sh $0 querypolicy all"
     logger -t "$ALIAS" "Install - Adding ${0##*/} to wan-event"
     echo -e "\r\n$cmdline # domain_vpn_routing_queryall" >> /jffs/scripts/wan-event
@@ -645,13 +645,13 @@ if [[ -f "$CONFIGFILE" ]] &>/dev/null && [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/n
   Lines="$(cat $CONFIGFILE)"
 
   # Identify OpenVPN Tunnel Interfaces
-  c1="$(cat /etc/openvpn/client1/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
-  c2="$(cat /etc/openvpn/client2/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
-  c3="$(cat /etc/openvpn/client3/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
-  c4="$(cat /etc/openvpn/client4/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
-  c5="$(cat /etc/openvpn/client5/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
-  s1="$(cat /etc/openvpn/server1/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
-  s2="$(cat /etc/openvpn/server2/config.ovpn 2>/dev/null | grep -e dev -m 1 | awk '{print $2}')"
+  c1="$(awk '/^dev/ {print $2}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
+  c2="$(awk '/^dev/ {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
+  c3="$(awk '/^dev/ {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
+  c4="$(awk '/^dev/ {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
+  c5="$(awk '/^dev/ {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
+  s1="$(awk '/^dev/ {print $2}' /etc/openvpn/server1/config.ovpn 2>/dev/null)"
+  s2="$(awk '/^dev/ {print $2}' /etc/openvpn/server2/config.ovpn 2>/dev/null)"
 
   # Update Interfaces
   for Line in $Lines;do
@@ -787,14 +787,14 @@ esac
 # Configure Changed Setting in Configuration File
 if [[ -n "$NEWVARIABLES" ]] &>/dev/null;then
   for NEWVARIABLE in ${NEWVARIABLES};do
-    if [[ -z "$(cat $GLOBALCONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')")" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
+    if [[ -z "$(cat $GLOBALCONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')")" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
       echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" >> $GLOBALCONFIGFILE
       sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $GLOBALCONFIGFILE
-    elif [[ -n "$(cat $GLOBALCONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')")" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
+    elif [[ -n "$(cat $GLOBALCONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')")" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
       sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $GLOBALCONFIGFILE
     elif [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" == "CUSTOMLOGPATH=" ]] &>/dev/null;then
       [[ -n "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null && sed -i '/CUSTOMLOGPATH=/d' $GLOBALCONFIGFILE
-      echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')" >> $GLOBALCONFIGFILE
+      echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')" >> $GLOBALCONFIGFILE
     fi
   done
   if [[ "$RESTARTREQUIRED" == "1" ]] &>/dev/null;then
@@ -820,37 +820,37 @@ routingdirector ()
 logger -p 6 -t "$ALIAS" "Debug - Routing Director Interface: $INTERFACE"
 
 if [[ "$INTERFACE" == "ovpnc1" ]] &>/dev/null;then
-  IFNAME="$(cat /etc/openvpn/client1/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
+  IFNAME="$(awk '/^dev/ {print $2}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
   RGW="$OVPNC1RGW"
   ROUTETABLE="ovpnc1"
   PRIORITY="1000"
 elif [[ "$INTERFACE" == "ovpnc2" ]] &>/dev/null;then
-  IFNAME="$(cat /etc/openvpn/client2/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
+  IFNAME="$(awk '/^dev/ {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
   RGW="$OVPNC2RGW"
   ROUTETABLE="ovpnc2"
   PRIORITY="2000"
 elif [[ "$INTERFACE" == "ovpnc3" ]] &>/dev/null;then
-  IFNAME="$(cat /etc/openvpn/client3/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
+  IFNAME="$(awk '/^dev/ {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
   RGW="$OVPNC3RGW"
   ROUTETABLE="ovpnc3"
   PRIORITY="3000"
 elif [[ "$INTERFACE" == "ovpnc4" ]] &>/dev/null;then
-  IFNAME="$(cat /etc/openvpn/client4/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
+  IFNAME="$(awk '/^dev/ {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
   RGW="$OVPNC4RGW"
   ROUTETABLE="ovpnc4"
   PRIORITY="4000"
 elif [[ "$INTERFACE" == "ovpnc5" ]] &>/dev/null;then
-  IFNAME="$(cat /etc/openvpn/client5/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
+  IFNAME="$(awk '/^dev/ {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
   RGW="$OVPNC5RGW"
   ROUTETABLE="ovpnc5"
   PRIORITY="5000"
 elif [[ "$INTERFACE" == "ovpns1" ]] &>/dev/null;then
-  IFNAME="$(cat /etc/openvpn/server1/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
+  IFNAME="$(awk '/^dev/ {print $2}' /etc/openvpn/server1/config.ovpn 2>/dev/null)"
   ROUTETABLE="main"
   RGW="0"
   PRIORITY="0"
 elif [[ "$INTERFACE" == "ovpns2" ]] &>/dev/null;then
-  IFNAME="$(cat /etc/openvpn/server2/config.ovpn | grep -e dev -m 1 | awk '{print $2}')"
+  IFNAME="$(awk '/^dev/ {print $2}' /etc/openvpn/server2/config.ovpn 2>/dev/null)"
   ROUTETABLE="main"
   RGW="0"
   PRIORITY="0"
@@ -1044,7 +1044,7 @@ INTERFACES=""
   # Adding Policy to Config File
   echo -e "${LIGHTCYAN}Create Policy - Adding $CREATEPOLICYNAME to ${CONFIGFILE}...${NOCOLOR}"
   logger -t "$ALIAS" "Create Policy - Adding $CREATEPOLICYNAME to $CONFIGFILE"
-    if [[ -z "$(cat $CONFIGFILE | grep -w "$(echo $CREATEPOLICYNAME | awk -F"|" '{print $1}')")" ]] &>/dev/null;then
+    if [[ -z "$(awk -F "|" '/^'${CREATEPOLICYNAME}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
       echo -e "${CREATEPOLICYNAME}|${POLICYDIR}/policy_${CREATEPOLICYNAME}_domainlist|${POLICYDIR}/policy_${CREATEPOLICYNAME}_domaintoIP|${CREATEPOLICYINTERFACE}|${SETVERBOSELOGGING}|${SETPRIVATEIPS}" >> $CONFIGFILE
       echo -e "${GREEN}Create Policy - Added $CREATEPOLICYNAME to ${CONFIGFILE}...${NOCOLOR}"
       logger -t "$ALIAS" "Create Policy - Added $CREATEPOLICYNAME to $CONFIGFILE"
@@ -1060,26 +1060,28 @@ return
 showpolicy ()
 {
 if [[ "$POLICY" == "all" ]] &>/dev/null;then
-  echo -e "Policies: \n$(cat "$CONFIGFILE" | awk -F"|" '{print $1}')"
+  echo -e "Policies: \n$(awk -F "|" '{print $1}' ${CONFIGFILE})"
   return
-elif [[ "$POLICY" == "$(cat "$CONFIGFILE" | awk -F"|" '{print $1}' | grep -w "$POLICY")" ]] &>/dev/null;then
-  echo "Policy Name: $(cat "$CONFIGFILE" | awk -F"|" '{print $1}' | grep -w "$POLICY")"
-  echo "Interface: $(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $4}')"
-  if [[ "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $5}')" == "VERBOSELOGGING=1" ]] &>/dev/null;then
+elif [[ "$POLICY" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+  echo "Policy Name: $(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})"
+  echo "Interface: $(awk -F "|" '/^'${POLICY}'/ {print $4}' ${CONFIGFILE})"
+  if [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
     echo "Verbose Logging: Enabled"
-  elif [[ "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $5}')" == "VERBOSELOGGING=0" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
     echo "Verbose Logging: Disabled"
-  elif [[ -z "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $5}')" ]] &>/dev/null;then
+  elif [[ -z "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
     echo "Verbose Logging: Not Configured"
   fi
-  if [[ "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $6}')" == "PRIVATEIPS=1" ]] &>/dev/null;then
+  if [[ "$(awk -F "|" '/^'${POLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=1" ]] &>/dev/null;then
     echo "Private IP Addresses: Enabled"
-  elif [[ "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $6}')" == "PRIVATEIPS=0" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=0" ]] &>/dev/null;then
     echo "Private IP Addresses: Disabled"
-  elif [[ -z "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $6}')" ]] &>/dev/null;then
+  elif [[ -z "$(awk -F "|" '/^'${POLICY}'/ {print $6}' ${CONFIGFILE})" ]] &>/dev/null;then
     echo "Private IP Addresses: Not Configured"
   fi
-  DOMAINS="$(cat "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $2}')")"
+  DOMAINS="$(cat ${POLICYDIR}/policy_${POLICY}_domainlist)"
+
+
   echo -e "Domains:"
   for DOMAIN in ${DOMAINS};do
     echo -e "${DOMAIN}"
@@ -1096,7 +1098,7 @@ return
 editpolicy ()
 {
 if [[ "${mode}" == "editpolicy" ]] &>/dev/null;then
-  if [[ "$POLICY" == "$(cat "$CONFIGFILE" | awk -F"|" '{print $1}' | grep -w "$POLICY")" ]] &>/dev/null;then
+  if [[ "$POLICY" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
     read -n 1 -s -r -p "Press any key to continue to edit Policy: $POLICY"
     EDITPOLICY="$POLICY"
   else
@@ -1194,8 +1196,8 @@ INTERFACES=""
   # Editing Policy in Config File
   echo -e "${LIGHTCYAN}Edit Policy - Modifying $EDITPOLICY in ${CONFIGFILE}...${NOCOLOR}"
   logger -t "$ALIAS" "Edit Policy - Modifying $EDITPOLICY in $CONFIGFILE"
-  if [[ -n "$(cat $CONFIGFILE | grep -w "$(echo $EDITPOLICY | awk -F"|" '{print $1}')")" ]] &>/dev/null;then
-    OLDINTERFACE="$(cat "$CONFIGFILE" | grep -w "$EDITPOLICY" | awk -F"|" '{print $4}')"
+  if [[ -n "$(awk -F "|" '/^'${EDITPOLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+    OLDINTERFACE="$(awk -F "|" '/^'${EDITPOLICY}'/ {print $4}' ${CONFIGFILE})"
     sed -i "\:"$EDITPOLICY":d" "$CONFIGFILE"
     echo -e "${EDITPOLICY}|${POLICYDIR}/policy_${EDITPOLICY}_domainlist|${POLICYDIR}/policy_${EDITPOLICY}_domaintoIP|${NEWPOLICYINTERFACE}|${SETVERBOSELOGGING}|${SETPRIVATEIPS}" >> $CONFIGFILE
     echo -e "${GREEN}Edit Policy - Modified $EDITPOLICY in ${CONFIGFILE}...${NOCOLOR}"
@@ -1229,22 +1231,47 @@ INTERFACES='
     done
 
     # Create IPv4 and IPv6 Arrays from Policy File. 
-    IPV6S="$(cat "${POLICYDIR}/policy_${EDITPOLICY}_domaintoIP" | awk -F'>>' '{print $2}' | awk '/:/' | sort -u)"
-    IPV4S="$(cat "${POLICYDIR}/policy_${EDITPOLICY}_domaintoIP" | awk -F'>>' '{print $2}' | awk '!/:/' | sort -u)"
+    IPV6S="$(grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" "${POLICYDIR}/policy_${EDITPOLICY}_domaintoIP" | sort -u)"
+    IPV4S="$(grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" "${POLICYDIR}/policy_${EDITPOLICY}_domaintoIP" | sort -u)"
 
     # Recreate IPv6 Routes
       for IPV6 in ${IPV6S}; do
         if [[ -n "$(ip -6 route list $IPV6 dev $OLDIFNAME)" ]] &>/dev/null;then
           logger -t "$ALIAS" "Edit Policy - Deleting route for $IPV6 dev $OLDIFNAME"
-          ip -6 route del ${IPV6} dev ${OLDIFNAME} \
+          ip -6 route del ${IPV6} dev ${OLDIFNAME} &>/dev/null \
           && logger -t "$ALIAS" "Edit Policy - Route deleted for $IPV6 dev $OLDIFNAME" \
           || logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to delete route for $IPV6 dev $OLDIFNAME"
         fi
-        if [[ -z "$(ip -6 route list $IPV6 dev $NEWIFNAME)" ]] &>/dev/null;then
-          logger -t "$ALIAS" "Edit Policy - Adding route for $IPV6 dev $NEWIFNAME"
-          ip -6 route add ${IPV6} dev ${NEWIFNAME} \
-          && logger -t "$ALIAS" "Edit Policy - Route added for $IPV6 dev $NEWIFNAME" \
-          || logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for $IPV6 dev $NEWIFNAME"
+        if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -w "Error: inet6 prefix is expected rather than \"${IPV6}\"." )" ]] &>/dev/null;then
+          if [[ -z "$(ip -6 route list ${IPV6}:: dev ${IFNAME})" ]] &>/dev/null;then
+            logger -t "$ALIAS" "Edit Policy - Adding route for ${IPV6}:: dev ${NEWIFNAME}"
+            ip -6 route add ${IPV6}:: dev ${IFNAME} &>/dev/null \
+            || rc="$?" \
+            && { rc="$?" && logger -t "$ALIAS" "Edit Policy - Route added for ${IPV6}:: dev ${NEWIFNAME}" ;}
+            # Generate Error Log
+            if [[ "${rc+x}" ]] &>/dev/null;then
+              continue
+            elif [[ "$rc" == "2" ]] &>/dev/null;then
+              logger -st "$ALIAS" "Edit Policy - ***Error*** Route already exists for ${IPV6}::"
+            elif [[ "$rc" != "0" ]] &>/dev/null;then
+              logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for ${IPV6}:: dev ${NEWIFNAME}"
+            fi
+          fi
+        else
+          if [[ -z "$(ip -6 route list ${IPV6} dev ${IFNAME})" ]] &>/dev/null;then
+            logger -t "$ALIAS" "Edit Policy - Adding route for ${IPV6} dev ${NEWIFNAME}"
+            ip -6 route add ${IPV6} dev ${IFNAME} &>/dev/null \
+            || rc="$?" \
+            && { rc="$?" && logger -t "$ALIAS" "Edit Policy - Route added for ${IPV6} dev ${NEWIFNAME}" ;}
+            # Generate Error Log
+            if [[ "${rc+x}" ]] &>/dev/null;then
+              continue
+            elif [[ "$rc" == "2" ]] &>/dev/null;then
+              logger -st "$ALIAS" "Edit Policy - ***Error*** Route already exists for ${IPV6}"
+            elif [[ "$rc" != "0" ]] &>/dev/null;then
+              logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for ${IPV6} dev ${NEWIFNAME}"
+            fi
+          fi
         fi
       done
 
@@ -1253,14 +1280,14 @@ INTERFACES='
         if [[ "$OLDRGW" == "0" ]] &>/dev/null;then
           if [[ -n "$(ip route list $IPV4 dev $OLDIFNAME table $OLDROUTETABLE)" ]] &>/dev/null;then
             logger -t "$ALIAS" "Edit Policy - Deleting route for $IPV4 dev $OLDIFNAME table $OLDROUTETABLE"
-            ip route del ${IPV4} dev ${OLDIFNAME} table ${OLDROUTETABLE} \
+            ip route del ${IPV4} dev ${OLDIFNAME} table ${OLDROUTETABLE} &>/dev/null \
             && logger -t "$ALIAS" "Edit Policy - Route deleted for $IPV4 dev $OLDIFNAME table $OLDROUTETABLE" \
             || logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to delete route for $IPV4 dev $OLDIFNAME table $OLDROUTETABLE"
           fi
         elif [[ "$OLDRGW" != "0" ]] &>/dev/null;then
           if [[ -n "$(ip rule list from all to $IPV4 lookup $OLDROUTETABLE priority $OLDPRIORITY)" ]] &>/dev/null;then
             logger -t "$ALIAS" "Edit Policy - Deleting IP Rule for $IPV4 table $OLDROUTETABLE priority $OLDPRIORITY"
-            ip rule del from all to ${IPV4} table ${OLDROUTETABLE} priority ${OLDPRIORITY} \
+            ip rule del from all to ${IPV4} table ${OLDROUTETABLE} priority ${OLDPRIORITY} &>/dev/null \
             && logger -t "$ALIAS" "Edit Policy - Deleted IP Rule for $IPV4 table $OLDROUTETABLE priority $OLDPRIORITY" \
             || logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to delete IP Rule for $IPV4 table $OLDROUTETABLE priority $OLDPRIORITY"
           fi
@@ -1268,14 +1295,14 @@ INTERFACES='
         if [[ "$NEWRGW" == "0" ]] &>/dev/null;then
           if [[ -z "$(ip route list $IPV4 dev $NEWIFNAME table $NEWROUTETABLE)" ]] &>/dev/null;then
             logger -t "$ALIAS" "Edit Policy - Adding route for $IPV4 dev $NEWIFNAME table $NEWROUTETABLE"
-            ip route add ${IPV4} dev ${NEWIFNAME} table ${NEWROUTETABLE} \
+            ip route add ${IPV4} dev ${NEWIFNAME} table ${NEWROUTETABLE} &>/dev/null \
             && logger -t "$ALIAS" "Edit Policy - Route added for $IPV4 dev $NEWIFNAME table $NEWROUTETABLE" \
             || logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for $IPV4 dev $NEWIFNAME table $NEWROUTETABLE"
           fi
         elif [[ "$NEWRGW" != "0" ]] &>/dev/null;then
           if [[ -z "$(ip rule list from all to $IPV4 lookup $NEWROUTETABLE priority $NEWPRIORITY)" ]] &>/dev/null;then
             logger -t "$ALIAS" "Edit Policy - Adding IP Rule for $IPV4 table $NEWROUTETABLE priority $NEWPRIORITY"
-            ip rule add from all to $IPV4 table ${NEWROUTETABLE} priority ${NEWPRIORITY} \
+            ip rule add from all to $IPV4 table ${NEWROUTETABLE} priority ${NEWPRIORITY} &>/dev/null \
             && logger -t "$ALIAS" "Edit Policy - Added IP Rule for $IPV4 table $NEWROUTETABLE priority $NEWPRIORITY" \
             || logger -st "$ALIAS" "Edit Policy - ***Error*** Unable to add IP Rule for $IPV4 table $NEWROUTETABLE priority $NEWPRIORITY"
           fi
@@ -1292,8 +1319,8 @@ deletepolicy ()
 if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
   if [[ "$POLICY" == "all" ]] &>/dev/null;then
     read -n 1 -s -r -p "Press any key to continue to delete all policies"
-    DELETEPOLICIES="$(cat "$CONFIGFILE" | awk -F"|" '{print $1}')"
-  elif [[ "$POLICY" == "$(cat "$CONFIGFILE" | awk -F"|" '{print $1}' | grep -w "$POLICY")" ]] &>/dev/null;then
+    DELETEPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+  elif [[ "$POLICY" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
     read -n 1 -s -r -p "Press any key to continue to delete Policy: $POLICY"
     DELETEPOLICIES=$POLICY
   else
@@ -1302,12 +1329,12 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
   fi
   for DELETEPOLICY in ${DELETEPOLICIES};do
     # Determine Interface and Route Table for IP Routes to delete.
-    INTERFACE="$(cat "$CONFIGFILE" | grep -w "$DELETEPOLICY" | awk -F"|" '{print $4}')"
+    INTERFACE="$(awk -F "|" '/^'${DELETEPOLICY}'/ {print $4}' ${CONFIGFILE})"
     routingdirector || return
 
     # Create IPv4 and IPv6 Arrays from Policy File. 
-    IPV6S="$(cat "${POLICYDIR}/policy_${DELETEPOLICY}_domaintoIP" | awk -F'>>' '{print $2}' | awk '/:/' | sort -u)"
-    IPV4S="$(cat "${POLICYDIR}/policy_${DELETEPOLICY}_domaintoIP" | awk -F'>>' '{print $2}' | awk '!/:/' | sort -u)"
+    IPV6S="$(grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" "${POLICYDIR}/policy_${DELETEPOLICY}_domaintoIP" | sort -u)"
+    IPV4S="$(grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" "${POLICYDIR}/policy_${DELETEPOLICY}_domaintoIP" | sort -u)"
  
     # Delete IPv6 Routes
     for IPV6 in ${IPV6S};do
@@ -1354,10 +1381,10 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
       logger -t "$ALIAS" "Delete Policy - ${POLICYDIR}/policy_${DELETEPOLICY}_domaintoIP deleted"
     fi
     # Removing Policy from Config File
-    if [[ -n "$(cat "$CONFIGFILE" | grep -w "$(echo "$DELETEPOLICY" | awk -F"|" '{print $1}')")" ]] &>/dev/null;then
+    if [[ -n "$(awk -F "|" '/^'${DELETEPOLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
       echo -e "${LIGHTCYAN}Delete Policy - Deleting $DELETEPOLICY from ${CONFIGFILE}...${NOCOLOR}"
       logger -t "$ALIAS" "Delete Policy - Deleting $DELETEPOLICY to $CONFIGFILE"
-      POLICYTODELETE="$(cat "$CONFIGFILE" | grep -w "$DELETEPOLICY")"
+      POLICYTODELETE="$(grep -w "$DELETEPOLICY" ${CONFIGFILE})"
       sed -i "\:"$POLICYTODELETE":d" "$CONFIGFILE"
       echo -e "${GREEN}Delete Policy - Deleted $POLICY from ${CONFIGFILE}...${NOCOLOR}"
       logger -t "$ALIAS" "Delete Policy - Deleted $POLICY from $CONFIGFILE"
@@ -1372,7 +1399,7 @@ adddomain ()
 {
 if [[ -n "$DOMAIN" ]] &>/dev/null;then
   # Select Policy for New Domain
-  POLICIES="$(cat $CONFIGFILE | awk -F"|" '{print $1}')"
+  POLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
   echo -e "${LIGHTCYAN}Select a Policy for the new Domain:${NOCOLOR} \r\n$POLICIES"
   # User Input for Policy for New Domain
   while true;do  
@@ -1391,10 +1418,10 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
     done
   done
 
-  if [[ -z "$(cat "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $2}')" | grep -w "$DOMAIN")" ]] &>/dev/null;then
+  if [[ -z "$(grep -w "$DOMAIN" "${POLICYDIR}/policy_${POLICY}_domainlist")" ]] &>/dev/null;then
     echo -e "${LIGHTCYAN}Add Domain - Adding $DOMAIN to Policy: ${POLICY}${NOCOLOR}"
     logger -t "$ALIAS" "Add Domain - Adding $DOMAIN to $POLICY"
-    echo -e "$DOMAIN" >> "$(cat $CONFIGFILE | grep -w "$POLICY" | awk -F"|" '{print $2}')"
+    echo -e "$DOMAIN" >> "${POLICYDIR}/policy_${POLICY}_domainlist"
     echo -e "${GREEN}Add Domain - Added $DOMAIN to Policy: ${POLICY}${NOCOLOR}"
     logger -t "$ALIAS" "Add Domain - Added $DOMAIN to $POLICY"
   else
@@ -1410,7 +1437,7 @@ return
 deletedomain ()
 {
 # Select Policy for Domain to Delete
-POLICIES="$(cat $CONFIGFILE | awk -F"|" '{print $1}')"
+POLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
 echo -e "Select a Policy to delete $DOMAIN: \r\n$POLICIES"
   # User Input for Policy for Deleting Domain
   while true;do  
@@ -1430,16 +1457,16 @@ echo -e "Select a Policy to delete $DOMAIN: \r\n$POLICIES"
   done
 
 if [[ -n "$DOMAIN" ]] &>/dev/null;then
-  if [[ -n "$(cat "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $2}')" | grep -w "$DOMAIN")" ]] &>/dev/null;then
+  if [[ -n "$(grep -w "$DOMAIN" "${POLICYDIR}/policy_${POLICY}_domainlist")" ]] &>/dev/null;then
     # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
-    DOMAINLIST="$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $2}')"
-    DOMAINIPLIST="$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $3}')"
-    INTERFACE="$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $4}')"
+    DOMAINLIST="$(awk -F "|" '/^'${POLICY}'/ {print $2}' ${CONFIGFILE})"
+    DOMAINIPLIST="$(awk -F "|" '/^'${POLICY}'/ {print $3}' ${CONFIGFILE})"
+    INTERFACE="$(awk -F "|" '/^'${POLICY}'/ {print $4}' ${CONFIGFILE})"
     routingdirector || return
 
     # Create IPv4 and IPv6 Arrays from Policy File. 
-    IPV6S="$(cat "$DOMAINIPLIST" | grep -w "$DOMAIN" | awk -F'>>' '{print $2}' | awk '/:/' | sort -u)"
-    IPV4S="$(cat "$DOMAINIPLIST" | grep -w "$DOMAIN" | awk -F'>>' '{print $2}' | awk '!/:/' | sort -u)"
+    IPV6S="$(grep -w "$DOMAIN" ${DOMAINIPLIST} | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" | sort -u)"
+    IPV4S="$(grep -w "$DOMAIN" ${DOMAINIPLIST} | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | sort -u)"
  
     # Delete IPv6 Routes
     for IPV6 in ${IPV6S};do
@@ -1452,30 +1479,30 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
       fi
     done
 
-  if [[ "$RGW" == "0" ]] &>/dev/null;then
-    # Delete IPv4 Routes
-    for IPV4 in ${IPV4S};do
-      if [[ -n "$(ip route list $IPV4 dev $IFNAME table $ROUTETABLE)" ]] &>/dev/null;then
-        echo -e "${LIGHTCYAN}Deleting route for $IPV4 dev $IFNAME table $ROUTETABLE...${NOCOLOR}"
-        logger -t "$ALIAS" "Delete Domain - Deleting route for $IPV4 dev $IFNAME table $ROUTETABLE"
-        ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} \
-        && { echo -e "${GREEN}Route deleted for $IPV4 dev $IFNAME table $ROUTETABLE.${NOCOLOR}" ; logger -t "$ALIAS" "Delete Domain - Route deleted for $IPV4 dev $IFNAME table $ROUTETABLE" ;} \
-        || { echo -e "${RED}Route failed to delete for $IPV4 dev $IFNAME table $ROUTETABLE.${NOCOLOR}" ; logger -t "$ALIAS" "Delete Domain - Route failed to delete for $IPV4 dev $IFNAME table $ROUTETABLE" ;}
-      fi
-    done
+    if [[ "$RGW" == "0" ]] &>/dev/null;then
+      # Delete IPv4 Routes
+      for IPV4 in ${IPV4S};do
+        if [[ -n "$(ip route list $IPV4 dev $IFNAME table $ROUTETABLE)" ]] &>/dev/null;then
+          echo -e "${LIGHTCYAN}Deleting route for $IPV4 dev $IFNAME table $ROUTETABLE...${NOCOLOR}"
+          logger -t "$ALIAS" "Delete Domain - Deleting route for $IPV4 dev $IFNAME table $ROUTETABLE"
+          ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} \
+          && { echo -e "${GREEN}Route deleted for $IPV4 dev $IFNAME table $ROUTETABLE.${NOCOLOR}" ; logger -t "$ALIAS" "Delete Domain - Route deleted for $IPV4 dev $IFNAME table $ROUTETABLE" ;} \
+          || { echo -e "${RED}Route failed to delete for $IPV4 dev $IFNAME table $ROUTETABLE.${NOCOLOR}" ; logger -t "$ALIAS" "Delete Domain - Route failed to delete for $IPV4 dev $IFNAME table $ROUTETABLE" ;}
+        fi
+      done
 
-  elif [[ "$RGW" != "0" ]] &>/dev/null;then
-    # Delete IPv4 IP Rules
-    for IPV4 in ${IPV4S};do
-      if [[ -n "$(ip rule list from all to $IPV4 lookup $ROUTETABLE priority $PRIORITY)" ]] &>/dev/null;then
-        echo -e "${LIGHTCYAN}Deleting IP Rule for $IPV4 table $ROUTETABLE priority $PRIORITY...${NOCOLOR}"
-        logger -t "$ALIAS" "Delete Domain - Deleting IP Rule for $IPV4 table $ROUTETABLE priority $PRIORITY"
-        ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
-        && { echo -e "${GREEN}IP Rule deleted for $IPV4 table $ROUTETABLE priority $PRIORITY.${NOCOLOR}" ; logger -t "$ALIAS" "Delete Domain - Deleted IP Rule for $IPV4 table $ROUTETABLE priority $PRIORITY" ;} \
-        || { echo -e "${RED}IP Rule failed to delete for $IPV4 table $ROUTETABLE priority $PRIORITY.${NOCOLOR}" ; logger -t "$ALIAS" "Delete Domain - IP Rule failed to delete for $IPV4 table $ROUTETABLE priority $PRIORITY" ;}
-      fi
-    done
-  fi
+    elif [[ "$RGW" != "0" ]] &>/dev/null;then
+      # Delete IPv4 IP Rules
+      for IPV4 in ${IPV4S};do
+        if [[ -n "$(ip rule list from all to $IPV4 lookup $ROUTETABLE priority $PRIORITY)" ]] &>/dev/null;then
+          echo -e "${LIGHTCYAN}Deleting IP Rule for $IPV4 table $ROUTETABLE priority $PRIORITY...${NOCOLOR}"
+          logger -t "$ALIAS" "Delete Domain - Deleting IP Rule for $IPV4 table $ROUTETABLE priority $PRIORITY"
+          ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
+          && { echo -e "${GREEN}IP Rule deleted for $IPV4 table $ROUTETABLE priority $PRIORITY.${NOCOLOR}" ; logger -t "$ALIAS" "Delete Domain - Deleted IP Rule for $IPV4 table $ROUTETABLE priority $PRIORITY" ;} \
+          || { echo -e "${RED}IP Rule failed to delete for $IPV4 table $ROUTETABLE priority $PRIORITY.${NOCOLOR}" ; logger -t "$ALIAS" "Delete Domain - IP Rule failed to delete for $IPV4 table $ROUTETABLE priority $PRIORITY" ;}
+        fi
+      done
+    fi
 
     # Delete Domain from Policy
     echo -e "${LIGHTCYAN}Deleting $DOMAIN from Policy: ${POLICY}${NOCOLOR}" ; logger -t "$ALIAS" "Delete Domain - Deleting $DOMAIN from Policy: $POLICY"
@@ -1504,8 +1531,18 @@ return
 # Delete IP from Policy
 deleteip ()
 {
-# Select Policy for Domain to Delete
-POLICIES="$(cat $CONFIGFILE | awk -F"|" '{print $1}')"
+#Select IP if null
+if [[ -z "${IP}" ]] &>/dev/null;then
+  while true &>/dev/null;do
+    read -r -p "Select an IP Address to delete from a policy: " value
+    case $value in
+      * ) IP=$value; break;;
+    esac
+  done
+fi
+
+# Select Policy to delete IP
+POLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
 echo -e "Select a Policy to delete $IP: \r\n$POLICIES"
   # User Input for Policy for Deleting IP
   while true;do  
@@ -1525,16 +1562,16 @@ echo -e "Select a Policy to delete $IP: \r\n$POLICIES"
   done
 
 if [[ -n "$IP" ]] &>/dev/null;then
-  if [[ -n "$(cat "$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $3}')" | grep -w "$IP")" ]] &>/dev/null;then
+  if [[ -n "$(grep -w "$IP" "${POLICYDIR}/policy_${POLICY}_domaintoIP" | grep oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")" ]] &>/dev/null;then
     # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
-    DOMAINIPLIST="$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $3}')"
-    INTERFACE="$(cat "$CONFIGFILE" | grep -w "$POLICY" | awk -F"|" '{print $4}')"
+    DOMAINIPLIST="$(awk -F"|" '/^'${POLICY}'/ {print $3}' ${CONFIGFILE})"
+    INTERFACE="$(awk -F"|" '/^'${POLICY}'/ {print $4}' ${CONFIGFILE})"
     routingdirector || return
 
     # Create IPv4 and IPv6 Arrays from Policy File. 
-    IPV6S="$(cat "$DOMAINIPLIST" | grep -m 1 -w "$IP" | awk -F'>>' '{print $2}' | awk '/:/' | sort -u)"
-    IPV4S="$(cat "$DOMAINIPLIST" | grep -m 1 -w "$IP" | awk -F'>>' '{print $2}' | awk '!/:/' | sort -u)"
- 
+    IPV6S="$(grep -m 1 -w "$IP" ${DOMAINIPLIST} | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" | sort -u)"
+    IPV4S="$(grep -m 1 -w "$IP" ${DOMAINIPLIST} | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | sort -u)"
+
     # Delete IPv6 Routes
     for IPV6 in ${IPV6S}; do
       if [[ -n "$(ip -6 route list $IPV6 dev $IFNAME)" ]] &>/dev/null;then
@@ -1572,7 +1609,7 @@ if [[ -n "$IP" ]] &>/dev/null;then
 
     # Delete IP from Policy
     echo -e "${LIGHTCYAN}Deleting $IP from Policy: ${POLICY}${NOCOLOR}" ; logger -t "$ALIAS" "Delete IP - Deleting $IP from Policy: $POLICY"
-    DELETEDOMAINTOIPS="$(cat "$(cat $DOMAINIPLIST)" | grep -w "$IP")"
+    DELETEDOMAINTOIPS="$(grep -w "$IP" ${DOMAINIPLIST})"
     for DELETEDOMAINTOIP in ${DELETEDOMAINTOIPS}; do
       sed -i "\:"^${DELETEDOMAINTOIP}":d" $DOMAINIPLIST \
       && { ipdeleted="1" ; echo -e "${GREEN}Deleted $IP from ${DOMAINIPLIST}${NOCOLOR}" ; logger -t "$ALIAS" "Delete IP - Deleted $IP from $DOMAINIPLIST" ;} \
@@ -1599,21 +1636,21 @@ checkalias || return
 renice -n 20 $$
 
 if [[ "$POLICY" == "all" ]] &>/dev/null;then
-  QUERYPOLICIES="$(cat "$CONFIGFILE" | awk -F"|" '{print $1}')"
+  QUERYPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
   if [[ -z "$QUERYPOLICIES" ]] &>/dev/null;then
     echo -e "${RED}***No Policies Detected***${NOCOLOR}"
     logger -t "$ALIAS" "Query Policy - ***No Policies Detected***"
     return
   fi
-elif [[ "$POLICY" == "$(cat "$CONFIGFILE" | awk -F"|" '{print $1}' | grep -w "$POLICY")" ]] &>/dev/null;then
-  QUERYPOLICIES=$POLICY
+elif [[ "$POLICY" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+  QUERYPOLICIES="$POLICY"
 else
   echo -e "${RED}Policy: $POLICY not found${NOCOLOR}"
   return
 fi
 for QUERYPOLICY in ${QUERYPOLICIES};do
   # Check if IPv6 IP Addresses are in policy file if IPv6 is Disabled and delete them
-  if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null && [[ -n "$(cat "${POLICYDIR}/policy_${QUERYPOLICY}_domaintoIP" | grep -m1 -o ":")" ]] &>/dev/null;then
+  if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null && [[ -n "$(grep -m1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" "${POLICYDIR}/policy_${QUERYPOLICY}_domaintoIP")" ]] &>/dev/null;then
     logger -t "$ALIAS" "Query Policy - Removing IPv6 IP Addresses from Policy: ${QUERYPOLICY}***"
     sed -i '/:/d' "${POLICYDIR}/policy_${QUERYPOLICY}_domaintoIP" \
     && logger -t "$ALIAS" "Query Policy - Removed IPv6 IP Addresses from Policy: ${QUERYPOLICY}***" \
@@ -1631,25 +1668,38 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
 
   # Check if Verbose Logging is Enabled
-  [[ -z "$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $5}')" ]] && VERBOSELOGGING=1
-  [[ "$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $5}')" == "VERBOSELOGGING=0" ]] && VERBOSELOGGING=0
-  [[ "$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $5}')" == "VERBOSELOGGING=1" ]] && VERBOSELOGGING=1
+  if [[ -z "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
+    VERBOSELOGGING="1"
+  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
+    VERBOSELOGGING="0"
+  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
+    VERBOSELOGGING="1"
+  fi
 
   # Check if Private IPs are Enabled
-  [[ -z "$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $6}')" ]] && PRIVATEIPS=0
-  [[ "$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $6}')" == "PRIVATEIPS=0" ]] && PRIVATEIPS=0
-  [[ "$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $6}')" == "PRIVATEIPS=1" ]] && PRIVATEIPS=1
+  if [[ -z "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $6}' ${CONFIGFILE})" ]] &>/dev/null;then
+    PRIVATEIPS="0"
+  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=0" ]] &>/dev/null;then
+    PRIVATEIPS="0"
+  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=1" ]] &>/dev/null;then
+    PRIVATEIPS="1"
+  fi
+
+  # Display Query Policy
+  if tty >/dev/null 2>&1;then
+    printf '\033[K%b\r' "${BOLD}${UNDERLINE}Query Policy: $QUERYPOLICY${NOCOLOR}\n"
+  fi
 
   # Query Domains for IP Addresses
-  DOMAINS="$(cat "$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $2}')")"
+  DOMAINS="$(cat ${POLICYDIR}/policy_${QUERYPOLICY}_domainlist)"
   for DOMAIN in ${DOMAINS};do
     [[ "$VERBOSELOGGING" == "1" ]] && logger -t "$ALIAS" "Query Policy - Policy: $QUERYPOLICY Querying $DOMAIN"
     if tty >/dev/null 2>&1;then
-      printf '\033[K%b\r' "${LIGHTCYAN}Query Policy: $QUERYPOLICY Querying ${DOMAIN}...${NOCOLOR}"
+      printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN}...${NOCOLOR}"
     fi
     # Determine to query for IPv6 and IPv4 IP Addresses or only IPv4 Addresses
     if [[ -z "$IPV6SERVICE" ]] &>/dev/null || [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null;then
-      for IP in $(nslookup $DOMAIN 2>/dev/null | awk '(NR>2) && /^Address/ {print $3}' | sort | grep -v ":"); do
+      for IP in $(nslookup $DOMAIN 2>/dev/null | awk '(NR>2)' | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"); do
         if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
           echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
         elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
@@ -1664,7 +1714,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         fi
       done
     else
-      for IP in $(nslookup $DOMAIN 2>/dev/null | awk '(NR>2) && /^Address/ {print $3}' | sort); do
+      for IP in $(nslookup $DOMAIN 2>/dev/null | awk '(NR>2)' | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"); do
         if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
           echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
         elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
@@ -1702,41 +1752,69 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
 
   # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
-  DOMAINIPLIST="$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $3}')"
-  INTERFACE="$(cat "$CONFIGFILE" | grep -w "$QUERYPOLICY" | awk -F"|" '{print $4}')"
+  DOMAINIPLIST="$(grep -w "$QUERYPOLICY" "$CONFIGFILE" | awk -F"|" '{print $3}')"
+  INTERFACE="$(grep -w "$QUERYPOLICY" "$CONFIGFILE" | awk -F"|" '{print $4}')"
   routingdirector || return
 
   # Create IPv4 and IPv6 Arrays from Policy File. 
-  IPV6S="$(cat "$DOMAINIPLIST" | awk -F'>>' '{print $2}' | awk '/:/' | sort -u)"
-  IPV4S="$(cat "$DOMAINIPLIST" | awk -F'>>' '{print $2}' | awk '!/:/' | sort -u)"
+  IPV6S="$(grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" "$DOMAINIPLIST" | sort -u)"
+  IPV4S="$(grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" "$DOMAINIPLIST" | sort -u)"
   
   if tty >/dev/null 2>&1;then
     printf '\033[K%b\r' "${LIGHTCYAN}Query Policy: Updating IP Routes and IP Rules${NOCOLOR}"
   fi
 
   # Create IPv6 Routes
-  for IPV6 in ${IPV6S};do
-    if [[ -z "$(ip -6 route list $IPV6 dev $IFNAME)" ]] &>/dev/null;then
-      [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Adding route for $IPV6 dev $IFNAME"
-      ip -6 route add ${IPV6} dev ${IFNAME} \
-      || logger -st "$ALIAS" "Query Policy - ***Error*** Unable to add route for $IPV6 dev $IFNAME" \
-      && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Route added for $IPV6 dev $IFNAME" ;}
-    fi
-  done
+  if [[ -n "$IPV6IPADDR" ]] &>/dev/null;then
+    for IPV6 in ${IPV6S};do
+      # Check IPv6 for prefix error
+      if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than" )" ]] &>/dev/null;then
+        if [[ -z "$(ip -6 route list ${IPV6}:: dev ${IFNAME})" ]] &>/dev/null;then
+          [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Adding route for ${IPV6}:: dev ${IFNAME}"
+          ip -6 route add ${IPV6}:: dev ${IFNAME} &>/dev/null \
+          || rc="$?" \
+          && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Route added for ${IPV6}:: dev ${IFNAME}" ;}
+          # Generate Error Log
+          if [[ "${rc+x}" ]] &>/dev/null;then
+            continue
+          elif [[ "$rc" == "2" ]] &>/dev/null;then
+            logger -st "$ALIAS" "Query Policy - ***Error*** Route already exists for ${IPV6}::"
+          elif [[ "$rc" != "0" ]] &>/dev/null;then
+            logger -st "$ALIAS" "Query Policy - ***Error*** Unable to add route for ${IPV6}:: dev ${IFNAME}"
+          fi
+        fi
+      else
+        if [[ -z "$(ip -6 route list ${IPV6} dev ${IFNAME})" ]] &>/dev/null;then
+          [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Adding route for ${IPV6} dev $IFNAME"
+          ip -6 route add ${IPV6} dev ${IFNAME} &>/dev/null \
+          || rc="$?" \
+          && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Route added for ${IPV6} dev ${IFNAME}" ;}
+          # Generate Error Log
+          if [[ "${rc+x}" ]] &>/dev/null;then
+            continue
+          elif [[ "$rc" == "2" ]] &>/dev/null;then
+            logger -st "$ALIAS" "Query Policy - ***Error*** Route already exists for ${IPV6}"
+          elif [[ "$rc" != "0" ]] &>/dev/null;then
+            logger -st "$ALIAS" "Query Policy - ***Error*** Unable to add route for ${IPV6} dev ${IFNAME}"
+          fi
+        fi
+      fi
+    done
+  fi
 
   if [[ "$RGW" == "0" ]] &>/dev/null;then
     # Create IPv4 Routes
     for IPV4 in ${IPV4S};do
       if [[ -z "$(ip route list $IPV4 dev $IFNAME table $ROUTETABLE)" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Adding route for $IPV4 dev $IFNAME table $ROUTETABLE"
-        ip route add ${IPV4} dev ${IFNAME} table ${ROUTETABLE} \
+        ip route add ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
         || logger -st "$ALIAS" "Query Policy - ***Error*** Unable to add route for $IPV4 dev $IFNAME table $ROUTETABLE" \
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Route added for $IPV4 dev $IFNAME table $ROUTETABLE" ;}
       fi
       if [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
         if [[ -n "$(ip route list $IPV4 dev $OLDIFNAME table $ROUTETABLE)" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Deleting route for $IPV4 dev $OLDIFNAME table $ROUTETABLE"
-          ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} \
+          ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
           || logger -st "$ALIAS" "Query Policy - ***Error*** Unable to delete route for $IPV4 dev $OLDIFNAME table $ROUTETABLE" \
           && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Route deleted for $IPV4 dev $OLDIFNAME table $ROUTETABLE" ;}
         fi
@@ -1747,7 +1825,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     for IPV4 in ${IPV4S}; do
       if [[ -z "$(ip rule list from all to $IPV4 lookup $ROUTETABLE priority $PRIORITY)" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Adding IP Rule for $IPV4 table $ROUTETABLE priority $PRIORITY"
-        ip rule add from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
+        ip rule add from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
         || logger -st "$ALIAS" "Query Policy - ***Error*** Unable to add IP Rule for $IPV4 table $ROUTETABLE priority $PRIORITY" \
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -t "$ALIAS" "Query Policy - Added IP Rule for $IPV4 table $ROUTETABLE priority $PRIORITY" ;}
       fi
@@ -1805,9 +1883,70 @@ return
 # Kill Script
 killscript ()
 {
-echo -e "${RED}Killing ${0##*/}...${NOCOLOR}"
-logger -t "$ALIAS" "Kill - Killing ${0##*/}"
-sleep 3 && killall ${0##*/} 2>/dev/null
+# Prompt for Confirmation
+while [[ "${mode}" == "kill" ]] &>/dev/null;do
+  read -p "Are you sure you want to kill Domain VPN Routing? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
+  case $yn in
+    [Yy]* ) break;;
+    [Nn]* ) return;;
+    * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+  esac
+done
+
+# Determine PIDs to kill
+logger -p 6 -t "$ALIAS" "Debug - Selecting PIDs to kill"
+
+# Determine binary to use for detecting PIDs
+if [[ -f "/usr/bin/pstree" ]] &>/dev/null;then
+  PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "$0" | grep -v "$$" | grep -o '[0-9]*')" || PIDS=""
+else
+  PIDS="$(ps | grep -v "grep" | grep -w "$0" | awk '{print $1}' | grep -v "$$")"
+fi
+
+logger -p 6 -t "$ALIAS" "Debug - ***Checking if PIDs array is null*** Process ID: $PIDS"
+if [[ -n "${PIDS+x}" ]] &>/dev/null && [[ -n "$PIDS" ]] &>/dev/null;then
+  # Kill PIDs
+  until [[ -z "$PIDS" ]] &>/dev/null;do
+    if [[ -z "$PIDS" ]] &>/dev/null;then
+      break
+    fi
+    if [[ -f "/usr/bin/pstree" ]] &>/dev/null;then
+      for PID in ${PIDS};do
+        if [[ "${PID}" == "$$" ]] &>/dev/null;then
+          PIDS="${PIDS//[${PID}$'\t\r\n']/}" && continue
+        fi
+        [[ -n "$(pstree -s "$0" | grep -v "grep" | grep -w "$0" | grep -o '[0-9]*' | grep -o "${PID}")" ]] \
+        && logger -p 1 -st "$ALIAS" "Restart - Killing $ALIAS Process ID: ${PID}" \
+          && { kill -9 ${PID} \
+          && { PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 1 -st "$ALIAS" "Restart - Killed $ALIAS Process ID: ${PID}" && continue ;} \
+          || { [[ -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' | grep -o "${PID}")" ]] &>/dev/null && PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue || PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 2 -st "$ALIAS" "Restart - ***Error*** Unable to kill $ALIAS Process ID: ${PID}" ;} ;} \
+        || PIDS="${PIDS//[${PID}$'\t\r\n']/}" && continue
+      done
+    else
+      for PID in ${PIDS};do
+        if [[ "${PID}" == "$$" ]] &>/dev/null;then
+          PIDS="${PIDS//[${PID}$'\t\r\n']/}" && continue
+        fi
+        [[ -n "$(ps | grep -v "grep" | grep -w "$0" | awk '{print $1}' | grep -o "${PID}")" ]] \
+        && logger -p 1 -st "$ALIAS" "Restart - Killing $ALIAS Process ID: ${PID}" \
+          && { kill -9 ${PID} \
+          && { PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 1 -st "$ALIAS" "Restart - Killed $ALIAS Process ID: ${PID}" && continue ;} \
+          || { [[ -z "$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}' | grep -o "${PID}")" ]] &>/dev/null && PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue || PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 2 -st "$ALIAS" "Restart - ***Error*** Unable to kill $ALIAS Process ID: ${PID}" ;} ;} \
+        || PIDS="${PIDS//[${PID}$'\t\r\n']/}" && continue
+      done
+    fi
+  done
+elif [[ -z "${PIDS+x}" ]] &>/dev/null || [[ -z "$PIDS" ]] &>/dev/null;then
+  # Log no PIDs found and return
+  logger -p 2 -st "$ALIAS" "Restart - ***$ALIAS is not running*** No Process ID Detected"
+  if tty &>/dev/null;then
+    printf '\033[K%b\r\a' "${BOLD}${RED}***$ALIAS is not running*** No Process ID Detected${NOCOLOR}"
+    sleep 3
+    printf '\033[K'
+  fi
+fi
+[[ -n "${PIDS+x}" ]] &>/dev/null && unset PIDS
+
 return
 }
 
@@ -1906,8 +2045,9 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
     systemparameterssync="0"
   elif [[ "$systemparameterssync" == "1" ]] &>/dev/null;then
     break
+  else
+    sleep 1
   fi
-  sleep 1
 
   # WANSDUALWANENABLE
   if [[ -z "${WANSDUALWANENABLE+x}" ]] &>/dev/null;then
@@ -1919,6 +2059,13 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
   if [[ -z "${IPV6SERVICE+x}" ]] &>/dev/null;then
     IPV6SERVICE="$(nvram get ipv6_service & nvramcheck)"
     [[ -n "$IPV6SERVICE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6SERVICE" && unset IPV6SERVICE && continue ;}
+  fi
+
+  # IPV6IPADDR
+  if [[ -z "${IPV6IPADDR+x}" ]] &>/dev/null;then
+    IPV6IPADDR="$(nvram get ipv6_wan_addr & nvramcheck)"
+    { [[ -n "$IPV6IPADDR" ]] &>/dev/null || [[ "$IPV6SERVICE" == "disabled" ]] || [[ -z "$(nvram get ipv6_wan_addr & nvramcheck)" ]] &>/dev/null ;} \
+    || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6IPADDR" && unset IPV6IPADDR && continue ;}
   fi
 
   # WAN0GWIFNAME
@@ -1936,25 +2083,33 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
   # WAN0PRIMARY
   if [[ -z "${WAN0PRIMARY+x}" ]] &>/dev/null;then
     WAN0PRIMARY="$(nvram get wan0_primary & nvramcheck)"
-    [[ -n "$WAN0PRIMARY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0PRIMARY" && unset WAN0PRIMARY && continue ;}
+    if [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
+      [[ -n "$WAN0PRIMARY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0PRIMARY" && unset WAN0PRIMARY && continue ;}
+    fi
   fi
 
   # WAN1GWIFNAME
   if [[ -z "${WAN1GWIFNAME+x}" ]] &>/dev/null;then
     WAN1GWIFNAME="$(nvram get wan1_gw_ifname & nvramcheck)"
-    { [[ "$WANSDUALWANENABLE" == "0" ]] || [[ -n "$WAN1GWIFNAME" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME && continue ;}
+    if [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
+      [[ -n "$WAN1GWIFNAME" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME && continue ;}
+    fi
   fi
 
   # WAN1GATEWAY
   if [[ -z "${WAN1GATEWAY+x}" ]] &>/dev/null;then
     WAN1GATEWAY="$(nvram get wan1_gateway & nvramcheck)"
-    { [[ "$WANSDUALWANENABLE" == "0" ]] || [[ -n "$WAN1GATEWAY" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GATEWAY" && unset WAN1GATEWAY && continue ;}
+    if [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
+      [[ -n "$WAN1GATEWAY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1GATEWAY" && unset WAN1GATEWAY && continue ;}
+    fi
   fi
 
   # WAN1PRIMARY
   if [[ -z "${WAN1PRIMARY+x}" ]] &>/dev/null;then
     WAN1PRIMARY="$(nvram get wan1_primary & nvramcheck)"
-    [[ -n "$WAN1PRIMARY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1PRIMARY" && unset WAN1PRIMARY && continue ;}
+    if [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
+      [[ -n "$WAN1PRIMARY" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1PRIMARY" && unset WAN1PRIMARY && continue ;}
+    fi
   fi
 
   # OVPNC1RGW
