@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/09/2023
-# Version: v2.0.7-beta1
+# Date: 09/12/2023
+# Version: v2.0.7-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.7-beta1"
+VERSION="v2.0.7-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -53,7 +53,7 @@ LIGHTCYAN="\033[96m"
 WHITE="\033[97m"
 
 if [[ "$(dirname "$0")" == "." ]] &>/dev/null;then
-  if [[ -n "$(cat /jffs/configs/profile.add | grep -w "# Wan-Failover")" ]] &>/dev/null;then
+  if [[ -n "$(grep -w "# Wan-Failover" /jffs/configs/profile.add)" ]] &>/dev/null;then
     echo -e "${BOLD}${RED}***WARNING*** Execute using Alias: ${LIGHTBLUE}$ALIAS${RED}${NOCOLOR}.${NOCOLOR}"
   else
     SCRIPTPATH="/jffs/scripts/${0##*/}"
@@ -383,7 +383,7 @@ if [[ ! -f "/jffs/configs/profile.add" ]] &>/dev/null;then
   && logger -p 4 -st "$ALIAS" "System Check - Created /jffs/configs/profile.add" \
   || logger -p 2 -st "$ALIAS" "System Check - ***Error*** Unable to create /jffs/configs/profile.add"
 fi
-if [[ -z "$(cat /jffs/configs/profile.add | grep -w "# Wan-Failover")" ]] &>/dev/null;then
+if [[ -z "$(grep -w "# Wan-Failover" /jffs/configs/profile.add)" ]] &>/dev/null;then
   logger -p 5 -st "$ALIAS" "System Check - Creating Alias for $0 as wan-failover"
   echo -e "alias wan-failover=\"sh $0\" # Wan-Failover" >> /jffs/configs/profile.add \
   && source /jffs/configs/profile.add \
@@ -471,7 +471,7 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
 
   # IPVERSION
   if [[ -z "${IPVERSION+x}" ]] &>/dev/null;then
-    IPVERSION="$(ip -V | awk -F "-" '{print $2}')"
+    IPVERSION="$(ip -V | awk -F "-" '/iproute2/ {print $2}')"
     [[ -n "$IPVERSION" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPVERSION" && unset IPVERSION && continue ;}
   fi
 
@@ -653,7 +653,7 @@ else
 fi
 
 # Add Script to Wan-event
-if [[ -n "$(cat /jffs/scripts/wan-event | grep -w "# Wan-Failover")" ]] &>/dev/null;then 
+if [[ -n "$(grep -w "# Wan-Failover" /jffs/scripts/wan-event)" ]] &>/dev/null;then 
   echo -e "${GREEN}$ALIAS already added to wan-event...${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Install - $ALIAS already added to wan-event"
 else
   echo -e "${LIGHTBLUE}Adding $ALIAS to wan-event...${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Install - Adding $ALIAS to wan-event"
@@ -673,7 +673,7 @@ else
 fi
 
 # Create Alias
-if [[ -z "$(cat /jffs/configs/profile.add | grep -w "# Wan-Failover")" ]] &>/dev/null;then
+if [[ -z "$(grep -w "# Wan-Failover" /jffs/configs/profile.add)" ]] &>/dev/null;then
   echo -e "${LIGHTBLUE}${ALIAS} - Install: Creating Alias for $0 as wan-failover...${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Install - Creating Alias for $0 as wan-failover"
   { echo -e "alias wan-failover=\"sh $0\" # Wan-Failover" >> /jffs/configs/profile.add && source /jffs/configs/profile.add ;} \
   && { echo -e "${GREEN}${ALIAS} - Install: Created Alias for $0 as wan-failover...${NOCOLOR}" && logger -p 5 -t "$ALIAS" "Install - Created Alias for $0 as wan-failover" ;} \
@@ -762,7 +762,7 @@ read -n 1 -s -r -p "Press any key to continue to uninstall..."
 
   # Remove Script from Wan-event
   cmdline="sh $0 cron"
-  if [[ -n "$(cat /jffs/scripts/wan-event | grep -e "^$cmdline")" ]] &>/dev/null;then 
+  if [[ -n "$(grep -e "^${cmdline}" /jffs/scripts/wan-event)" ]] &>/dev/null;then 
     echo -e "${LIGHTBLUE}${ALIAS} - Uninstall: Removing Cron Job from Wan-Event...${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Uninstall - Removing Cron Job from Wan-Event"
     sed -i '\~# Wan-Failover~d' /jffs/scripts/wan-event \
     && { echo -e "${GREEN}${ALIAS} - Uninstall: Removed Cron Job from Wan-Event.${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Uninstall - Removed Cron Job from Wan-Event" ;} \
@@ -770,7 +770,7 @@ read -n 1 -s -r -p "Press any key to continue to uninstall..."
   fi
 
   # Remove Alias
-  if [[ -n "$(cat /jffs/configs/profile.add | grep -w "# Wan-Failover")" ]] &>/dev/null;then
+  if [[ -n "$(grep -w "# Wan-Failover" /jffs/configs/profile.add)" ]] &>/dev/null;then
     { echo -e "${LIGHTBLUE}${ALIAS} - Uninstall: Removing Alias for $0 as wan-failover...${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Uninstall - Removing Alias for $0 as wan-failover" ;}
     { sed -i '\~# Wan-Failover~d' /jffs/configs/profile.add && source /jffs/configs/profile.add ;} \
     && { echo -e "${GREEN}${ALIAS} - Uninstall: Removed Alias for $0 as wan-failover...${NOCOLOR}" ; logger -p 5 -t "$ALIAS" "Uninstall - Removed Alias for $0 as wan-failover" ;} \
@@ -1079,13 +1079,13 @@ elif [[ "$DEVMODE" == "1" ]] &>/dev/null;then
 fi
 
 # Determine if newer version is available
-REMOTEVERSION="$(echo $(/usr/sbin/curl "$DOWNLOADPATH" 2>/dev/null | grep -v "grep" | grep -w "# Version:" | awk '{print $3}'))"
+REMOTEVERSION="$(/usr/sbin/curl "$DOWNLOADPATH" 2>/dev/null | grep -v "grep" | grep -w "# Version:" | awk '{print $3}')"
 
 # Remote Checksum
 if [[ -f "/usr/sbin/openssl" ]] &>/dev/null;then
   REMOTECHECKSUM="$(/usr/sbin/curl -s "$DOWNLOADPATH" | /usr/sbin/openssl sha256 | awk -F " " '{print $2}')"
 elif [[ -f "/usr/bin/md5sum" ]] &>/dev/null;then
-  REMOTECHECKSUM="$(echo $(/usr/sbin/curl -s "$DOWNLOADPATH" 2>/dev/null | /usr/bin/md5sum | awk -F " " '{print $1}'))"
+  REMOTECHECKSUM="$(/usr/sbin/curl -s "$DOWNLOADPATH" 2>/dev/null | /usr/bin/md5sum | awk -F " " '{print $1}')"
 fi
 
 # Convert versions in numbers for evaluation
@@ -1254,14 +1254,14 @@ if [[ "$systemlogset" == "0" ]] &>/dev/null;then
 elif [[ "$systemlogset" == "1" ]] &>/dev/null;then
   if [[ "$mode" == "monitor" ]] &>/dev/null;then
     clear
-    tail -1 -F $SYSLOG 2>/dev/null | awk '/'$ALIAS'/{print}' \
+    tail -1 -F $SYSLOG 2>/dev/null | awk '/'${ALIAS}'/ {print}' \
     && { unset systemlogset && return ;} \
     || echo -e "${RED}***Unable to load Monitor Mode***${NOCOLOR}"
   elif [[ "$mode" == "capture" ]] &>/dev/null;then
     LOGFILE="/tmp/wan-failover-$(date +"%F-%T-%Z").log"
     touch -a $LOGFILE
     clear
-    tail -1 -F $SYSLOG 2>/dev/null | awk '/'$ALIAS'/{print}' | tee -a "$LOGFILE" \
+    tail -1 -F $SYSLOG 2>/dev/null | awk '/'${ALIAS}'/ {print}' | tee -a "$LOGFILE" \
     && { unset systemlogset && return ;} \
     || echo -e "${RED}***Unable to load Capture Mode***${NOCOLOR}"
   fi
@@ -2315,14 +2315,14 @@ esac
 # Configure Changed Setting in Configuration File
 if [[ -n "$NEWVARIABLES" ]] &>/dev/null;then
   for NEWVARIABLE in ${NEWVARIABLES};do
-    if [[ -z "$(cat $CONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')")" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
-      echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" >> $CONFIGFILE
-      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $CONFIGFILE
-    elif [[ -n "$(cat $CONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')")" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
-      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $CONFIGFILE
-    elif [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" == "CUSTOMLOGPATH=" ]] &>/dev/null;then
+    if [[ -z "$(grep -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" ${CONFIGFILE})" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
+      echo -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" >> $CONFIGFILE
+      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')"/" $CONFIGFILE
+    elif [[ -n "$(grep -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" ${CONFIGFILE})" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
+      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')"/" $CONFIGFILE
+    elif [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" == "CUSTOMLOGPATH=" ]] &>/dev/null;then
       [[ -n "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$CONFIGFILE")" ]] &>/dev/null && sed -i '/CUSTOMLOGPATH=/d' $CONFIGFILE
-      echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')" >> $CONFIGFILE
+      echo -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')" >> $CONFIGFILE
     fi
   done
   if [[ "$RESTARTREQUIRED" == "1" ]] &>/dev/null;then
@@ -2696,7 +2696,7 @@ for WANPREFIX in ${WANPREFIXES};do
 
   # Check WAN Routing Table for Default Routes
   logger -p 6 -t "$ALIAS" "Debug - Checking ${WANPREFIX} for Default Route in $TABLE"
-  if [[ -z "$(ip route list default table "$TABLE" | awk '{print $3" "$5}' | grep -w "$GATEWAY $GWIFNAME")" ]] &>/dev/null;then
+  if [[ -z "$(ip route list default table "$TABLE" | awk '/'${GATEWAY}'/ && /'${GWIFNAME}'/ {print}')" ]] &>/dev/null;then
    [[ -n "$(ip route list default table $TABLE)" ]] &>/dev/null && ip route del default table $TABLE
      logger -p 5 -t "$ALIAS" "Check Routing Table - Adding default route for ${WANPREFIX} Routing Table via $GATEWAY dev $GWIFNAME"
      ip route add default via $GATEWAY dev $GWIFNAME table $TABLE \
@@ -2947,7 +2947,7 @@ for WANPREFIX in ${WANPREFIXES};do
       if [[ "$OVPNSPLITTUNNEL" == "0" ]] &>/dev/null;then
         # Create IP Rules for OVPN Remote Addresses
           for REMOTEADDRESS in ${REMOTEADDRESSES};do
-            REMOTEIP="$(nslookup $REMOTEADDRESS | awk '(NR>2) && /^Address/ {print $3}' | awk '!/:/')"
+            REMOTEIP="$(nslookup $REMOTEADDRESS 2>/dev/null | awk '(NR>2)' | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
             logger -p 6 -t "$ALIAS" "Debug - OVPN Remote Address: $REMOTEADDRESS"
             if [[ -n "$REMOTEIP" ]] &>/dev/null;then
               logger -p 6 -t "$ALIAS" "Debug - Remote IP Address: $REMOTEIP"
@@ -2986,7 +2986,7 @@ for WANPREFIX in ${WANPREFIXES};do
         # Create IP Rules for OVPN Remote Addresses
         for REMOTEADDRESS in ${REMOTEADDRESSES};do
           logger -p 6 -t "$ALIAS" "Debug - OVPN Remote Address: $REMOTEADDRESS"
-          REMOTEIP="$(nslookup $REMOTEADDRESS | awk '(NR>2) && /^Address/ {print $3}' | awk '!/:/')"
+          REMOTEIP="$(nslookup $REMOTEADDRESS 2>/dev/null | awk '(NR>2)' | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
           if [[ -n "$REMOTEIP" ]] &>/dev/null;then
             logger -p 6 -t "$ALIAS" "Debug - Remote IP Address: $REMOTEIP"
             if [[ -n "$(ip rule list from all to $REMOTEIP lookup $TABLE priority $OVPNWANPRIORITY)" ]] &>/dev/null;then
@@ -4044,7 +4044,7 @@ restartwan0pid="$!"
 
 # Set Timeout for WAN interface to restart to a max of 30 seconds and while WAN Interface is State 6
 restartwan0timeout="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
-while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan0timeout" ]] &>/dev/null && [[ -n "$(ps | awk '{print $1}' | grep -o "$restartwan0pid")" ]] &>/dev/null;do
+while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan0timeout" ]] &>/dev/null && [[ -n "$(ps | awk '/^'${restartwan0pid}'/ {print $1}')" ]] &>/dev/null;do
   wait $restartwan0pid
   wan0state="$(nvram get "$WAN0"_state_t & nvramcheck)"
   if [[ "$wan0state" == "0" ]] &>/dev/null || [[ "$wan0state" == "4" ]] &>/dev/null || [[ "$wan0state" == "6" ]] &>/dev/null;then
@@ -4115,7 +4115,7 @@ restartwan1pid="$!"
 
 # Set Timeout for WAN interface to restart to a max of 30 seconds and while WAN Interface is State 6
 restartwan1timeout="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
-while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan1timeout" ]] &>/dev/null && [[ -n "$(ps | awk '{print $1}' | grep -o "$restartwan1pid")" ]] &>/dev/null;do
+while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan1timeout" ]] &>/dev/null && [[ -n "$(ps | awk '/^'${restartwan1pid}'/ {print $1}')" ]] &>/dev/null;do
   wait $restartwan1pid
   wan1state="$(nvram get "$WAN1"_state_t & nvramcheck)"
   if [[ "$wan1state" == "0" ]] &>/dev/null || [[ "$wan1state" == "4" ]] &>/dev/null || [[ "$wan1state" == "6" ]] &>/dev/null;then
@@ -5070,7 +5070,7 @@ fi
 SWITCHTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
 [[ "$SWITCHCOMPLETE" != "0" ]] &>/dev/null && SWITCHCOMPLETE="0"
 until { [[ "$(nvram get ${INACTIVEWAN}_primary & nvramcheck)" == "0" ]] &>/dev/null && [[ "$(nvram get ${ACTIVEWAN}_primary & nvramcheck)" == "1" ]] &>/dev/null && [[ "$SWITCHCOMPLETE" == "1" ]] &>/dev/null ;} \
-&& { [[ "$(echo $(ip route show default | awk '{print $3}'))" == "$(nvram get ${ACTIVEWAN}_gateway & nvramcheck)" ]] &>/dev/null && [[ "$(echo $(ip route show default | awk '{print $5}'))" == "$(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)" ]] &>/dev/null ;} \
+&& { [[ "$(ip route show default | awk '{print $3}')" == "$(nvram get ${ACTIVEWAN}_gateway & nvramcheck)" ]] &>/dev/null && [[ "$(ip route show default | awk '{print $5}')" == "$(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)" ]] &>/dev/null ;} \
 && { [[ "$(nvram get ${ACTIVEWAN}_ipaddr & nvramcheck)" == "$(nvram get wan_ipaddr & nvramcheck)" ]] &>/dev/null && [[ "$(nvram get ${ACTIVEWAN}_gateway & nvramcheck)" == "$(nvram get wan_gateway & nvramcheck)" ]] &>/dev/null && [[ "$(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)" == "$(nvram get wan_gw_ifname & nvramcheck)" ]] &>/dev/null ;};do
   # Check for Timeout
   if [[ "$SWITCHTIMEOUT" -gt "$(awk -F "." '{print $1}' "/proc/uptime")" ]] &>/dev/null;then
@@ -5243,7 +5243,7 @@ for WANPREFIX in ${WANPREFIXES};do
           && logger -p 4 -st "$ALIAS" "DNS Switch - Updated WAN DNS1 Server in NVRAM: $DNS1" \
           || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to update WAN DNS1 Server in NVRAM: $DNS1"
         fi
-        if [[ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$DNS1")" ]] &>/dev/null;then
+        if [[ -z "$(awk -F " " '/^nameserver '${DNS1}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
           logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS1 Server: $DNS1"
           sed -i '1i nameserver '$DNS1'' $DNSRESOLVFILE \
           && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS1 Server: $DNS1" \
@@ -5258,7 +5258,7 @@ for WANPREFIX in ${WANPREFIXES};do
           && logger -p 4 -st "$ALIAS" "DNS Switch - Updated WAN DNS2 Server in NVRAM: $DNS2" \
           || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to update WAN DNS2 Server in NVRAM: $DNS2"
         fi
-        if [[ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$DNS2")" ]] &>/dev/null;then
+        if [[ -z "$(awk -F " " '/^nameserver '${DNS2}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
           logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS2 Server: $DNS2"
           sed -i '2i nameserver '$DNS2'' $DNSRESOLVFILE \
           && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS2 Server: $DNS2" \
@@ -5276,7 +5276,7 @@ for WANPREFIX in ${WANPREFIXES};do
         || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to update WAN DNS Servers in NVRAM: $DNS"
       fi
       # Change Automatic DNS1 Server
-      if [[ -n "$AUTODNS1" ]] &>/dev/null && [[ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS1")" ]] &>/dev/null;then
+      if [[ -n "$AUTODNS1" ]] &>/dev/null && [[ -z "$(awk -F " " '/^nameserver '${AUTODNS1}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
         logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS1 Server: $AUTODNS1"
         sed -i '1i nameserver '$AUTODNS1'' $DNSRESOLVFILE \
         && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS1 Server: $AUTODNS1" \
@@ -5284,14 +5284,14 @@ for WANPREFIX in ${WANPREFIXES};do
 
       fi
       # Change Automatic DNS2 Server
-      if [[ -n "$AUTODNS2" ]] &>/dev/null && [[ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS2")" ]] &>/dev/null;then
+      if [[ -n "$AUTODNS2" ]] &>/dev/null && [[ -z "$(awk -F " " '/^nameserver '${AUTODNS2}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
         logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS2 Server: $AUTODNS2"
         sed -i '2i nameserver '$AUTODNS2'' $DNSRESOLVFILE \
         && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS2 Server: $AUTODNS2" \
         || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to add ${WANPREFIX} DNS2 Server: $AUTODNS2"
       fi
       # Change Automatic DNS3 Server
-      if [[ -n "$AUTODNS3" ]] &>/dev/null && [[ -z "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS3")" ]] &>/dev/null;then
+      if [[ -n "$AUTODNS3" ]] &>/dev/null && [[ -z "$(awk -F " " '/^nameserver '${AUTODNS3}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
         logger -p 5 -st "$ALIAS" "DNS Switch - Adding ${WANPREFIX} DNS3 Server: $AUTODNS3"
         sed -i '3i nameserver '$AUTODNS3'' $DNSRESOLVFILE \
         && logger -p 4 -st "$ALIAS" "DNS Switch - Added ${WANPREFIX} DNS3 Server: $AUTODNS3" \
@@ -5303,14 +5303,14 @@ for WANPREFIX in ${WANPREFIXES};do
     # Remove Manual DNS Settings
     if [[ "$DNSENABLE" == "0" ]] &>/dev/null;then
       # Remove Manual DNS1 Server
-      if [[ -n "$DNS1" ]] &>/dev/null && [[ -n "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$DNS1")" ]] &>/dev/null;then
+      if [[ -n "$DNS1" ]] &>/dev/null && [[ -n "$(awk -F " " '/^nameserver '${DNS1}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
         logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS1 Server: $DNS1"
         sed -i '/nameserver '$DNS1'/d' $DNSRESOLVFILE \
         && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS1 Server: $DNS1" \
         || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to remove ${WANPREFIX} DNS1 Server: $DNS1"
       fi
       # Change Manual DNS2 Server
-      if [[ -n "$DNS2" ]] &>/dev/null && [[ -n "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$DNS2")" ]] &>/dev/null;then
+      if [[ -n "$DNS2" ]] &>/dev/null && [[ -n "$(awk -F " " '/^nameserver '${DNS2}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
         logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS2 Server: $DNS2"
         sed -i '/nameserver '$DNS2'/d' $DNSRESOLVFILE \
         && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS2 Server: $DNS2" \
@@ -5320,21 +5320,21 @@ for WANPREFIX in ${WANPREFIXES};do
     # Remove Automatic ISP DNS Settings
     elif [[ "$DNSENABLE" == "1" ]] &>/dev/null;then
       # Remove Automatic DNS1 Server
-      if [[ -n "$AUTODNS1" ]] &>/dev/null && [[ -n "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS1")" ]] &>/dev/null;then
+      if [[ -n "$AUTODNS1" ]] &>/dev/null && [[ -n "$(awk -F " " '/^nameserver '${AUTODNS1}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
         logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS1 Server: $AUTODNS1"
         sed -i '/nameserver '$AUTODNS1'/d' $DNSRESOLVFILE \
         && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS1 Server: $AUTODNS1" \
         || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to remove ${WANPREFIX} DNS1 Server: $AUTODNS1"
       fi
       # Remove Automatic DNS2 Server
-      if [[ -n "$AUTODNS2" ]] &>/dev/null && [[ -n "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS2")" ]] &>/dev/null;then
+      if [[ -n "$AUTODNS2" ]] &>/dev/null && [[ -n "$(awk -F " " '/^nameserver '${AUTODNS2}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
         logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS2 Server: $AUTODNS2"
         sed -i '/nameserver '$AUTODNS2'/d' $DNSRESOLVFILE \
         && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS2 Server: $AUTODNS2" \
         || logger -p 2 -st "$ALIAS" "DNS Switch - ***Error*** Unable to remove ${WANPREFIX} DNS2 Server: $AUTODNS2"
       fi
       # Remove Automatic DNS3 Server
-      if [[ -n "$AUTODNS3" ]] &>/dev/null && [[ -n "$(awk -F " " '{print $2}' "$DNSRESOLVFILE" | grep -w "$AUTODNS3")" ]] &>/dev/null;then
+      if [[ -n "$AUTODNS3" ]] &>/dev/null && [[ -n "$(awk -F " " '/^nameserver '${AUTODNS3}'/ {print $2}' "$DNSRESOLVFILE")" ]] &>/dev/null;then
         logger -p 5 -st "$ALIAS" "DNS Switch - Removing ${WANPREFIX} DNS2 Server: $AUTODNS3"
         sed -i '/nameserver '$AUTODNS3'/d' $DNSRESOLVFILE \
         && logger -p 4 -st "$ALIAS" "DNS Switch - Removed ${WANPREFIX} DNS3 Server: $AUTODNS3" \
@@ -5483,7 +5483,7 @@ OVPNSERVERS="
   if [[ -n "${SERVICERESTARTPIDS+x}" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Service Restart - Waiting on services to finish restarting"
     for SERVICERESTARTPID in ${SERVICERESTARTPIDS};do
-      if [[ -z "$(ps | awk '{print $1}' | grep -o "${SERVICERESTARTPID}")" ]] &>/dev/null;then
+      if [[ -z "$(ps | awk '/^'${SERVICERESTARTPID}'/ {print $1}')" ]] &>/dev/null;then
         logger -p 6 -t "$ALIAS" "Debug - PID: ${SERVICERESTARTPID} completed"
         continue
       else
@@ -5633,7 +5633,7 @@ if [[ -f "$AIPROTECTION_EMAILCONFIG" ]] &>/dev/null || [[ -f "$AMTM_EMAILCONFIG"
     logger -p 6 -t "$ALIAS" "Debug - LAN Hostname: $LANHOSTNAME"
     echo "Hostname: $LANHOSTNAME" >>"$TMPEMAILFILE"
   fi
-  echo "Event Time: $(date | awk '{print $2,$3,$4}')" >>"$TMPEMAILFILE"
+  echo "Event Time: $(date)" >>"$TMPEMAILFILE"
 
   # Determine Parameters to send based on Dual WAN Mode
   logger -p 6 -t "$ALIAS" "Debug - Selecting Parameters based on Dual WAN Mode: $WANSMODE"
@@ -5743,6 +5743,7 @@ if [[ -f "$AIPROTECTION_EMAILCONFIG" ]] &>/dev/null || [[ -f "$AMTM_EMAILCONFIG"
 		--mail-from "$FROM_ADDRESS" --mail-rcpt "$TO_ADDRESS" \
 		--upload-file "$TMPEMAILFILE" \
 		--ssl-reqd \
+          --crlf \
 		--user "$USERNAME:$(/usr/sbin/openssl aes-256-cbc $emailPwEnc -d -in "$AMTM_EMAIL_DIR/emailpw.enc" -pass pass:ditbabot,isoi)" $SSL_FLAG 2>/dev/null) \
 		&& $(rm -f "$TMPEMAILFILE" && logger -p 4 -st "$ALIAS" "Email Notification - Email Notification via amtm Sent") && e="$(($e+1))" \
         || $(rm -f "$TMPEMAILFILE" && logger -p 2 -st "$ALIAS" "Email Notification - Email Notification via amtm Failed")
@@ -6050,7 +6051,7 @@ while true &>/dev/null;do
     printf "${BOLD}${UNDERLINE}Active DNS Servers:${NOCOLOR}\n"
     printf "${LIGHTGRAY}DNS is being managed by AdGuard${NOCOLOR}\n"
   else
-    ACTIVEDNSSERVERS="$(cat $DNSRESOLVFILE | grep -v "127.0.1.1" | awk '{print $2}')"
+    ACTIVEDNSSERVERS="$(awk '!/^nameserver 127.0.1.1/ {print $2}' ${DNSRESOLVFILE})"
     if [[ -n "$ACTIVEDNSSERVERS" ]] &>/dev/null || [[ "$DEVMODE" == "1" ]] &>/dev/null;then
       printf "${BOLD}${UNDERLINE}Active DNS Servers:${NOCOLOR}\n"
       for ACTIVEDNSSERVER in ${ACTIVEDNSSERVERS};do
