@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/12/2023
-# Version: v2.0.7-beta2
+# Date: 09/14/2023
+# Version: v2.0.7-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.7-beta2"
+VERSION="v2.0.7-beta3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -865,7 +865,7 @@ fi
 logger -p 6 -t "$ALIAS" "Debug - Checking for PID File: $PIDFILE"
 if [[ -f "$PIDFILE" ]] &>/dev/null;then
   logger -p 5 -t "$ALIAS" "Cleanup - Deleting $PIDFILE"
-  rm -f $$PIDFILE \
+  rm -f $PIDFILE \
   && logger -p 4 -t "$ALIAS" "Cleanup - Deleted $PIDFILE" \
   || logger -p 2 -t "$ALIAS" "Cleanup - ***Error*** Unable to delete $PIDFILE"
 fi
@@ -894,8 +894,8 @@ killscript ()
 {
 logger -p 6 -t "$ALIAS" "Debug - Function: killscript"
 
-if [[ "${mode}" == "restart" ]] &>/dev/null || [[ "${mode}" == "update" ]] &>/dev/null;then
-  while [[ "${mode}" == "restart" ]] &>/dev/null;do
+if [[ "${mode}" == "restart" ]] &>/dev/null || [[ "${mode}" == "update" ]] &>/dev/null || [[ "${mode}" == "menu" ]] &>/dev/null || [[ "${mode}" == "status" ]] &>/dev/null &>/dev/null;then
+  while [[ "${mode}" == "restart" ]] &>/dev/null || [[ "${mode}" == "menu" ]] &>/dev/null || [[ "${mode}" == "status" ]] &>/dev/null;do
     read -p "Are you sure you want to restart WAN Failover? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
     case $yn in
       [Yy]* ) break;;
@@ -961,7 +961,7 @@ if [[ "${mode}" == "restart" ]] &>/dev/null || [[ "${mode}" == "update" ]] &>/de
         done
       else
         for PID in ${PIDS};do
-          [[ -n "$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}' | grep -o "${PID}")" ]] \
+          [[ -n "$(ps | awk '$1 == "'${PID}'" {print}')" ]] \
           && logger -p 1 -st "$ALIAS" "Restart - Killing $ALIAS Process ID: ${PID}" \
             && { kill -9 ${PID} \
             && { PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 1 -st "$ALIAS" "Restart - Killed $ALIAS Process ID: ${PID}" && continue ;} \
@@ -1030,7 +1030,11 @@ if [[ "${mode}" == "restart" ]] &>/dev/null || [[ "${mode}" == "update" ]] &>/de
     if tty &>/dev/null;then
       DISPLAYPIDS="${PIDS//[$'\t\r\n']/','}"
       printf '\033[K%b' "${BOLD}${LIGHTCYAN}Successfully Restarted $ALIAS Process ID(s): ${DISPLAYPIDS}${NOCOLOR}\n"
-      sleep 10
+      if [[ "$mode" == "status" ]] &>/dev/null || [[ "$mode" == "menu" ]] &>/dev/null;then
+        sleep 1
+      else
+        sleep 10
+      fi
       printf '\033[K'
       unset DISPLAYPIDS
     fi
@@ -3626,8 +3630,8 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
         WAN0GWMAC=""
       elif [[ -n "$(nvram get wan0_gw_mac & nvramcheck)" ]] &>/dev/null;then
         WAN0GWMAC="$(nvram get wan0_gw_mac & nvramcheck)"
-      elif [[ -n "$WAN0GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN0GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
-        WAN0GWMAC="$(arp -i $WAN0GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
+      elif [[ -n "$WAN0GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN0GWIFNAME | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
+        WAN0GWMAC="$(arp -i $WAN0GWIFNAME | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper($0)}')"
       else
         WAN0GWMAC=""
       fi
@@ -3639,8 +3643,8 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       elif [[ -n "$(nvram get wan0_gw_mac & nvramcheck)" ]] &>/dev/null;then
         WAN0GWMAC="$(nvram get wan0_gw_mac & nvramcheck)"
         { [[ -z "$WAN0GWMAC" ]] &>/dev/null && [[ -n "$zWAN0GWMAC" ]] &>/dev/null ;} && WAN0GWMAC="$zWAN0GWMAC"
-      elif [[ -n "$WAN0GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN0GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
-        WAN0GWMAC="$(arp -i $WAN0GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
+      elif [[ -n "$WAN0GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN0GWIFNAME | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
+        WAN0GWMAC="$(arp -i $WAN0GWIFNAME | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper($0)}')"
         { [[ -z "$WAN0GWMAC" ]] &>/dev/null && [[ -n "$zWAN0GWMAC" ]] &>/dev/null ;} && WAN0GWMAC="$zWAN0GWMAC"
       else
         WAN0GWMAC=""
@@ -3812,8 +3816,8 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
         WAN1GWMAC=""
       elif [[ -n "$(nvram get wan1_gw_mac & nvramcheck)" ]] &>/dev/null;then
         WAN1GWMAC="$(nvram get wan1_gw_mac & nvramcheck)"
-      elif [[ -n "$WAN1GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN1GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
-        WAN1GWMAC="$(arp -i $WAN1GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
+      elif [[ -n "$WAN1GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN1GWIFNAME | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
+        WAN1GWMAC="$(arp -i $WAN1GWIFNAME | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper($0)}')"
       else
         WAN1GWMAC=""
       fi
@@ -3825,8 +3829,8 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
       elif [[ -n "$(nvram get wan1_gw_mac & nvramcheck)" ]] &>/dev/null;then
         WAN1GWMAC="$(nvram get wan1_gw_mac & nvramcheck)"
         { [[ -z "$WAN1GWMAC" ]] &>/dev/null && [[ -n "$zWAN1GWMAC" ]] &>/dev/null ;} && WAN1GWMAC="$zWAN1GWMAC"
-      elif [[ -n "$WAN1GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN1GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
-        WAN1GWMAC="$(arp -i $WAN1GWIFNAME | grep -m1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")"
+      elif [[ -n "$WAN1GWIFNAME" ]] &>/dev/null && [[ -n "$(arp -i $WAN1GWIFNAME | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
+        WAN1GWMAC="$(arp -i $WAN1GWIFNAME | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper($0)}')"
         { [[ -z "$WAN1GWMAC" ]] &>/dev/null && [[ -n "$zWAN1GWMAC" ]] &>/dev/null ;} && WAN1GWMAC="$zWAN1GWMAC"
       else
         WAN1GWMAC=""
@@ -5815,6 +5819,13 @@ while true &>/dev/null;do
     [[ -n "$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}' &)" ]] &>/dev/null && RUNNING="1" || RUNNING="0"
   fi
 
+  # Identify Parent PID
+  if [[ -s "$PIDFILE" ]] &>/dev/null;then
+    pid="$(cat ${PIDFILE})"
+  else
+    pid="N/A"
+  fi
+
   # Get Current Epoch Time
   currenttime="$(date +%s)"
 
@@ -6017,6 +6028,7 @@ while true &>/dev/null;do
   echo -e "${BOLD}WAN Failover Version: ${NOCOLOR}${DISPLAYVERSION}"
   [[ "$DEVMODE" == "1" ]] &>/dev/null && echo -e "${BOLD}Checksum: ${NOCOLOR}${LIGHTGRAY}${CHECKSUM}${NOCOLOR}"
   echo -e "${BOLD}Status: ${NOCOLOR}${DISPLAYSTATUS}"
+  [[ "$DEVMODE" == "1" ]] &>/dev/null && echo -e "${BOLD}PID: ${NOCOLOR}${LIGHTGRAY}${pid}${NOCOLOR}"
   echo -e "${BOLD}Last Update: ${NOCOLOR}${NOCOLOR}$(date)${NOCOLOR}"
   printf "\n"
   echo -e "${BOLD}${UNDERLINE}WAN0:${NOCOLOR}"
@@ -6088,6 +6100,7 @@ while true &>/dev/null;do
   fi
 
   printf "\n  (r)  refresh     Refresh WAN Failover Status"
+  printf "\n  (x)  restart     Restart WAN Failover"
   printf "\n  (e)  exit        Exit WAN Failover Status\n"
   printf "\nMake a selection: "
   )"
@@ -6101,6 +6114,7 @@ while true &>/dev/null;do
   else
     case $input in
       'r'|'R'|'refresh' ) continue;;
+      'x'|'X'|'restart' ) unset input && killscript;;
       'e'|'E'|'exit'|'menu' )
       if [[ "$mode" == "menu" ]] &>/dev/null;then
         clear
@@ -6138,19 +6152,19 @@ nvramcheck ()
 {
 # Return if CHECKNVRAM is Disabled
 if [[ -z "${CHECKNVRAM+x}" ]] || [[ "$CHECKNVRAM" == "0" ]] &>/dev/null;then
-    return
-fi
-
+  return
 # Check if Background Process for NVRAM Call is still running
-lastpid="$!"
-if [[ -z "$(ps | grep -v "grep" | awk '{print $1}' | grep -o "$lastpid")" ]] &>/dev/null;then
-  unset lastpid
-  return
-elif [[ -n "$(ps | grep -v "grep" | awk '{print $1}' | grep -o "$lastpid")" ]] &>/dev/null;then
-  kill -9 $lastpid 2>/dev/null \
-  && logger -p 2 -t "$ALIAS" "NVRAM Check - ***NVRAM Check Failure Detected***"
-  unset lastpid
-  return
+else
+  lastpid="$!"
+  if [[ -z "$(ps | awk '$1 == "'${lastpid}'" {print}')" ]] &>/dev/null;then
+    unset lastpid
+    return
+  elif [[ -n "$(ps | awk '$1 == "'${lastpid}'" {print}')" ]] &>/dev/null;then
+    kill -9 $lastpid &>/dev/null \
+    && logger -p 2 -t "$ALIAS" "NVRAM Check - ***NVRAM Check Failure Detected***"
+    unset lastpid
+    return
+  fi
 fi
 
 return

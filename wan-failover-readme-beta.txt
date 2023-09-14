@@ -92,17 +92,21 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - FOBLOCKIPV6: This defines if WAN Failover will to block IPv6 in Failover Mode from traversing Secondary WAN.  Default: Disabled
 
 Release Notes:
-v2.0.7-beta2 - 09/12/2023
+v2.0.7-beta3 - 09/14/2023
 Enhancements:
 - Added metric values to IP Routes created for target IPs.
 - Added additional debug logging to WAN Switch function.
 - Added 386.12 to supported firmware list.
 - Minor optimizations to increase performance.
 - Added CRLF argument to email.
+- Added restart option to Status Console.
+- Major performance optimization for NVRAM Check function.
+- Parent PID is now displayed on Status Console with Dev Mode enabled.
 
 Fixes:
 - Minor visual bug when WAN Failover kill command is being executed.
 - WAN Failover will go to disabled state now if DNS Query or Failback are checked under Dual WAN Settings.
+- Fixed issue causing PID File not to be deleted under /var/run/wan-failover.pid
 
 Install:
 - Warnings for DNS Query or Failback being enabled will now alert and log during installation
