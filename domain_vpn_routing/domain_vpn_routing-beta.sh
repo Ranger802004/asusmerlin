@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/12/2023
-# Version: v2.0.1-beta1
+# Date: 09/19/2023
+# Version: v2.0.1-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.0.1-beta1"
+VERSION="v2.0.1-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -150,6 +150,11 @@ menu ()
 
         # Set Mode back to Menu if Changed
         [[ "$mode" != "menu" ]] &>/dev/null && mode="menu"
+
+        # Override Process Priority back to Normal if changed for other functions
+        if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
+          renice -n 0 $$
+        fi
 
 	clear
         # Buffer Menu
@@ -583,14 +588,30 @@ logger -p 6 -t "$ALIAS" "Debug - Reading $GLOBALCONFIGFILE"
 . $GLOBALCONFIGFILE
 
 # Check Configuration File for Missing Settings and Set Default if Missing
-[[ -z "${globalconfigsync+x}" ]] &>/dev/null && globalconfigsync="0"
-
+if [[ -z "${globalconfigsync+x}" ]] &>/dev/null;then
+  globalconfigsync="0"
+fi
 if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Checking for missing global configuration options"
+
+  # DEVMODE
   if [[ -z "$(sed -n '/\bDEVMODE=\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating DEVMODE Default: Disabled"
     echo -e "DEVMODE=0" >> $GLOBALCONFIGFILE
   fi
+
+  # CHECKNVRAM
+  if [[ -z "$(sed -n '/\bCHECKNVRAM=\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating CHECKNVRAM Default: Disabled"
+    echo -e "CHECKNVRAM=0" >> $GLOBALCONFIGFILE
+  fi
+
+  # PROCESSPRIORITY
+  if [[ -z "$(sed -n '/\bPROCESSPRIORITY\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating PROCESSPRIORITY Default: Normal"
+    echo -e "PROCESSPRIORITY=0" >> $GLOBALCONFIGFILE
+  fi
+
   [[ "$globalconfigsync" == "0" ]] &>/dev/null && globalconfigsync="1"
 fi
 
@@ -742,7 +763,10 @@ fi
 # Load Config Menu
 clear
 printf "\n  ${BOLD}Global Settings:${NOCOLOR}\n"
-printf "  (1) Configure Dev Mode              Dev Mode: " && { [[ "$DEVMODE" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "Disabled" ;} && printf "\n"
+printf "  (1) Configure Dev Mode              Dev Mode: " && { [[ "$DEVMODE" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (2) Configure NVRAM Checks          NVRAM Checks: " && { [[ "$CHECKNVRAM" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (3) Configure Process Priority      Process Priority: " && { { [[ "$PROCESSPRIORITY" == "0" ]] && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-20" ]] && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-10" ]] && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "10" ]] && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "20" ]] && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}$PROCESSPRIORITY${NOCOLOR}" ;} && printf "\n"
+
 
 if [[ "$mode" == "menu" ]] &>/dev/null;then
   printf "\n  (r)  return    Return to Main Menu"
@@ -768,6 +792,32 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} DEVMODE=|$SETDEVMODE"
   ;;
+  '2')      # CHECKNVRAM
+  while true &>/dev/null;do
+    read -p "Do you want to enable NVRAM Checks? This defines if the Script is set to perform NVRAM checks before peforming key functions: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETCHECKNVRAM="1"; break;;
+      [Nn]* ) SETCHECKNVRAM="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} CHECKNVRAM=|$SETCHECKNVRAM"
+  ;;
+  '3')      # PROCESSPRIORITY
+  while true &>/dev/null;do  
+    read -p "Configure Process Priority - 4 for Real Time Priority, 3 for High Priority, 2 for Low Priority, 1 for Lowest Priority, 0 for Normal Priority: " value
+    case $value in
+      4 ) SETPROCESSPRIORITY="-20"; break;;
+      3 ) SETPROCESSPRIORITY="-10"; break;;
+      2 ) SETPROCESSPRIORITY="10"; break;;
+      1 ) SETPROCESSPRIORITY="20"; break;;
+      0 ) SETPROCESSPRIORITY="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Select a Value between 4 and 0***${NOCOLOR}"
+    esac
+  done
+NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
+  ;;
+
   'r'|'R'|'menu'|'return'|'Return' )
   clear
   menu
@@ -787,16 +837,17 @@ esac
 # Configure Changed Setting in Configuration File
 if [[ -n "$NEWVARIABLES" ]] &>/dev/null;then
   for NEWVARIABLE in ${NEWVARIABLES};do
-    if [[ -z "$(cat $GLOBALCONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')")" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
-      echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" >> $GLOBALCONFIGFILE
-      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $GLOBALCONFIGFILE
-    elif [[ -n "$(cat $GLOBALCONFIGFILE | grep -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')")" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
-      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F"|" '{print $2}')"/" $GLOBALCONFIGFILE
-    elif [[ "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')" == "CUSTOMLOGPATH=" ]] &>/dev/null;then
-      [[ -n "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null && sed -i '/CUSTOMLOGPATH=/d' $GLOBALCONFIGFILE
-      echo -e "$(echo ${NEWVARIABLE} | awk -F"|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')" >> $GLOBALCONFIGFILE
+    if [[ -z "$(grep -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" ${GLOBALCONFIGFILE})" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
+      echo -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" >> ${GLOBALCONFIGFILE}
+      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')"/" ${GLOBALCONFIGFILE}
+    elif [[ -n "$(grep -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" ${GLOBALCONFIGFILE})" ]] &>/dev/null && [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" != "CUSTOMLOGPATH=" ]] &>/dev/null;then
+      sed -i -e "s/\(^"$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')"\).*/\1"$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')"/" ${GLOBALCONFIGFILE}
+    elif [[ "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')" == "CUSTOMLOGPATH=" ]] &>/dev/null;then
+      [[ -n "$(sed -n '/\bCUSTOMLOGPATH\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null && sed -i '/CUSTOMLOGPATH=/d' ${GLOBALCONFIGFILE}
+      echo -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')" >> ${GLOBALCONFIGFILE}
     fi
   done
+
   if [[ "$RESTARTREQUIRED" == "1" ]] &>/dev/null;then
     echo -e "${RED}***This change will require Domain VPN Routing to restart to take effect***${NOCOLOR}"
     PressEnter
@@ -1193,6 +1244,11 @@ INTERFACES=""
       esac
   done
 
+  # Set Process Priority
+  if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
+    renice -n ${PROCESSPRIORITY} $$
+  fi
+
   # Editing Policy in Config File
   echo -e "${LIGHTCYAN}Edit Policy - Modifying $EDITPOLICY in ${CONFIGFILE}...${NOCOLOR}"
   logger -t "$ALIAS" "Edit Policy - Modifying $EDITPOLICY in $CONFIGFILE"
@@ -1456,6 +1512,11 @@ echo -e "Select a Policy to delete $DOMAIN: \r\n$POLICIES"
     done
   done
 
+# Set Process Priority
+if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
+  renice -n ${PROCESSPRIORITY} $$
+fi
+
 if [[ -n "$DOMAIN" ]] &>/dev/null;then
   if [[ -n "$(grep -w "$DOMAIN" "${POLICYDIR}/policy_${POLICY}_domainlist")" ]] &>/dev/null;then
     # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
@@ -1633,8 +1694,12 @@ querypolicy ()
 {
 checkalias || return
 
-renice -n 20 $$
+# Set Process Priority
+if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
+  renice -n ${PROCESSPRIORITY} $$
+fi
 
+# Query Policies
 if [[ "$POLICY" == "all" ]] &>/dev/null;then
   QUERYPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
   if [[ -z "$QUERYPOLICIES" ]] &>/dev/null;then
@@ -2153,16 +2218,21 @@ return
 # Check if NVRAM Background Process is Stuck if CHECKNVRAM is Enabled
 nvramcheck ()
 {
+# Return if CHECKNVRAM is Disabled
+if [[ -z "${CHECKNVRAM+x}" ]] || [[ "$CHECKNVRAM" == "0" ]] &>/dev/null;then
+  return
 # Check if Background Process for NVRAM Call is still running
-lastpid="$!"
-if [[ -z "$(ps | grep -v "grep" | awk '{print $1}' | grep -o "$lastpid")" ]] &>/dev/null;then
-  unset lastpid
-  return
-elif [[ -n "$(ps | grep -v "grep" | awk '{print $1}' | grep -o "$lastpid")" ]] &>/dev/null;then
-  kill -9 $lastpid 2>/dev/null \
-  && logger -p 2 -t "$ALIAS" "NVRAM Check - ***NVRAM Check Failure Detected***"
-  unset lastpid
-  return
+else
+  lastpid="$!"
+  if [[ -z "$(ps | awk '$1 == "'${lastpid}'" {print}')" ]] &>/dev/null;then
+    unset lastpid
+    return
+  elif [[ -n "$(ps | awk '$1 == "'${lastpid}'" {print}')" ]] &>/dev/null;then
+    kill -9 $lastpid &>/dev/null \
+    && logger -p 2 -t "$ALIAS" "NVRAM Check - ***NVRAM Check Failure Detected***"
+    unset lastpid
+    return
+  fi
 fi
 
 return
