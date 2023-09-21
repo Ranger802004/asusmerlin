@@ -5060,7 +5060,7 @@ until { [[ "$(nvram get ${INACTIVEWAN}_primary & nvramcheck)" == "0" ]] &>/dev/n
 && { [[ "$(ip route show default | awk '{print $3}')" == "$(nvram get ${ACTIVEWAN}_gateway & nvramcheck)" ]] &>/dev/null && [[ "$(ip route show default | awk '{print $5}')" == "$(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)" ]] &>/dev/null ;} \
 && { [[ "$(nvram get ${ACTIVEWAN}_ipaddr & nvramcheck)" == "$(nvram get wan_ipaddr & nvramcheck)" ]] &>/dev/null && [[ "$(nvram get ${ACTIVEWAN}_gateway & nvramcheck)" == "$(nvram get wan_gateway & nvramcheck)" ]] &>/dev/null && [[ "$(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)" == "$(nvram get wan_gw_ifname & nvramcheck)" ]] &>/dev/null ;};do
   # Check for Timeout
-  if [[ "$SWITCHTIMEOUT" -gt "$(awk -F "." '{print $1}' "/proc/uptime")" ]] &>/dev/null;then
+  if [[ "$SWITCHTIMEOUT" -lt "$(awk -F "." '{print $1}' "/proc/uptime")" ]] &>/dev/null;then
     [[ "$SWITCHCOMPLETE" != "1" ]] &>/dev/null && SWITCHCOMPLETE="1"
     break
   fi
