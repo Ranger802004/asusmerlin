@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/14/2023
-# Version: v2.0.7-beta3
+# Date: 09/21/2023
+# Version: v2.0.7-beta4
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -66,8 +66,6 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - WAN1TARGETRULEPRIORITY: This defines the IP Rule Priority for the WAN1 Target IP Address.  Default: 100
 - LBRULEPRIORITY: This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change. Default: 150
 - OVPNSPLITTUNNEL: This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode. Default: 1 (Enabled)
-- WAN0ROUTETABLE: This defines the Routing Table for WAN0, it is recommended to leave this default unless necessary to change. Default: 100
-- WAN1ROUTETABLE: This defines the Routing Table for WAN1, it is recommended to leave this default unless necessary to change. Default: 200
 - WAN0MARK: This defines the FWMark used to mark and match traffic for WAN0 in IPTables Rules. Default: 0x80000000
 - WAN1MARK: This defines the FWMark used to mark and match traffic for WAN1 in IPTables Rules. Default: 0x90000000
 - WAN0MASK: This defines the FWMask used to mark and match traffic for WAN0 in IPTables Rules. Default: 0xf0000000
@@ -92,7 +90,7 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - FOBLOCKIPV6: This defines if WAN Failover will to block IPv6 in Failover Mode from traversing Secondary WAN.  Default: Disabled
 
 Release Notes:
-v2.0.7-beta3 - 09/14/2023
+v2.0.7-beta4 - 09/21/2023
 Enhancements:
 - Added metric values to IP Routes created for target IPs.
 - Added additional debug logging to WAN Switch function.
@@ -102,14 +100,19 @@ Enhancements:
 - Added restart option to Status Console.
 - Major performance optimization for NVRAM Check function.
 - Parent PID is now displayed on Status Console with Dev Mode enabled.
+- Added error message if an invalid run argument is specified.
 
 Fixes:
 - Minor visual bug when WAN Failover kill command is being executed.
 - WAN Failover will go to disabled state now if DNS Query or Failback are checked under Dual WAN Settings.
 - Fixed issue causing PID File not to be deleted under /var/run/wan-failover.pid
+- Failover will now properly timeout when the 30 second timeout timer has been reached.
 
-Install:
+Installation:
 - Warnings for DNS Query or Failback being enabled will now alert and log during installation
+
+Deprecated:
+- WAN0 Route Table and WAN1 Route Table configuration options have been deprecated and are now pulled directly from the Route Table file.
 
 v2.0.6 - 8/25/2023
 Enhancements:
