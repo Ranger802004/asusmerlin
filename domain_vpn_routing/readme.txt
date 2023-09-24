@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 07/06/2023
-# Version: v2.0.0
+# Date: 09/24/2023
+# Version: v2.0.1
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -11,7 +11,7 @@ Requirements:
 - OpenVPN
 
 Installation Command:
-/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing.sh" -o "/jffs/scripts/domain_vpn_routing.sh" && chmod 755 /jffs/scripts/domain_vpn_routing.sh && sh /jffs/scripts/domain_vpn_routing.sh install
+/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing-beta.sh" -o "/jffs/scripts/domain_vpn_routing.sh" && chmod 755 /jffs/scripts/domain_vpn_routing.sh && sh /jffs/scripts/domain_vpn_routing.sh install
 
 Update Command:
 /jffs/scripts/domain_vpn_routing.sh update
@@ -19,20 +19,30 @@ Update Command:
 Uninstallation Command:
 /jffs/scripts/domain_vpn_routing.sh uninstall
 
+Accessing Menu:
+domain_vpn_routing
+
 Run Modes:
-- install - Install Domain VPN Routing and the configuration files necessary for it to run.
-- createpolicy - Create a new policy.
-- showpolicy - Show the policy specified or all policies. Use all as 2nd argument for All Policies.
-- querypolicy - Query domains from a policy or all policies and create IP Routes necessary. Use all as 2nd argument for All Policies.
-- adddomain - Add a domain to the policy specified.
-- editpolicy - Modify an existing policy.
-- update - Download and update to the latest version.
-- cron - Create the Cron Jobs to automate Query Policy functionality.
-- deletedomain - Delete a specified domain from a selected policy.
-- deletepolicy - Delete a specified policy or all policies. Use all as 2nd argument for All Policies.
-- deleteip - Delete a queried IP from a policy.
-- kill - Kill any instances of the script.
-- uninstall - Uninstall the configuration files necessary to stop the script from running.
+- Menu Mode: SSH User Interface for Domain VPN Routing, access by executing script without any arguments.
+- install: Install Domain VPN Routing and the configuration files necessary for it to run.
+- createpolicy: Create a new policy.
+- showpolicy: Show the policy specified or all policies. Use all as 2nd argument for All Policies.
+- querypolicy: Query domains from a policy or all policies and create IP Routes necessary. Use all as 2nd argument for All Policies.
+- adddomain: Add a domain to the policy specified.
+- editpolicy: Modify an existing policy.
+- update: Download and update to the latest version.
+- cron: Create the Cron Jobs to automate Query Policy functionality.
+- deletedomain: Delete a specified domain from a selected policy.
+- deletepolicy: Delete a specified policy or all policies. Use all as 2nd argument for All Policies.
+- deleteip: Delete a queried IP from a policy.
+- kill: Kill any instances of the script.
+- uninstall: Uninstall the configuration files necessary to stop the script from running.
+
+Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
+- DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
+- CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Disabled 
+- PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
+
 
 Creating a Policy:
 Step 1: Create a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh createpolicy
@@ -99,7 +109,20 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
-v2.0.0 - 07/26/2023
+v2.0.1 - 09/24/2023
+Enhancements:
+- Minor optimizations for performance
+- The error log will explicitly state if an IPv6 route already exists when trying to create routes.
+- Added NVRAM Checks and Process Priority configuration options to Configuration Menu.
+- Major performance optimization for NVRAM Check function.
+
+Fixes:
+- Corrected issue where update process was terminating its own process during update.
+- Corrected issue where IPv6 routes were attempting to be created when IPv6 Service is enabled but IPv6 wasn't available.
+- Fixed issue where Dual WAN properties were not being accepted as null in a Single WAN configuration.
+- Fixed issue where queried IPv6 addresses don't include complete prefix and cause an error when creating the route for them.
+
+v2.0.0 - 07/06/2023
 Enhancements:
 - SSH UI
 - Interfaces will now list the friendly name of the interface instead of the tunnel / physical interface name.
