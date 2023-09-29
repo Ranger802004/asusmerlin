@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/21/2023
-# Version: v2.0.7-beta4
+# Date: 09/29/2023
+# Version: v2.0.7
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -88,9 +88,10 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - STATUSCHECK: This defines the refresh interval for the WAN Failover Status Console.  Default: 30 Seconds
 - PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
 - FOBLOCKIPV6: This defines if WAN Failover will to block IPv6 in Failover Mode from traversing Secondary WAN.  Default: Disabled
+- FAILOVERTIMEOUT: This defines the failover timeout setting.  Default: 30 Seconds
 
 Release Notes:
-v2.0.7-beta4 - 09/21/2023
+v2.0.7 - 09/29/2023
 Enhancements:
 - Added metric values to IP Routes created for target IPs.
 - Added additional debug logging to WAN Switch function.
@@ -101,6 +102,7 @@ Enhancements:
 - Major performance optimization for NVRAM Check function.
 - Parent PID is now displayed on Status Console with Dev Mode enabled.
 - Added error message if an invalid run argument is specified.
+- Added Failover timeout setting.  Default is 30 seconds
 
 Fixes:
 - Minor visual bug when WAN Failover kill command is being executed.
@@ -108,7 +110,7 @@ Fixes:
 - Fixed issue causing PID File not to be deleted under /var/run/wan-failover.pid
 - Failover will now properly timeout when the 30 second timeout timer has been reached.
 
-Installation:
+Install:
 - Warnings for DNS Query or Failback being enabled will now alert and log during installation
 
 Deprecated:

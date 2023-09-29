@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/21/2023
-# Version: v2.0.7-beta4
+# Date: 09/29/2023
+# Version: v2.0.7
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.0.7-beta4"
+VERSION="v2.0.7"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -1097,7 +1097,6 @@ elif [[ "$DEVMODE" == "1" ]] &>/dev/null;then
     remoteversion="$(echo $REMOTEVERSION | awk -F "-beta" '{print $1}' | grep -o '[0-9]*')" && remoteversion=${remoteversion//[$'\t\r\n']/}
   fi
 fi
-
 if [[ "$version" -lt "$remoteversion" ]] &>/dev/null;then
   [[ "$updateneeded" != "1" ]] &>/dev/null && updateneeded="1"
   logger -p 3 -t "$ALIAS" "$ALIAS is out of date - Current Version: $VERSION Available Version: $REMOTEVERSION"
@@ -1498,6 +1497,10 @@ if [[ "$configdefaultssync" == "0" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating FOBLOCKIPV6 Default: Disabled"
     echo -e "FOBLOCKIPV6=0" >> $CONFIGFILE
   fi
+  if [[ -z "$(sed -n '/\bFAILOVERTIMEOUT=\b/p' "$CONFIGFILE")" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting FAILOVERTIMEOUT Default: 30 Seconds"
+    echo -e "FAILOVERTIMEOUT=30" >> $CONFIGFILE
+  fi
 
 # Cleanup Config file of deprecated options
 DEPRECATEDOPTIONS='
@@ -1692,17 +1695,18 @@ printf "  (23) Configure Cron Job              Cron Job: " && { [[ "$SCHEDULECRO
 printf "  (24) Configure Status Check          Status Check Interval: ${LIGHTBLUE}$STATUSCHECK Seconds${NOCOLOR}\n"
 printf "  (25) Configure Process Priority      Process Priority: " && { { [[ "$PROCESSPRIORITY" == "0" ]] && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-20" ]] && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-10" ]] && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "10" ]] && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "20" ]] && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}$PROCESSPRIORITY${NOCOLOR}" ;} && printf "\n"
 printf "  (26) Configure Failover Block IPV6   Failover Block IPV6: " && { [[ "$FOBLOCKIPV6" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (27) Configure Failover Timeout      Failover Timeout: ${LIGHTBLUE}${FAILOVERTIMEOUT} Seconds${NOCOLOR}\n"
 
 if [[ "$WANSMODE" == "lb" ]] &>/dev/null || [[ "$DEVMODE" == "1" ]] &>/dev/null;then
   printf "\n  ${BOLD}Load Balance Mode Settings:${NOCOLOR}\n"
-  printf "  (27) Configure LB Rule Priority      Load Balance Rule Priority: ${LIGHTBLUE}$LBRULEPRIORITY${NOCOLOR}\n"
-  printf "  (28) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-  printf "  (29) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${LIGHTBLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
-  printf "  (30) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${LIGHTBLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
-  printf "  (31) Configure WAN0 FWMark           WAN0 FWMark: ${LIGHTBLUE}$WAN0MARK${NOCOLOR}\n"
-  printf "  (32) Configure WAN1 FWMark           WAN1 FWMark: ${LIGHTBLUE}$WAN1MARK${NOCOLOR}\n"
-  printf "  (33) Configure WAN0 Mask             WAN0 Mask: ${LIGHTBLUE}$WAN0MASK${NOCOLOR}\n"
-  printf "  (34) Configure WAN1 Mask             WAN1 Mask: ${LIGHTBLUE}$WAN1MASK${NOCOLOR}\n"
+  printf "  (28) Configure LB Rule Priority      Load Balance Rule Priority: ${LIGHTBLUE}$LBRULEPRIORITY${NOCOLOR}\n"
+  printf "  (29) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  printf "  (30) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${LIGHTBLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
+  printf "  (31) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${LIGHTBLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
+  printf "  (32) Configure WAN0 FWMark           WAN0 FWMark: ${LIGHTBLUE}$WAN0MARK${NOCOLOR}\n"
+  printf "  (33) Configure WAN1 FWMark           WAN1 FWMark: ${LIGHTBLUE}$WAN1MARK${NOCOLOR}\n"
+  printf "  (34) Configure WAN0 Mask             WAN0 Mask: ${LIGHTBLUE}$WAN0MASK${NOCOLOR}\n"
+  printf "  (35) Configure WAN1 Mask             WAN1 Mask: ${LIGHTBLUE}$WAN1MASK${NOCOLOR}\n"
 fi
 
 # Unset Variables
@@ -2173,7 +2177,17 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   NEWVARIABLES="${NEWVARIABLES} FOBLOCKIPV6=|$SETFOBLOCKIPV6"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '27')      # LBRULEPRIORITY
+  '27')      # FAILOVERTIMEOUT
+  while true &>/dev/null;do  
+    read -p "Configure Failover Timeout - Value is in seconds: " value
+    case $value in
+      [0123456789]* ) SETFAILOVERTIMEOUT=$value; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+    esac
+  done
+NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
+  ;;
+  '28')      # LBRULEPRIORITY
   while true &>/dev/null;do
     read -p "Configure Load Balance Rule Priority - This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change: " value
     case $value in
@@ -2184,7 +2198,7 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   NEWVARIABLES="${NEWVARIABLES} LBRULEPRIORITY=|$SETLBRULEPRIORITY"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '28')      # OVPNSPLITTUNNEL
+  '29')      # OVPNSPLITTUNNEL
   while true &>/dev/null;do
     read -p "Do you want to enable OpenVPN Split Tunneling? This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode: ***Enter Y for Yes or N for No***" yn
     case $yn in
@@ -2196,7 +2210,7 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   NEWVARIABLES="${NEWVARIABLES} OVPNSPLITTUNNEL=|$SETOVPNSPLITTUNNEL"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '29')      # OVPNWAN0PRIORITY
+  '30')      # OVPNWAN0PRIORITY
   while true &>/dev/null;do
     read -p "Configure OpenVPN WAN0 Priority - This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is Disabled: " value
     case $value in
@@ -2207,7 +2221,7 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   NEWVARIABLES="${NEWVARIABLES} OVPNWAN0PRIORITY=|$SETOVPNWAN0PRIORITY"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '30')      # OVPNWAN1PRIORITY
+  '31')      # OVPNWAN1PRIORITY
   while true &>/dev/null;do
     read -p "Configure OpenVPN WAN1 Priority - This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is Disabled: " value
     case $value in
@@ -2218,7 +2232,7 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   NEWVARIABLES="${NEWVARIABLES} OVPNWAN1PRIORITY=|$SETOVPNWAN1PRIORITY"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '31')      # WAN0MARK
+  '32')      # WAN0MARK
   while true &>/dev/null;do
     read -p "Configure WAN0 FWMark - This defines the WAN0 FWMark for Load Balance Mode: " value
     case $value in
@@ -2229,7 +2243,7 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   NEWVARIABLES="${NEWVARIABLES} WAN0MARK=|$SETWAN0MARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '32')      # WAN1MARK
+  '33')      # WAN1MARK
   while true &>/dev/null;do
     read -p "Configure WAN1 FWMark - This defines the WAN1 FWMark for Load Balance Mode: " value
     case $value in
@@ -2240,7 +2254,7 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   NEWVARIABLES="${NEWVARIABLES} WAN1MARK=|$SETWAN1MARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '33')      # WAN0MASK
+  '34')      # WAN0MASK
   while true &>/dev/null;do
     read -p "Configure WAN0 Mask - This defines the WAN0 Mask for Load Balance Mode: " value
     case $value in
@@ -2251,7 +2265,7 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   NEWVARIABLES="${NEWVARIABLES} WAN0MASK=|$SETWAN0MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '34')      # WAN1MASK
+  '35')      # WAN1MASK
   while true &>/dev/null;do
     read -p "Configure WAN1 Mask - This defines the WAN1 Mask for Load Balance Mode: " value
     case $value in
@@ -2983,7 +2997,6 @@ getwanparameters ()
 
 # Set WAN Interface Parameters
 if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
-
   logger -p 6 -t "$ALIAS" "Debug - Setting parameters for ${WANPREFIX}"
 
   while [[ -z "${wansync+x}" ]] &>/dev/null || [[ "$wansync" == "0" ]] &>/dev/null;do
@@ -3059,12 +3072,14 @@ if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
     NAT="$(nvram get ${WANPREFIX}_nat_x & nvramcheck)" && { [[ -n "$NAT" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set NAT for ${WANPREFIX}" && unset NAT && continue ;} ;}
 
     if [[ "${WANPREFIX}" == "$WAN0" ]] &>/dev/null;then
-
+        
       # DUALWANDEV
       if [[ -n "${WAN0DUALWANDEV+x}" ]] &>/dev/null;then
         DUALWANDEV="$WAN0DUALWANDEV"
       else
-        DUALWANDEV="$(nvram get wans_dualwan | awk '{print $1}' & nvramcheck)" && { [[ -n "$DUALWANDEV" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set DUALWANDEV for ${WANPREFIX}" && unset DUALWANDEV && continue ;} ;}
+        dualwandevtmp="$(nvram get wans_dualwan & nvramcheck)"
+        DUALWANDEV="$(echo "$dualwandevtmp" | awk '$0 != "" {print $1}')"
+        [[ -n "$DUALWANDEV" ]] &>/dev/null && unset dualwandevtmp || { logger -p 6 -t "$ALIAS" "Debug - failed to set DUALWANDEV for ${WANPREFIX}" && unset DUALWANDEV && continue ;}
       fi
 
       # LINKWAN
@@ -3219,7 +3234,9 @@ if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
       if [[ -n "${WAN1DUALWANDEV+x}" ]] &>/dev/null;then
         DUALWANDEV="$WAN1DUALWANDEV"
       else
-        DUALWANDEV="$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" && { [[ -n "$DUALWANDEV" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set DUALWANDEV for ${WANPREFIX}" && unset DUALWANDEV && continue ;} ;}
+        dualwandevtmp="$(nvram get wans_dualwan & nvramcheck)"
+        DUALWANDEV="$(echo "$dualwandevtmp" | awk '$0 != "" {print $2}')"
+        [[ -n "$DUALWANDEV" ]] &>/dev/null && unset dualwandevtmp || { logger -p 6 -t "$ALIAS" "Debug - failed to set DUALWANDEV for ${WANPREFIX}" && unset DUALWANDEV && continue ;}
       fi
 
       # LINKWAN
@@ -3376,7 +3393,6 @@ elif [[ "$GETWANMODE" == "2" ]] &>/dev/null;then
     else
       sleep 1
     fi
-    
     # WANSDUALWAN
     if [[ -z "${WANSDUALWAN+x}" ]] &>/dev/null;then
       WANSDUALWAN="$(nvram get wans_dualwan & nvramcheck)"
@@ -3385,8 +3401,9 @@ elif [[ "$GETWANMODE" == "2" ]] &>/dev/null;then
 
     # WANSDUALWANENABLE
     if [[ -z "${WANSDUALWANENABLE+x}" ]] &>/dev/null;then
-      { [[ -n "$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" ]] &>/dev/null && [[ "$(nvram get wans_dualwan | awk '{print $2}' & nvramcheck)" == "none" ]] &>/dev/null ;} && WANSDUALWANENABLE="0" || WANSDUALWANENABLE="1"
-      [[ -n "$WANSDUALWANENABLE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WANSDUALWANENABLE" && unset WANSDUALWANENABLE && continue ;}
+      wansdualwanenabletmp="$(nvram get wans_dualwan & nvramcheck)"
+      [[ -n "$(echo "$wansdualwanenabletmp" | awk '{if ($0 != "" && $2 != "none") {print $2}}')" ]] &>/dev/null && WANSDUALWANENABLE="1" || WANSDUALWANENABLE="0"
+      [[ -n "$WANSDUALWANENABLE" ]] &>/dev/null && unset wansdualwanenabletmp || { logger -p 6 -t "$ALIAS" "Debug - failed to set WANSDUALWANENABLE" && unset WANSDUALWANENABLE && continue ;}
     fi
 
     # WANSMODE
@@ -3433,8 +3450,9 @@ elif [[ "$GETWANMODE" == "2" ]] &>/dev/null;then
 
     # WAN0DUALWANDEV
     if [[ -z "${WAN0DUALWANDEV+x}" ]] &>/dev/null;then
-      WAN0DUALWANDEV="$(nvram get nvram get wans_dualwan | awk '{print $1}' & nvramcheck)"
-      [[ -n "$WAN0DUALWANDEV" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0DUALWANDEV" && unset WAN0DUALWANDEV && continue ;}
+      wan0dualwandevtmp="$(nvram get wans_dualwan & nvramcheck)"
+      WAN0DUALWANDEV="$(echo "$wan0dualwandevtmp" | awk '$0 != "" {print $1}')"
+      [[ -n "$WAN0DUALWANDEV" ]] &>/dev/null && unset wan0dualwandevtmp || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN0DUALWANDEV" && unset WAN0DUALWANDEV && continue ;}
     fi
 
     # WAN0IFNAME
@@ -3453,8 +3471,9 @@ elif [[ "$GETWANMODE" == "2" ]] &>/dev/null;then
 
     # WAN1DUALWANDEV
     if [[ -z "${WAN1DUALWANDEV+x}" ]] &>/dev/null;then
-      WAN1DUALWANDEV="$(nvram get nvram get wans_dualwan | awk '{print $2}' & nvramcheck)"
-      [[ -n "$WAN1DUALWANDEV" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1DUALWANDEV" && unset WAN1DUALWANDEV && continue ;}
+      wan1dualwandevtmp="$(nvram get wans_dualwan & nvramcheck)"
+      WAN1DUALWANDEV="$(echo "$wan1dualwandevtmp" | awk '$0 != "" {print $2}')"
+      [[ -n "$WAN1DUALWANDEV" ]] &>/dev/null && unset wan1dualwandevtmp || { logger -p 6 -t "$ALIAS" "Debug - failed to set WAN1DUALWANDEV" && unset WAN1DUALWANDEV && continue ;}
     fi
 
     # WAN1IFNAME
@@ -5003,6 +5022,15 @@ switchwan ()
 {
 logger -p 6 -t "$ALIAS" "Debug - Function: switchwan"
 
+# Capture Failover Timeout
+if [[ "${FAILOVERTIMEOUT+x}" ]] &>/dev/null;then
+  # Read config for timeout
+  FAILOVERTIMEOUT="$(awk -= '$1 == "FAILOVERTIMEOUT" {print $2}' "${CONFIG}")"
+  # If setting is missing use default value of 30 seconds
+  [[ "${FAILOVERTIMEOUT+x}" ]] &>/dev/null && FAILOVERTIMEOUT="30"
+fi
+
+# Set SWITCHPRIMARY Flag
 [[ -z "${SWITCHPRIMARY+x}" ]] &>/dev/null && SWITCHPRIMARY="1"
 
 # Determine Primary WAN and determine if it was switched automatically by Router Firmware
@@ -5048,7 +5076,7 @@ if { { [[ "$(nvram get ${ACTIVEWAN}_ipaddr & nvramcheck)" == "0.0.0.0" ]] &>/dev
   return
 fi
 # Perform switch until new WAN is Primary or timeout of 30 seconds is reached
-SWITCHTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
+SWITCHTIMEOUT="$(($(awk -F "." '{print $1}' "/proc/uptime")+${FAILOVERTIMEOUT}))"
 
 if [[ -z "${SWITCHCOMPLETE+x}" ]] &>/dev/null;then
   SWITCHCOMPLETE="0"
@@ -5056,6 +5084,7 @@ elif [[ "$SWITCHCOMPLETE" != "0" ]] &>/dev/null;then
   SWITCHCOMPLETE="0"
 fi
 
+# Perform Failover until complete or timeout
 until { [[ "$(nvram get ${INACTIVEWAN}_primary & nvramcheck)" == "0" ]] &>/dev/null && [[ "$(nvram get ${ACTIVEWAN}_primary & nvramcheck)" == "1" ]] &>/dev/null && [[ "$SWITCHCOMPLETE" == "1" ]] &>/dev/null ;} \
 && { [[ "$(ip route show default | awk '{print $3}')" == "$(nvram get ${ACTIVEWAN}_gateway & nvramcheck)" ]] &>/dev/null && [[ "$(ip route show default | awk '{print $5}')" == "$(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)" ]] &>/dev/null ;} \
 && { [[ "$(nvram get ${ACTIVEWAN}_ipaddr & nvramcheck)" == "$(nvram get wan_ipaddr & nvramcheck)" ]] &>/dev/null && [[ "$(nvram get ${ACTIVEWAN}_gateway & nvramcheck)" == "$(nvram get wan_gateway & nvramcheck)" ]] &>/dev/null && [[ "$(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)" == "$(nvram get wan_gw_ifname & nvramcheck)" ]] &>/dev/null ;};do
