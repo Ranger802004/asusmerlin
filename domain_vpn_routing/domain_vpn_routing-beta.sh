@@ -2741,13 +2741,13 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 
   # Create IPv6 IPSET
   # Check for saved IPSET
-  if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Restoring IPv6 IPSET for ${QUERYPOLICY}"
     ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" \
     && logger -p 4 -t "$ALIAS" "Query Policy - Restored IPv6 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to restore IPv6 IPSET for ${QUERYPOLICY}"
   # Create saved IPv6 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Saving IPv6 IPSET for ${QUERYPOLICY}"
     ipset save DomainVPNRouting-${QUERYPOLICY}-ipv6 -file ${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset \
     && logger -p 4 -t "$ALIAS" "Query Policy - Saved IPv6 IPSET for ${QUERYPOLICY}" \
@@ -2761,13 +2761,13 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
   # Create IPv4 IPSET
   # Check for saved IPv4 IPSET
-  if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Restoring IPv4 IPSET for ${QUERYPOLICY}"
     ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" \
     && logger -p 4 -t "$ALIAS" "Query Policy - Restored IPv4 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to restore IPv4 IPSET for ${QUERYPOLICY}"
   # Create saved IPv4 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Saving IPv4 IPSET for ${QUERYPOLICY}"
     ipset save DomainVPNRouting-${QUERYPOLICY}-ipv4 -file ${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset \
     && logger -p 4 -t "$ALIAS" "Query Policy - Saved IPv4 IPSET for ${QUERYPOLICY}" \
