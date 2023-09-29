@@ -5025,7 +5025,7 @@ logger -p 6 -t "$ALIAS" "Debug - Function: switchwan"
 # Capture Failover Timeout
 if [[ "${FAILOVERTIMEOUT+x}" ]] &>/dev/null;then
   # Read config for timeout
-  FAILOVERTIMEOUT="$(awk -= '$1 == "FAILOVERTIMEOUT" {print $2}' "${CONFIGFILE}")"
+  FAILOVERTIMEOUT="$(awk -F "=" '$1 == "FAILOVERTIMEOUT" {print $2}' "${CONFIGFILE}")"
   # If setting is missing use default value of 30 seconds
   [[ "${FAILOVERTIMEOUT+x}" ]] &>/dev/null && FAILOVERTIMEOUT="30"
 fi
