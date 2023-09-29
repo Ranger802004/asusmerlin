@@ -2763,7 +2763,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # Check for saved IPv4 IPSET
   if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Restoring IPv4 IPSET for ${QUERYPOLICY}"
-    ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" \
+    ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" \
     && logger -p 4 -t "$ALIAS" "Query Policy - Restored IPv4 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to restore IPv4 IPSET for ${QUERYPOLICY}"
   # Create saved IPv4 IPSET file if IPSET exists
