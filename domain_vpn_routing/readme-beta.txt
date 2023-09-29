@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/24/2023
-# Version: v2.0.1
+# Date: 09/28/2023
+# Version: v2.1.0
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -42,7 +42,27 @@ Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
 - DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
 - CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Disabled 
 - PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
-
+- CHECKINTERVAL: This defines the policy check interval via cron job, value range is from 1 to 59 minutes. Default: 15 Minutes
+- OVPNC1FWMARK: This defines the FWMark value for OpenVPN Client 1. Default: 0x1000
+- OVPNC1MASK: This defines the Mask value for OpenVPN Client 1. Default: 0x1000
+- OVPNC2FWMARK: This defines the FWMark value for OpenVPN Client 2. Default: 0x2000
+- OVPNC2MASK: This defines the Mask value for OpenVPN Client 2. Default: 0x2000
+- OVPNC3FWMARK: This defines the FWMark value for OpenVPN Client 3. Default: 0x4000
+- OVPNC3MASK: This defines the Mask value for OpenVPN Client 3. Default: 0x4000
+- OVPNC4FWMARK: This defines the FWMark value for OpenVPN Client 4. Default: 0x7000
+- OVPNC4MASK: This defines the Mask value for OpenVPN Client 4. Default: 0x7000
+- OVPNC5FWMARK: This defines the FWMark value for OpenVPN Client 5. Default: 0x3000
+- OVPNC5MASK: This defines the Mask value for OpenVPN Client 5. Default: 0x3000
+- WGC1FWMARK: This defines the FWMark value for WireGuard Client 1. Default: 0x1100
+- WGC1MASK: This defines the Mask value for WireGuard Client 1. Default: 0x1100
+- WGC2FWMARK: This defines the FWMark value for WireGuard Client 2. Default: 0x2100
+- WGC2MASK: This defines the Mask value for WireGuard Client 2. Default: 0x2100
+- WGC3FWMARK: This defines the FWMark value for WireGuard Client 3. Default: 0x4100
+- WGC3MASK: This defines the Mask value for WireGuard Client 3. Default: 0x4100
+- WGC4FWMARK: This defines the FWMark value for WireGuard Client 4. Default: 0x7100
+- WGC4MASK: This defines the Mask value for WireGuard Client 4. Default: 0x7100
+- WGC5FWMARK: This defines the FWMark value for WireGuard Client 5. Default: 0x3100
+- WGC5MASK: This defines the Mask value for WireGuard Client 5. Default: 0x3100
 
 Creating a Policy:
 Step 1: Create a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh createpolicy
@@ -109,6 +129,19 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
+v2.1.0-beta1 - 09/28/2023
+Enhancements:
+- DNSMasq log is now utilized if enabled to query for domain records to route.  The log path will be captured from the DNSMasq Configuration.
+- IPSets, IPTables Rules, and IP Rules using FWMarks have been implemented to reduce the amount of routes / rules that are created for policies.
+- Added Check Interval configuration options to Configuration Menu to modify the cron job schedule between 1 - 59 minutes.  Default: 15 minutes
+- The current interface for a Policy will be displayed when in the Edit Policy configuration menu.
+- Added default FWMark and Mask values for OpenVPN and WireGuard clients that can be changed in the configuration menu.  Reboot required for changes.
+- Log priority values added (Critical, Error, Warning, Notice, Informational, Debug)
+- Additional logging messages have been added.
+
+Fixes:
+- Fixed issue where adding a domain with the same partial name as an existing in a policy prevented it from being added.
+
 v2.0.1 - 09/24/2023
 Enhancements:
 - Minor optimizations for performance
