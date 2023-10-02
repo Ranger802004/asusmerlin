@@ -3,7 +3,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 10/02/2023
-# Version: v2.1.0-beta2
+# Version: v2.1.0-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.0-beta2"
+VERSION="v2.1.0-beta3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -3203,16 +3203,18 @@ logger -p 6 -t "$ALIAS" "Debug - Selecting PIDs to kill"
 
 # Determine binary to use for detecting PIDs
 if [[ -f "/usr/bin/pstree" ]] &>/dev/null;then
-  PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "$0" | grep -v "$$" | grep -o '[0-9]*')" || PIDS=""
+  PIDS="$(pstree -s "$0" | grep -v "grep" | grep -w "$0" | grep -o '[0-9]*' | grep -v "$$")" || PIDS=""
 else
   PIDS="$(ps | grep -v "grep" | grep -w "$0" | awk '{print $1}' | grep -v "$$")"
 fi
 
 logger -p 6 -t "$ALIAS" "Debug - ***Checking if PIDs array is null*** Process ID: ${PIDS}"
 if [[ -n "${PIDS+x}" ]] &>/dev/null && [[ -n "${PIDS}" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Killing Process ID: ${PIDS}"
   # Kill PIDs
   until [[ -z "$PIDS" ]] &>/dev/null;do
-    if [[ -z "$PIDS" ]] &>/dev/null;then
+    if [[ -z "$(echo "$PIDS" | grep -o '[0-9]*')" ]] &>/dev/null;then
+      logger -p 6 -t "$ALIAS" "Debug - ***PIDs array is null***"
       break
     fi
     if [[ -f "/usr/bin/pstree" ]] &>/dev/null;then

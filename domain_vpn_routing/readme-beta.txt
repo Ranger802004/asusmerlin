@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 10/02/2023
-# Version: v2.1.0-beta2
+# Version: v2.1.0-beta3
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -130,7 +130,7 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
-v2.1.0-beta2 - 10/02/2023
+v2.1.0-beta3 - 10/02/2023
 Enhancements:
 - DNSMasq log is now utilized if enabled to query for domain records to route.  The log path will be captured from the DNSMasq Configuration.
 - IPSets, IPTables Rules, and IP Rules using FWMarks have been implemented to reduce the amount of routes / rules that are created for policies.
@@ -139,10 +139,11 @@ Enhancements:
 - Added default FWMark and Mask values for OpenVPN and WireGuard clients that can be changed in the configuration menu.  Reboot required for changes.
 - Log priority values added (Critical, Error, Warning, Notice, Informational, Debug)
 - Additional logging messages have been added.
-- Added Boot Delay Timer configuration setting to delay execution to wait and allow VPN tunnels to initalize during start up before querying for policies.  Default: 0 Seconds
+- Added Boot Delay Timer configuration setting to delay execution to wait and allow VPN tunnels to initalize during start up before querying for policies. Default: 0 Seconds
 
 Fixes:
 - Fixed issue where adding a domain with the same partial name as an existing in a policy prevented it from being added.
+- Fixed an issue that causes the update function to hang when complete as well as when terminating Domain VPN Routing.
 
 v2.0.1 - 09/24/2023
 Enhancements:
