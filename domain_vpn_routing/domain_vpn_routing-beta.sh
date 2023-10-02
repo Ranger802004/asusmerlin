@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/28/2023
-# Version: v2.1.0-beta1
+# Date: 10/02/2023
+# Version: v2.1.0-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.0-beta1"
+VERSION="v2.1.0-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -567,6 +567,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
     echo -e "CHECKINTERVAL=15" >> $GLOBALCONFIGFILE
   fi
 
+  # BOOTDELAYTIMER
+  if [[ -z "$(sed -n '/\bBOOTDELAYTIMER\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating BOOTDELAYTIMER Default: 180 seconds"
+    echo -e "BOOTDELAYTIMER=0" >> $GLOBALCONFIGFILE
+  fi
+
   # OVPNC1FWMARK
   if [[ -z "$(sed -n '/\bOVPNC1FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC1FWMARK Default: 0x1000"
@@ -845,28 +851,29 @@ printf "  (1) Configure Dev Mode              Dev Mode: " && { [[ "$DEVMODE" == 
 printf "  (2) Configure NVRAM Checks          NVRAM Checks: " && { [[ "$CHECKNVRAM" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 printf "  (3) Configure Process Priority      Process Priority: " && { { [[ "$PROCESSPRIORITY" == "0" ]] &>/dev/null && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-20" ]] &>/dev/null && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-10" ]] &>/dev/null && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "10" ]] &>/dev/null && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "20" ]] &>/dev/null && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}$PROCESSPRIORITY${NOCOLOR}" ;} && printf "\n"
 printf "  (4) Configure Check Interval        Check Interval: ${LIGHTBLUE}${CHECKINTERVAL} Minutes${NOCOLOR}\n"
+printf "  (5) Configure Boot Delay Timer      Boot Delay Timer: ${LIGHTBLUE}${BOOTDELAYTIMER} Seconds${NOCOLOR}\n"
 
 printf "\n  ${BOLD}Advanced Settings:${NOCOLOR}  ${LIGHTRED}***Recommended to leave default unless necessary to change***${NOCOLOR}\n"
-printf "  (5) OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
-printf "  (6) OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
-printf "  (7) OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
-printf "  (8) OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
-printf "  (9) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
-printf " (10) OpenVPN Client 3 Mask           OpenVPN Client 3 Mask:     ${LIGHTBLUE}${OVPNC3MASK}${NOCOLOR}\n"
-printf " (11) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
-printf " (12) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
-printf " (13) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
-printf " (14) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
-printf " (15) Wireguard Client 1 FWMark       Wireguard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
-printf " (16) Wireguard Client 1 Mask         Wireguard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
-printf " (17) Wireguard Client 2 FWMark       Wireguard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
-printf " (18) Wireguard Client 2 Mask         Wireguard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
-printf " (19) Wireguard Client 3 FWMark       Wireguard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
-printf " (20) Wireguard Client 3 Mask         Wireguard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
-printf " (21) Wireguard Client 4 FWMark       Wireguard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
-printf " (22) Wireguard Client 4 Mask         Wireguard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
-printf " (23) Wireguard Client 5 FWMark       Wireguard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
-printf " (24) Wireguard Client 5 Mask         Wireguard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
+printf "  (6) OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
+printf "  (7) OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
+printf "  (8) OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
+printf "  (9) OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
+printf " (10) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
+printf " (12) OpenVPN Client 3 Mask           OpenVPN Client 3 Mask:     ${LIGHTBLUE}${OVPNC3MASK}${NOCOLOR}\n"
+printf " (12) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
+printf " (13) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
+printf " (14) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
+printf " (15) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
+printf " (16) Wireguard Client 1 FWMark       Wireguard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
+printf " (17) Wireguard Client 1 Mask         Wireguard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
+printf " (18) Wireguard Client 2 FWMark       Wireguard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
+printf " (19) Wireguard Client 2 Mask         Wireguard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
+printf " (20) Wireguard Client 3 FWMark       Wireguard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
+printf " (21) Wireguard Client 3 Mask         Wireguard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
+printf " (22) Wireguard Client 4 FWMark       Wireguard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
+printf " (23) Wireguard Client 4 Mask         Wireguard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
+printf " (24) Wireguard Client 5 FWMark       Wireguard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
+printf " (25) Wireguard Client 5 Mask         Wireguard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
 
 printf "\n  ${BOLD}System Information:${NOCOLOR}\n"
 printf "  DNS Logging Status                  Status:      " && { [[ "$DNSLOGGINGENABLED" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
@@ -945,7 +952,17 @@ case "${configinput}" in
   zCHECKINTERVAL="${CHECKINTERVAL}"
   NEWVARIABLES="${NEWVARIABLES} CHECKINTERVAL=|$SETCHECKINTERVAL"
   ;;
-  '5')      # OVPNC1FWMARK
+  '5')      # BOOTDELAYTIMER
+  while true &>/dev/null;do
+    read -p "Configure Boot Delay Timer - This will delay execution until System Uptime reaches this time (seconds): " value
+    case $value in
+      [0123456789]* ) SETBOOTDELAYTIMER="$value"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} BOOTDELAYTIMER=|$SETBOOTDELAYTIMER"
+  ;;
+  '6')      # OVPNC1FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 FWMark - This defines the OVPNC1 FWMark for marking traffic: " value
     case $value in
@@ -956,7 +973,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC1FWMARK=|$SETOVPNC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '6')      # OVPNC1MASK
+  '7')      # OVPNC1MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 Mask - This defines the OVPNC1 Mask for marking traffic: " value
     case $value in
@@ -967,7 +984,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC1MASK=|$SETOVPNC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '7')      # OVPNC2FWMARK
+  '8')      # OVPNC2FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 FWMark - This defines the OVPNC2 FWMark for marking traffic: " value
     case $value in
@@ -978,7 +995,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC2FWMARK=|$SETOVPNC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '8')      # OVPNC2MASK
+  '9')      # OVPNC2MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 Mask - This defines the OVPNC2 Mask for marking traffic: " value
     case $value in
@@ -989,7 +1006,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC2MASK=|$SETOVPNC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '9')      # OVPNC3FWMARK
+  '10')      # OVPNC3FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 FWMark - This defines the OVPNC3 FWMark for marking traffic: " value
     case $value in
@@ -1000,7 +1017,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC3FWMARK=|$SETOVPNC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '10')      # OVPNC3MASK
+  '11')      # OVPNC3MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 Mask - This defines the OVPNC3 Mask for marking traffic: " value
     case $value in
@@ -1011,7 +1028,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC3MASK=|$SETOVPNC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '11')      # OVPNC4FWMARK
+  '12')      # OVPNC4FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 FWMark - This defines the OVPNC4 FWMark for marking traffic: " value
     case $value in
@@ -1022,7 +1039,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC4FWMARK=|$SETOVPNC4FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '12')      # OVPNC4MASK
+  '13')      # OVPNC4MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 Mask - This defines the OVPNC4 Mask for marking traffic: " value
     case $value in
@@ -1033,7 +1050,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC4MASK=|$SETOVPNC4MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '13')      # OVPNC5FWMARK
+  '14')      # OVPNC5FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 FWMark - This defines the OVPNC5 FWMark for marking traffic: " value
     case $value in
@@ -1044,7 +1061,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC5FWMARK=|$SETOVPNC5FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '14')      # OVPNC5MASK
+  '15')      # OVPNC5MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 Mask - This defines the OVPNC5 Mask for marking traffic: " value
     case $value in
@@ -1055,7 +1072,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC5MASK=|$SETOVPNC5MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '15')      # WGC1FWMARK
+  '16')      # WGC1FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC1 FWMark - This defines the WGC1 FWMark for marking traffic: " value
     case $value in
@@ -1066,7 +1083,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC1FWMARK=|$SETWGC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '16')      # WGC1MASK
+  '17')      # WGC1MASK
   while true &>/dev/null;do
     read -p "Configure WGC1 Mask - This defines the WGC1 Mask for marking traffic: " value
     case $value in
@@ -1077,7 +1094,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC1MASK=|$SETWGC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '17')      # WGC2FWMARK
+  '18')      # WGC2FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC2 FWMark - This defines the WGC2 FWMark for marking traffic: " value
     case $value in
@@ -1088,7 +1105,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC2FWMARK=|$SETWGC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '18')      # WGC2MASK
+  '19')      # WGC2MASK
   while true &>/dev/null;do
     read -p "Configure WGC2 Mask - This defines the WGC2 Mask for marking traffic: " value
     case $value in
@@ -1099,7 +1116,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC2MASK=|$SETWGC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '19')      # WGC3FWMARK
+  '20')      # WGC3FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC3 FWMark - This defines the WGC3 FWMark for marking traffic: " value
     case $value in
@@ -1110,7 +1127,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC3FWMARK=|$SETWGC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '20')      # WGC3MASK
+  '21')      # WGC3MASK
   while true &>/dev/null;do
     read -p "Configure WGC3 Mask - This defines the WGC3 Mask for marking traffic: " value
     case $value in
@@ -1121,7 +1138,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC3MASK=|$SETWGC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '21')      # WGC4FWMARK
+  '22')      # WGC4FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC4 FWMark - This defines the WGC4 FWMark for marking traffic: " value
     case $value in
@@ -1132,7 +1149,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC4FWMARK=|$SETWGC4FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '22')      # WGC4MASK
+  '23')      # WGC4MASK
   while true &>/dev/null;do
     read -p "Configure WGC4 Mask - This defines the WGC4 Mask for marking traffic: " value
     case $value in
@@ -1143,7 +1160,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC4MASK=|$SETWGC4MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '23')      # WGC5FWMARK
+  '24')      # WGC5FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC5 FWMark - This defines the WGC5 FWMark for marking traffic: " value
     case $value in
@@ -1154,7 +1171,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC5FWMARK=|$SETWGC5FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '24')      # WGC5MASK
+  '25')      # WGC5MASK
   while true &>/dev/null;do
     read -p "Configure WGC5 Mask - This defines the WGC5 Mask for marking traffic: " value
     case $value in
@@ -2563,6 +2580,19 @@ querypolicy ()
 {
 checkalias || return
 
+# Boot Delay Timer
+if [[ -n "${BOOTDELAYTIMER+x}" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - System Uptime: $(awk -F "." '{print $1}' "/proc/uptime") Seconds"
+  logger -p 6 -t "$ALIAS" "Debug - Boot Delay Timer: ${BOOTDELAYTIMER} Seconds"
+  if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "${BOOTDELAYTIMER}" ]] &>/dev/null;then
+    logger -p 4 -st "$ALIAS" "Boot Delay - Waiting for System Uptime to reach ${BOOTDELAYTIMER} seconds"
+    while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "${BOOTDELAYTIMER}" ]] &>/dev/null;do
+      sleep $((($(awk -F "." '{print $1}' "/proc/uptime")-${BOOTDELAYTIMER})*-1))
+    done
+    logger -p 5 -st "$ALIAS" "Boot Delay - System Uptime is $(awk -F "." '{print $1}' "/proc/uptime") seconds"
+  fi
+fi
+
 # Set process priority
 if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Setting Process Priority to ${PROCESSPRIORITY}"
@@ -2793,10 +2823,17 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   if [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null;then
     # Create FWMark IPv6 Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Query Policy - Checking for IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      logger -p 5 -t "$ALIAS" "Query Policy - Checking for IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
       ip -6 rule add from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
-      && logger -p 4 -t "$ALIAS" "Query Policy - Added IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
-      || logger -p 2 -st "$ALIAS" "Query Policy - Failed to add IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      && logger -p 4 -t "$ALIAS" "Query Policy - Added IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+      || logger -p 2 -st "$ALIAS" "Query Policy - Failed to add IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      # Remove FWMark Unreachable IPv6 Rule if it exists
+      if [[ -n "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Query Policy - Checking for Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+        ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+        && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+        || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      fi
     # Create FWMark Unreachable IPv6 Rule
     elif [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Query Policy - Checking for Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
@@ -2963,16 +3000,23 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # IPv4
   # Create FWMark IPv4 Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Query Policy - Checking for IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    logger -p 5 -t "$ALIAS" "Query Policy - Checking for IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     ip rule add from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
-    && logger -p 4 -t "$ALIAS" "Query Policy - Added IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
-    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-  # Create FWMark Unreachable IP Rule
+    && logger -p 4 -t "$ALIAS" "Query Policy - Added IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    # Remove FWMark Unreachable IPv4 Rule if it exists
+    if [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Query Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+      && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    fi
+  # Create FWMark Unreachable IPv4 Rule
   elif [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Query Policy - Checking for Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    logger -p 5 -t "$ALIAS" "Query Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     ip rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
-    && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
-    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
   fi
 
   # Create IPv4 IPTables PREROUTING Rule
@@ -3164,8 +3208,8 @@ else
   PIDS="$(ps | grep -v "grep" | grep -w "$0" | awk '{print $1}' | grep -v "$$")"
 fi
 
-logger -p 6 -t "$ALIAS" "Debug - ***Checking if PIDs array is null*** Process ID: $PIDS"
-if [[ -n "${PIDS+x}" ]] &>/dev/null && [[ -n "$PIDS" ]] &>/dev/null;then
+logger -p 6 -t "$ALIAS" "Debug - ***Checking if PIDs array is null*** Process ID: ${PIDS}"
+if [[ -n "${PIDS+x}" ]] &>/dev/null && [[ -n "${PIDS}" ]] &>/dev/null;then
   # Kill PIDs
   until [[ -z "$PIDS" ]] &>/dev/null;do
     if [[ -z "$PIDS" ]] &>/dev/null;then
@@ -3177,7 +3221,7 @@ if [[ -n "${PIDS+x}" ]] &>/dev/null && [[ -n "$PIDS" ]] &>/dev/null;then
           PIDS="${PIDS//[${PID}$'\t\r\n']/}" && continue
         fi
         [[ -n "$(pstree -s "$0" | grep -v "grep" | grep -w "$0" | grep -o '[0-9]*' | grep -o "${PID}")" ]] \
-        && logger -p 1 -st "$ALIAS" "Restart - Killing $ALIAS Process ID: ${PID}" \
+        && logger -p 1 -st "$ALIAS" "Restart - Killing ${ALIAS} Process ID: ${PID}" \
           && { kill -9 ${PID} \
           && { PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 1 -st "$ALIAS" "Restart - Killed $ALIAS Process ID: ${PID}" && continue ;} \
           || { [[ -z "$(pstree -s "$0" | grep -v "grep" | grep -w "run\|manual" | grep -o '[0-9]*' | grep -o "${PID}")" ]] &>/dev/null && PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue || PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 2 -st "$ALIAS" "Restart - ***Error*** Failed to kill ${ALIAS} Process ID: ${PID}" ;} ;} \
@@ -3189,7 +3233,7 @@ if [[ -n "${PIDS+x}" ]] &>/dev/null && [[ -n "$PIDS" ]] &>/dev/null;then
           PIDS="${PIDS//[${PID}$'\t\r\n']/}" && continue
         fi
         [[ -n "$(ps | grep -v "grep" | grep -w "$0" | awk '{print $1}' | grep -o "${PID}")" ]] \
-        && logger -p 1 -st "$ALIAS" "Restart - Killing $ALIAS Process ID: ${PID}" \
+        && logger -p 1 -st "$ALIAS" "Restart - Killing ${ALIAS} Process ID: ${PID}" \
           && { kill -9 ${PID} \
           && { PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 1 -st "$ALIAS" "Restart - Killed $ALIAS Process ID: ${PID}" && continue ;} \
           || { [[ -z "$(ps | grep -v "grep" | grep -w "$0" | grep -w "run\|manual" | awk '{print $1}' | grep -o "${PID}")" ]] &>/dev/null && PIDS=${PIDS//[${PID}$'\t\r\n']/} && continue || PIDS=${PIDS//[${PID}$'\t\r\n']/} && logger -p 2 -st "$ALIAS" "Restart - ***Error*** Failed to kill ${ALIAS} Process ID: ${PID}" ;} ;} \
