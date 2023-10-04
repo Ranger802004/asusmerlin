@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/02/2023
-# Version: v2.1.0-beta3
+# Date: 10/04/2023
+# Version: v2.1.0-beta4
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.0-beta3"
+VERSION="v2.1.0-beta4"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -350,21 +350,34 @@ PressEnter()
 # Check Alias
 checkalias ()
 {
-logger -p 6 -t "$ALIAS" "Debug - Checking Alias in /jffs/configs/profile.add"
-if [[ ! -f "/jffs/configs/profile.add" ]] &>/dev/null;then
-  logger -p 5 -st "$ALIAS" "Alias Check - Creating /jffs/configs/profile.add"
-  touch -a /jffs/configs/profile.add \
-  && chmod 666 /jffs/configs/profile.add \
-  && logger -p 4 -st "$ALIAS" "Alias Check - Created /jffs/configs/profile.add" \
-  || logger -p 2 -st "$ALIAS" "Alias Check - ***Error*** Failed to create /jffs/configs/profile.add"
-fi
-if [[ -z "$(grep -w "# domain_vpn_routing" /jffs/configs/profile.add)" ]] &>/dev/null;then
-  logger -p 5 -st "$ALIAS" "Alias Check - Creating Alias for $0 as domain_vpn_routing"
-  echo -e "alias domain_vpn_routing=\"sh $0\" # domain_vpn_routing" >> /jffs/configs/profile.add \
-  && source /jffs/configs/profile.add \
-  && logger -p 4 -st "$ALIAS" "Alias Check - Created Alias for $0 as domain_vpn_routing" \
-  || logger -p 2 -st "$ALIAS" "Alias Check - ***Error*** Failed to create Alias for $0 as domain_vpn_routing"
-  . /jffs/configs/profile.add
+# Create alias if it doesn't exist
+if [[ "${mode}" != "uninstall" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Checking Alias in /jffs/configs/profile.add"
+  if [[ ! -f "/jffs/configs/profile.add" ]] &>/dev/null;then
+    logger -p 5 -st "$ALIAS" "Alias Check - Creating /jffs/configs/profile.add"
+    touch -a /jffs/configs/profile.add \
+    && chmod 666 /jffs/configs/profile.add \
+    && logger -p 4 -st "$ALIAS" "Alias Check - Created /jffs/configs/profile.add" \
+    || logger -p 2 -st "$ALIAS" "Alias Check - ***Error*** Failed to create /jffs/configs/profile.add"
+  fi
+  if [[ -z "$(grep -w "# domain_vpn_routing" /jffs/configs/profile.add)" ]] &>/dev/null;then
+    logger -p 5 -st "$ALIAS" "Alias Check - Creating Alias for $0 as ${ALIAS}"
+    echo -e "alias ${ALIAS}=\"sh $0\" # domain_vpn_routing" >> /jffs/configs/profile.add \
+    && source /jffs/configs/profile.add \
+    && logger -p 4 -st "$ALIAS" "Alias Check - Created Alias for $0 as ${ALIAS}" \
+    || logger -p 2 -st "$ALIAS" "Alias Check - ***Error*** Failed to create Alias for $0 as ${ALIAS}"
+    . /jffs/configs/profile.add
+  fi
+# Remove alias if it does exist during uninstall
+elif [[ "${mode}" == "uninstall" ]] &>/dev/null;then
+  # Remove Alias
+  cmdline="sh $0 cron"
+  if [[ -n "$(grep -e "alias ${ALIAS}=\"sh $0\" # domain_vpn_routing" /jffs/configs/profile.add)" ]] &>/dev/null;then 
+    logger -p 5 -st "$ALIAS" "Uninstall - Removing Alias for $0 from /jffs/configs/profile.add"
+    sed -i '\~# domain_vpn_routing~d' /jffs/configs/profile.add \
+    && logger -p 4 -st "$ALIAS" "Uninstall - Removed Alias from /jffs/configs/profile.add" \
+    || logger -p 2 -st "$ALIAS" "Uninstall - ***Error*** Failed to remove Alias from /jffs/configs/profile.add"
+  fi
 fi
 return
 }
@@ -375,7 +388,7 @@ install ()
 if [[ "${mode}" == "install" ]] &>/dev/null;then
   read -n 1 -s -r -p "Press any key to continue to install..."
   # Create Policy Directory
-  if [[ ! -d "$POLICYDIR" ]] &>/dev/null;then
+  if [[ ! -d "${POLICYDIR}" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Install - Creating ${POLICYDIR}"
     mkdir -m 666 -p "${POLICYDIR}" \
     && logger -p 4 -st "$ALIAS" "Install - ${POLICYDIR} created" \
@@ -383,17 +396,17 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
   fi
 
   # Create Global Configuration File.
-  if [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
+  if [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Install - Creating ${GLOBALCONFIGFILE}"
     touch -a "${GLOBALCONFIGFILE}" \
     && chmod 666 "${GLOBALCONFIGFILE}" \
-    && setglobalconfig \
-    && logger -p 4 -st "$ALIAS" "Install - ${GLOBALCONFIGFILE}" \
+    && { globalconfigsync="0" && setglobalconfig ;} \
+    && logger -p 4 -st "$ALIAS" "Install - ${GLOBALCONFIGFILE} created" \
     || logger -p 2 -st "$ALIAS" "Install - ***Error*** Failed to create ${GLOBALCONFIGFILE}"
   fi
 
   # Create Configuration File.
-  if [[ ! -f "$CONFIGFILE" ]] &>/dev/null;then
+  if [[ ! -f "${CONFIGFILE}" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Install - Creating ${CONFIGFILE}"
     touch -a "${CONFIGFILE}" \
     && chmod 666 "${CONFIGFILE}" \
@@ -469,8 +482,8 @@ uninstall ()
 # Prompt for confirmation
 if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   read -n 1 -s -r -p "Press any key to continue to uninstall..."
-  if [[ ! -d "$POLICYDIR" ]] &>/dev/null;then
-    echo -e "${RED}${0##*/} - Uninstall: ${0##*/} not installed...${NOCOLOR}"
+  if [[ ! -d "${POLICYDIR}" ]] &>/dev/null;then
+    echo -e "${RED}${ALIAS} - Uninstall: ${ALIAS} not installed...${NOCOLOR}"
     return
   fi
 
@@ -513,7 +526,7 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   $0 deletepolicy all
 
   # Delete Policy Directory
-  if [[ -d "$POLICYDIR" ]] &>/dev/null;then
+  if [[ -d "${POLICYDIR}" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Uninstall - Deleting ${POLICYDIR}"
     rm -rf "${POLICYDIR}" \
     && logger -p 4 -st "$ALIAS" "Uninstall - ${POLICYDIR} deleted" \
@@ -526,6 +539,9 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
     && logger -p 4 -st "$ALIAS" "Uninstall - Removed ${LOCKFILE}" \
     || logger -p 2 -st "$ALIAS" "Uninstall - ***Error*** Failed to remove ${LOCKFILE}"
   fi
+
+  # Remove Alias
+  checkalias
 fi
 return
 }
@@ -533,171 +549,179 @@ return
 # Set Global Configuration
 setglobalconfig ()
 {
-logger -p 6 -t "$ALIAS" "Debug - Reading $GLOBALCONFIGFILE"
-. $GLOBALCONFIGFILE
-
+# Return if mode is Install Mode
+if [[ "${mode}" == "install" ]] &>/dev/null && [[ -z "${globalconfigsync+x}" ]] &>/dev/null;then
+  return
 # Check Configuration File for Missing Settings and Set Default if Missing
-if [[ -z "${globalconfigsync+x}" ]] &>/dev/null;then
+elif [[ -z "${globalconfigsync+x}" ]] &>/dev/null;then
   globalconfigsync="0"
 fi
 if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Checking for missing global configuration options"
 
   # DEVMODE
-  if [[ -z "$(sed -n '/\bDEVMODE=\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bDEVMODE=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating DEVMODE Default: Disabled"
-    echo -e "DEVMODE=0" >> $GLOBALCONFIGFILE
+    echo -e "DEVMODE=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # CHECKNVRAM
-  if [[ -z "$(sed -n '/\bCHECKNVRAM=\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bCHECKNVRAM=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating CHECKNVRAM Default: Disabled"
-    echo -e "CHECKNVRAM=0" >> $GLOBALCONFIGFILE
+    echo -e "CHECKNVRAM=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # PROCESSPRIORITY
-  if [[ -z "$(sed -n '/\bPROCESSPRIORITY\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bPROCESSPRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating PROCESSPRIORITY Default: Normal"
-    echo -e "PROCESSPRIORITY=0" >> $GLOBALCONFIGFILE
+    echo -e "PROCESSPRIORITY=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # CHECKINTERVAL
-  if [[ -z "$(sed -n '/\bCHECKINTERVAL\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bCHECKINTERVAL\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating CHECKINTERVAL Default: 15 minutes"
-    echo -e "CHECKINTERVAL=15" >> $GLOBALCONFIGFILE
+    echo -e "CHECKINTERVAL=15" >> ${GLOBALCONFIGFILE}
   fi
 
   # BOOTDELAYTIMER
-  if [[ -z "$(sed -n '/\bBOOTDELAYTIMER\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bBOOTDELAYTIMER\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating BOOTDELAYTIMER Default: 180 seconds"
-    echo -e "BOOTDELAYTIMER=0" >> $GLOBALCONFIGFILE
+    echo -e "BOOTDELAYTIMER=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC1FWMARK
-  if [[ -z "$(sed -n '/\bOVPNC1FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC1FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC1FWMARK Default: 0x1000"
-    echo -e "OVPNC1FWMARK=0x1000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC1FWMARK=0x1000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC1MASK
-  if [[ -z "$(sed -n '/\bOVPNC1MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC1MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC1MASK Default: 0x1000"
-    echo -e "OVPNC1MASK=0x1000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC1MASK=0x1000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC2FWMARK
-  if [[ -z "$(sed -n '/\bOVPNC2FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC2FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC2FWMARK Default: 0x2000"
-    echo -e "OVPNC2FWMARK=0x2000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC2FWMARK=0x2000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC2MASK
-  if [[ -z "$(sed -n '/\bOVPNC2MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC2MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC2MASK Default: 0x2000"
-    echo -e "OVPNC2MASK=0x2000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC2MASK=0x2000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC3FWMARK
-  if [[ -z "$(sed -n '/\bOVPNC3FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC3FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC3FWMARK Default: 0x4000"
-    echo -e "OVPNC3FWMARK=0x4000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC3FWMARK=0x4000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC3MASK
-  if [[ -z "$(sed -n '/\bOVPNC3MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC3MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC3MASK Default: 0x4000"
-    echo -e "OVPNC3MASK=0x4000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC3MASK=0x4000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC4FWMARK
-  if [[ -z "$(sed -n '/\bOVPNC4FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC4FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC4FWMARK Default: 0x7000"
-    echo -e "OVPNC4FWMARK=0x7000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC4FWMARK=0x7000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC4MASK
-  if [[ -z "$(sed -n '/\bOVPNC4MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC4MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC4MASK Default: 0x7000"
-    echo -e "OVPNC4MASK=0x7000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC4MASK=0x7000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC5FWMARK
-  if [[ -z "$(sed -n '/\bOVPNC5FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC5FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC5FWMARK Default: 0x3000"
-    echo -e "OVPNC5FWMARK=0x3000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC5FWMARK=0x3000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC5MASK
-  if [[ -z "$(sed -n '/\bOVPNC5MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC5MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC5MASK Default: 0x3000"
-    echo -e "OVPNC5MASK=0x3000" >> $GLOBALCONFIGFILE
+    echo -e "OVPNC5MASK=0x3000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC1FWMARK
-  if [[ -z "$(sed -n '/\bWGC1FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC1FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC1FWMARK Default: 0x1100"
-    echo -e "WGC1FWMARK=0x1100" >> $GLOBALCONFIGFILE
+    echo -e "WGC1FWMARK=0x1100" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC1MASK
-  if [[ -z "$(sed -n '/\bWGC1MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC1MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC1MASK Default: 0x1100"
-    echo -e "WGC1MASK=0x1100" >> $GLOBALCONFIGFILE
+    echo -e "WGC1MASK=0x1100" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC2FWMARK
-  if [[ -z "$(sed -n '/\bWGC2FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC2FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC2FWMARK Default: 0x2100"
-    echo -e "WGC2FWMARK=0x2100" >> $GLOBALCONFIGFILE
+    echo -e "WGC2FWMARK=0x2100" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC2MASK
-  if [[ -z "$(sed -n '/\bWGC2MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC2MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC2MASK Default: 0x2100"
-    echo -e "WGC2MASK=0x2100" >> $GLOBALCONFIGFILE
+    echo -e "WGC2MASK=0x2100" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC3FWMARK
-  if [[ -z "$(sed -n '/\bWGC3FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC3FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC3FWMARK Default: 0x4100"
-    echo -e "WGC3FWMARK=0x4100" >> $GLOBALCONFIGFILE
+    echo -e "WGC3FWMARK=0x4100" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC3MASK
-  if [[ -z "$(sed -n '/\bWGC3MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC3MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC3MASK Default: 0x4100"
-    echo -e "WGC3MASK=0x4100" >> $GLOBALCONFIGFILE
+    echo -e "WGC3MASK=0x4100" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC4FWMARK
-  if [[ -z "$(sed -n '/\bWGC4FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC4FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC4FWMARK Default: 0x7100"
-    echo -e "WGC4FWMARK=0x7100" >> $GLOBALCONFIGFILE
+    echo -e "WGC4FWMARK=0x7100" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC4MASK
-  if [[ -z "$(sed -n '/\bWGC4MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC4MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC4MASK Default: 0x7100"
-    echo -e "WGC4MASK=0x7100" >> $GLOBALCONFIGFILE
+    echo -e "WGC4MASK=0x7100" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC5FWMARK
-  if [[ -z "$(sed -n '/\bWGC5FWMARK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC5FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC5FWMARK Default: 0x3100"
-    echo -e "WGC5FWMARK=0x3100" >> $GLOBALCONFIGFILE
+    echo -e "WGC5FWMARK=0x3100" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC5MASK
-  if [[ -z "$(sed -n '/\bWGC5MASK\b/p' "$GLOBALCONFIGFILE")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC5MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC5MASK Default: 0x3100"
-    echo -e "WGC5MASK=0x3100" >> $GLOBALCONFIGFILE
+    echo -e "WGC5MASK=0x3100" >> ${GLOBALCONFIGFILE}
   fi
 
-  [[ "$globalconfigsync" == "0" ]] &>/dev/null && globalconfigsync="1"
+  # Reading updated Global Configuration
+  logger -p 6 -t "$ALIAS" "Debug - Reading ${GLOBALCONFIGFILE}"
+  . ${GLOBALCONFIGFILE}
+
+  # Set flag for Global Config Sync to 1
+  [[ "${globalconfigsync}" == "0" ]] &>/dev/null && globalconfigsync="1"
 fi
 
-logger -p 6 -t "$ALIAS" "Debug - Reading $GLOBALCONFIGFILE"
-. $GLOBALCONFIGFILE
+# Read Configuration File if Global Config Sync flag is 1
+if [[ "${globalconfigsync}" == "1" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Reading ${GLOBALCONFIGFILE}"
+  . ${GLOBALCONFIGFILE}
+fi
 
 return
 }
@@ -706,14 +730,14 @@ return
 updateconfigprev2 ()
 {
 # Check if config file exists and global config file is missing and then update from prev2 configuration
-if [[ -f "$CONFIGFILE" ]] &>/dev/null && [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
+if [[ -f "${CONFIGFILE}" ]] &>/dev/null && [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
   # Back up Policy Configuration File
-  /bin/cp -rf $CONFIGFILE ${CONFIGFILE}-"$(date +"%F-%T-%Z")".bak \
+  /bin/cp -rf ${CONFIGFILE} ${CONFIGFILE}-"$(date +"%F-%T-%Z")".bak \
   && logger -p 4 -st "$ALIAS" "Install - Successfully backed up policy configuration" \
   || logger -p 2 -st "$ALIAS" "Install - ***Error*** Failed to back up policy configuration"
 
   # Create Global Configuration File
-  if [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
+  if [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Install - Creating ${GLOBALCONFIGFILE}"
     touch -a "${GLOBALCONFIGFILE}" \
     && chmod 666 "${GLOBALCONFIGFILE}" \
@@ -2605,7 +2629,6 @@ fi
 if [[ "$POLICY" == "all" ]] &>/dev/null;then
   QUERYPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
   if [[ -z "$QUERYPOLICIES" ]] &>/dev/null;then
-    echo -e "${RED}***No Policies Detected***${NOCOLOR}"
     logger -p 3 -st "$ALIAS" "Query Policy - ***No Policies Detected***"
     return
   fi
@@ -3145,9 +3168,8 @@ fi
 
 # Create Cron Job
 if [[ "${mode}" != "uninstall" ]] &>/dev/null;then
-  if tty &>/dev/null;then
-    echo -e "${LIGHTCYAN}Checking if Cron Job is Scheduled...${NOCOLOR}"
-  fi
+  logger -p 6 -st "$ALIAS" "Cron - Checking if Cron Job is Scheduled"
+
   # Delete old cron job if flag is set by configuration menu
   if [[ -n "${zCHECKINTERVAL+x}" ]] &>/dev/null && [[ -n "$(cru l | grep -w "$0" | grep -w "setup_domain_vpn_routing")" ]] &>/dev/null;then
     logger -p 3 -st "$ALIAS" "Cron - Removing old Cron Job"
@@ -3157,15 +3179,12 @@ if [[ "${mode}" != "uninstall" ]] &>/dev/null;then
   fi
   # Create cron job if it does not exist
   if [[ -z "$(cru l | grep -w "$0" | grep -w "setup_domain_vpn_routing")" ]] &>/dev/null;then
-    if tty &>/dev/null;then
-      echo -e "${LIGHTCYAN}Creating Cron Job...${NOCOLOR}"
-    fi
     logger -p 5 -st "$ALIAS" "Cron - Creating Cron Job"
     cru a setup_domain_vpn_routing "*/${CHECKINTERVAL} * * * *" $0 querypolicy all \
     && { logger -p 4 -st "$ALIAS" "Cron - Created Cron Job" ; echo -e "${GREEN}Created Cron Job${NOCOLOR}" ;} \
     || logger -p 2 -st "$ALIAS" "Cron - ***Error*** Failed to create Cron Job"
     # Execute initial query policy if interval was changed in configuration
-    [[ -z "${zCHECKINTERVAL+x}" ]] &>/dev/null && $0 querypolicy all &
+    [[ -n "${zCHECKINTERVAL+x}" ]] &>/dev/null && $0 querypolicy all &>/dev/null &
   elif [[ -n "$(cru l | grep -w "$0" | grep -w "setup_domain_vpn_routing")" ]] &>/dev/null;then
     if tty &>/dev/null;then
       echo -e "${GREEN}Cron Job already exists${NOCOLOR}"
@@ -3262,8 +3281,8 @@ update ()
 {
 
 # Read Global Config File
-if [[ -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
-  . $GLOBALCONFIGFILE
+if [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
+  setglobalconfig || return
 fi
 
 # Determine Production or Beta Update Channel
@@ -3592,10 +3611,12 @@ return
 # Get System Parameters
 getsystemparameters || return
 # Perform PreV2 Config Update
-[[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/null && { updateconfigprev2 || return ;}
+[[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null && { updateconfigprev2 || return ;}
 # Get Global Configuration
 setglobalconfig || return
 # Check Alias
-[[ -d "$POLICYDIR" ]] &>/dev/null && { checkalias || return ;}
+if [[ -d "${POLICYDIR}" ]] &>/dev/null && [[ "${mode}" != "uninstall" ]] &>/dev/null;then
+  checkalias || return
+fi
 # Set Mode and Execute
 scriptmode
