@@ -3,7 +3,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 10/04/2023
-# Version: v2.1.0-beta4
+# Version: v2.1.0-beta5
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.0-beta4"
+VERSION="v2.1.0-beta5"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -122,6 +122,8 @@ elif [[ "${mode}" == "update" ]] &>/dev/null;then
   update
 elif [[ "${mode}" == "config" ]] &>/dev/null;then 
   config
+elif [[ "${mode}" == "resetconfig" ]] &>/dev/null;then 
+  resetconfig
 fi
 return
 }
@@ -597,8 +599,8 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
 
   # OVPNC1MASK
   if [[ -z "$(sed -n '/\bOVPNC1MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC1MASK Default: 0x1000"
-    echo -e "OVPNC1MASK=0x1000" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC1MASK Default: 0xf000"
+    echo -e "OVPNC1MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC2FWMARK
@@ -609,8 +611,8 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
 
   # OVPNC2MASK
   if [[ -z "$(sed -n '/\bOVPNC2MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC2MASK Default: 0x2000"
-    echo -e "OVPNC2MASK=0x2000" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC2MASK Default: 0xf000"
+    echo -e "OVPNC2MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC3FWMARK
@@ -621,8 +623,8 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
 
   # OVPNC3MASK
   if [[ -z "$(sed -n '/\bOVPNC3MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC3MASK Default: 0x4000"
-    echo -e "OVPNC3MASK=0x4000" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC3MASK Default: 0xf000"
+    echo -e "OVPNC3MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC4FWMARK
@@ -633,8 +635,8 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
 
   # OVPNC4MASK
   if [[ -z "$(sed -n '/\bOVPNC4MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC4MASK Default: 0x7000"
-    echo -e "OVPNC4MASK=0x7000" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC4MASK Default: 0xf000"
+    echo -e "OVPNC4MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC5FWMARK
@@ -645,68 +647,68 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
 
   # OVPNC5MASK
   if [[ -z "$(sed -n '/\bOVPNC5MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC5MASK Default: 0x3000"
-    echo -e "OVPNC5MASK=0x3000" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC5MASK Default: 0xf000"
+    echo -e "OVPNC5MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC1FWMARK
   if [[ -z "$(sed -n '/\bWGC1FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC1FWMARK Default: 0x1100"
-    echo -e "WGC1FWMARK=0x1100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC1FWMARK Default: 0xa000"
+    echo -e "WGC1FWMARK=0xa000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC1MASK
   if [[ -z "$(sed -n '/\bWGC1MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC1MASK Default: 0x1100"
-    echo -e "WGC1MASK=0x1100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC1MASK Default: 0xf000"
+    echo -e "WGC1MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC2FWMARK
   if [[ -z "$(sed -n '/\bWGC2FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC2FWMARK Default: 0x2100"
-    echo -e "WGC2FWMARK=0x2100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC2FWMARK Default: 0xb000"
+    echo -e "WGC2FWMARK=0xb000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC2MASK
   if [[ -z "$(sed -n '/\bWGC2MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC2MASK Default: 0x2100"
-    echo -e "WGC2MASK=0x2100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC2MASK Default: 0xf000"
+    echo -e "WGC2MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC3FWMARK
   if [[ -z "$(sed -n '/\bWGC3FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC3FWMARK Default: 0x4100"
-    echo -e "WGC3FWMARK=0x4100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC3FWMARK Default: 0xc000"
+    echo -e "WGC3FWMARK=0xc000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC3MASK
   if [[ -z "$(sed -n '/\bWGC3MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC3MASK Default: 0x4100"
-    echo -e "WGC3MASK=0x4100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC3MASK Default: 0xf000"
+    echo -e "WGC3MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC4FWMARK
   if [[ -z "$(sed -n '/\bWGC4FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC4FWMARK Default: 0x7100"
-    echo -e "WGC4FWMARK=0x7100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC4FWMARK Default: 0xd000"
+    echo -e "WGC4FWMARK=0xd000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC4MASK
   if [[ -z "$(sed -n '/\bWGC4MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC4MASK Default: 0x7100"
-    echo -e "WGC4MASK=0x7100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC4MASK Default: 0xf000"
+    echo -e "WGC4MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC5FWMARK
   if [[ -z "$(sed -n '/\bWGC5FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC5FWMARK Default: 0x3100"
-    echo -e "WGC5FWMARK=0x3100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC5FWMARK Default: 0xe000"
+    echo -e "WGC5FWMARK=0xe000" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC5MASK
   if [[ -z "$(sed -n '/\bWGC5MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating WGC5MASK Default: 0x3100"
-    echo -e "WGC5MASK=0x3100" >> ${GLOBALCONFIGFILE}
+    logger -p 6 -t "$ALIAS" "Debug - Creating WGC5MASK Default: 0xf000"
+    echo -e "WGC5MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
 
   # Reading updated Global Configuration
@@ -721,6 +723,19 @@ fi
 if [[ "${globalconfigsync}" == "1" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Reading ${GLOBALCONFIGFILE}"
   . ${GLOBALCONFIGFILE}
+fi
+
+return
+}
+
+# Reset Global Config
+resetconfig ()
+{
+if [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
+  logger -p 3 -t "$ALIAS" "Reset Config - Resetting Global Configuration"
+  > ${GLOBALCONFIGFILE} \
+  && { globalconfigsync="0" && setglobalconfig && logger -p 4 -st "$ALIAS" "Reset Config - Reset Global Configuration" ;} \
+  || logger -p 2 -st "$ALIAS" "Reset Config - ***Error*** Failed to reset Global Configuration"
 fi
 
 return
@@ -910,8 +925,10 @@ printf "  WAN1 Mask                           WAN1 Mask:   ${LIGHTBLUE}${WAN1MAS
 
 if [[ "$mode" == "menu" ]] &>/dev/null;then
   printf "\n  (r)  return    Return to Main Menu"
+  printf "\n  (x)  reset     Reset to Default Configuration"
   printf "\n  (e)  exit      Exit" 
 else
+  printf "\n  (x)  reset     Reset to Default Configuration"
   printf "\n  (e)  exit      Exit" 
 fi
 printf "\nMake a selection: "
@@ -1212,6 +1229,11 @@ case "${configinput}" in
   menu
   break
   ;;
+  'x'|'X'|'reset'|'Reset'|'default' )
+  clear
+  resetconfig
+  [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
+  ;;
   'e'|'E'|'exit')
   clear
   if [[ "$mode" == "menu" ]] &>/dev/null;then
@@ -1243,23 +1265,24 @@ if [[ -n "$NEWVARIABLES" ]] &>/dev/null;then
     cronjob || return
     unset zCHECKINTERVAL
   fi
-
-  # Check for Restart Flag
-  if [[ "$RESTARTREQUIRED" == "1" ]] &>/dev/null;then
-    echo -e "${LIGHTRED}***This change will require the router to restart to take effect***${NOCOLOR}"
-    # Prompt for Reboot
-    while true &>/dev/null;do
-      read -p "Do you want to reboot now? ***Enter Y for Yes or N for No***" yn
-      case $yn in
-        [Yy]* ) reboot; break;;
-        [Nn]* ) break;;
-        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
-      esac
-    done
-    PressEnter
-    config
-  fi
 fi
+
+# Check for Restart Flag
+if [[ "$RESTARTREQUIRED" == "1" ]] &>/dev/null;then
+  echo -e "${LIGHTRED}***Changes are pending that require a reboot***${NOCOLOR}"
+  # Prompt for Reboot
+  while true &>/dev/null;do
+    read -p "Do you want to reboot now? ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) reboot; break;;
+      [Nn]* ) break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  PressEnter
+  config
+fi
+
 
 # Unset Variables
 [[ -n "${NEWVARIABLES+x}" ]] &>/dev/null && unset NEWVARIABLES
@@ -1294,8 +1317,8 @@ if [[ "$INTERFACE" == "ovpnc1" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
   IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
   RGW="$OVPNC1RGW"
-  ROUTETABLE="ovpnc1"
-  IPV6ROUTETABLE="ovpnc1"
+  ROUTETABLE="$INTERFACE"
+  IPV6ROUTETABLE="$INTERFACE"
   PRIORITY="1000"
   FWMARK="$OVPNC1FWMARK"
   MASK="$OVPNC1MASK"
@@ -1304,8 +1327,8 @@ elif [[ "$INTERFACE" == "ovpnc2" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
   IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
   RGW="$OVPNC2RGW"
-  ROUTETABLE="ovpnc2"
-  IPV6ROUTETABLE="ovpnc2"
+  ROUTETABLE="$INTERFACE"
+  IPV6ROUTETABLE="$INTERFACE"
   PRIORITY="2000"
   FWMARK="$OVPNC2FWMARK"
   MASK="$OVPNC2MASK"
@@ -1314,8 +1337,8 @@ elif [[ "$INTERFACE" == "ovpnc3" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
   IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
   RGW="$OVPNC3RGW"
-  ROUTETABLE="ovpnc3"
-  IPV6ROUTETABLE="ovpnc3"
+  ROUTETABLE="$INTERFACE"
+  IPV6ROUTETABLE="$INTERFACE"
   PRIORITY="3000"
   FWMARK="$OVPNC3FWMARK"
   MASK="$OVPNC3MASK"
@@ -1324,8 +1347,8 @@ elif [[ "$INTERFACE" == "ovpnc4" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
   IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
   RGW="$OVPNC4RGW"
-  ROUTETABLE="ovpnc4"
-  IPV6ROUTETABLE="ovpnc4"
+  ROUTETABLE="$INTERFACE"
+  IPV6ROUTETABLE="$INTERFACE"
   PRIORITY="4000"
   FWMARK="$OVPNC4FWMARK"
   MASK="$OVPNC4MASK"
@@ -1334,8 +1357,8 @@ elif [[ "$INTERFACE" == "ovpnc5" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
   IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
   RGW="$OVPNC5RGW"
-  ROUTETABLE="ovpnc5"
-  IPV6ROUTETABLE="ovpnc5"
+  ROUTETABLE="$INTERFACE"
+  IPV6ROUTETABLE="$INTERFACE"
   PRIORITY="5000"
   FWMARK="$OVPNC5FWMARK"
   MASK="$OVPNC5MASK"
@@ -3423,12 +3446,12 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
 
   # WAN0FWMARK
   if [[ -z "${WAN0FWMARK+x}" ]] &>/dev/null;then
-    WAN0FWMARK="0x80000000"
+    WAN0FWMARK="0x8000"
   fi
 
   # WAN0MASK
   if [[ -z "${WAN0MASK+x}" ]] &>/dev/null;then
-    WAN0MASK="0xf0000000"
+    WAN0MASK="0xf000"
   fi
 
   # WAN1STATE
@@ -3463,12 +3486,12 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
 
   # WAN1FWMARK
   if [[ -z "${WAN1FWMARK+x}" ]] &>/dev/null;then
-    WAN1FWMARK="0x90000000"
+    WAN1FWMARK="0x9000"
   fi
 
   # WAN1MASK
   if [[ -z "${WAN1MASK+x}" ]] &>/dev/null;then
-    WAN1MASK="0xf0000000"
+    WAN1MASK="0xf000"
   fi
 
   # OVPNC1STATE
