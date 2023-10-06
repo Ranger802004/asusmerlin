@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/05/2023
-# Version: v2.1.0-beta6
+# Date: 10/06/2023
+# Version: v2.1.0
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -132,7 +132,7 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
-v2.1.0-beta6 - 10/05/2023
+v2.1.0 - 10/06/2023
 Enhancements:
 - DNSMasq log is now utilized if enabled to query for domain records to route.  The log path will be captured from the DNSMasq Configuration.
 - IPSets, IPTables Rules, and IP Rules using FWMarks have been implemented to reduce the amount of routes / rules that are created for policies.
@@ -145,13 +145,15 @@ Enhancements:
 - Added Reset Default Configuration to Configuration Menu, additionally the command argument resetconfig can be used.
 
 Fixes:
-- Fixed issue where adding a domain with the same partial name as an existing in a policy prevented it from being added.
+- Fixed an issue where adding a domain with the same partial name as an existing in a policy prevented it from being added.
 - Fixed an issue that causes the update function to hang when complete as well as when terminating Domain VPN Routing.
 - Fixed an issue preventing installation where Domain VPN Routing was trying to access the global configuration before it was created.
 - Fixed an issue where the alias "domain_vpn_routing" was not being deleted during uninstallation.
 - Fixed an issue where changing the Check Interval causes the Domain VPN Routing to hang on Query Policy screen instead of returning to Configuration Menu.
 - Fixed an issue when editing a policy and changing the interface would cause a parameter not set error.
 - Fixed an issue that wouldn't allow FWMark and Mask settings in the configuration to be null.
+- Fixed an issue that caused uninstallation to prompt multiple times for confirmation during uninstall process.
+- Fixed an issue that prevented the menu from loading when Domain VPN Routing was not installed.
 
 v2.0.1 - 09/24/2023
 Enhancements:

@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/05/2023
-# Version: v2.1.0-beta6
+# Date: 10/06/2023
+# Version: v2.1.0
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.0-beta6"
+VERSION="v2.1.0"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -483,7 +483,16 @@ uninstall ()
 {
 # Prompt for confirmation
 if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
-  read -n 1 -s -r -p "Press any key to continue to uninstall..."
+  # Verify uninstallation prompt
+  while true &>/dev/null;do
+    read -p "Are you sure you want to uninstall ${ALIAS}? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
+    case $yn in
+      [Yy]* ) break;;
+      [Nn]* ) return;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+
   if [[ ! -d "${POLICYDIR}" ]] &>/dev/null;then
     echo -e "${RED}${ALIAS} - Uninstall: ${ALIAS} not installed...${NOCOLOR}"
     return
@@ -525,7 +534,8 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   fi
 
   # Delete Policies
-  $0 deletepolicy all
+  POLICY="all"
+  deletepolicy
 
   # Delete Policy Directory
   if [[ -d "${POLICYDIR}" ]] &>/dev/null;then
@@ -886,41 +896,46 @@ fi
 # Load Config Menu
 clear
 printf "\n  ${BOLD}Global Settings:${NOCOLOR}\n"
-printf "  (1) Configure Dev Mode              Dev Mode: " && { [[ "$DEVMODE" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-printf "  (2) Configure NVRAM Checks          NVRAM Checks: " && { [[ "$CHECKNVRAM" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-printf "  (3) Configure Process Priority      Process Priority: " && { { [[ "$PROCESSPRIORITY" == "0" ]] &>/dev/null && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-20" ]] &>/dev/null && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-10" ]] &>/dev/null && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "10" ]] &>/dev/null && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "20" ]] &>/dev/null && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}$PROCESSPRIORITY${NOCOLOR}" ;} && printf "\n"
-printf "  (4) Configure Check Interval        Check Interval: ${LIGHTBLUE}${CHECKINTERVAL} Minutes${NOCOLOR}\n"
-printf "  (5) Configure Boot Delay Timer      Boot Delay Timer: ${LIGHTBLUE}${BOOTDELAYTIMER} Seconds${NOCOLOR}\n"
+printf "  (1)  Configure Dev Mode              Dev Mode: " && { [[ "$DEVMODE" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (2)  Configure NVRAM Checks          NVRAM Checks: " && { [[ "$CHECKNVRAM" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (3)  Configure Process Priority      Process Priority: " && { { [[ "$PROCESSPRIORITY" == "0" ]] &>/dev/null && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-20" ]] &>/dev/null && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-10" ]] &>/dev/null && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "10" ]] &>/dev/null && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "20" ]] &>/dev/null && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}$PROCESSPRIORITY${NOCOLOR}" ;} && printf "\n"
+printf "  (4)  Configure Check Interval        Check Interval: ${LIGHTBLUE}${CHECKINTERVAL} Minutes${NOCOLOR}\n"
+printf "  (5)  Configure Boot Delay Timer      Boot Delay Timer: ${LIGHTBLUE}${BOOTDELAYTIMER} Seconds${NOCOLOR}\n"
 
 printf "\n  ${BOLD}Advanced Settings:${NOCOLOR}  ${LIGHTRED}***Recommended to leave default unless necessary to change***${NOCOLOR}\n"
-printf "  (6) OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
-printf "  (7) OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
-printf "  (8) OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
-printf "  (9) OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
-printf " (10) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
-printf " (12) OpenVPN Client 3 Mask           OpenVPN Client 3 Mask:     ${LIGHTBLUE}${OVPNC3MASK}${NOCOLOR}\n"
-printf " (12) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
-printf " (13) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
-printf " (14) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
-printf " (15) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
-printf " (16) Wireguard Client 1 FWMark       Wireguard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
-printf " (17) Wireguard Client 1 Mask         Wireguard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
-printf " (18) Wireguard Client 2 FWMark       Wireguard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
-printf " (19) Wireguard Client 2 Mask         Wireguard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
-printf " (20) Wireguard Client 3 FWMark       Wireguard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
-printf " (21) Wireguard Client 3 Mask         Wireguard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
-printf " (22) Wireguard Client 4 FWMark       Wireguard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
-printf " (23) Wireguard Client 4 Mask         Wireguard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
-printf " (24) Wireguard Client 5 FWMark       Wireguard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
-printf " (25) Wireguard Client 5 Mask         Wireguard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
+printf "  (6)  OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
+printf "  (7)  OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
+printf "  (8)  OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
+printf "  (9)  OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
+printf "  (10) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
+printf "  (12) OpenVPN Client 3 Mask           OpenVPN Client 3 Mask:     ${LIGHTBLUE}${OVPNC3MASK}${NOCOLOR}\n"
+printf "  (12) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
+printf "  (13) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
+printf "  (14) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
+printf "  (15) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
+printf "  (16) Wireguard Client 1 FWMark       Wireguard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
+printf "  (17) Wireguard Client 1 Mask         Wireguard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
+printf "  (18) Wireguard Client 2 FWMark       Wireguard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
+printf "  (19) Wireguard Client 2 Mask         Wireguard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
+printf "  (20) Wireguard Client 3 FWMark       Wireguard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
+printf "  (21) Wireguard Client 3 Mask         Wireguard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
+printf "  (22) Wireguard Client 4 FWMark       Wireguard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
+printf "  (23) Wireguard Client 4 Mask         Wireguard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
+printf "  (24) Wireguard Client 5 FWMark       Wireguard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
+printf "  (25) Wireguard Client 5 Mask         Wireguard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
 
 printf "\n  ${BOLD}System Information:${NOCOLOR}\n"
-printf "  DNS Logging Status                  Status:      " && { [[ "$DNSLOGGINGENABLED" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-printf "  DNS Log Path                        Log Path:    ${LIGHTBLUE}${DNSLOGPATH}${NOCOLOR}\n"
-printf "  WAN0 FWMark                         WAN0 FWMark: ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
-printf "  WAN0 Mask                           WAN0 Mask:   ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
-printf "  WAN1 FWMark                         WAN1 FWMark: ${LIGHTBLUE}${WAN1FWMARK}${NOCOLOR}\n"
-printf "  WAN1 Mask                           WAN1 Mask:   ${LIGHTBLUE}${WAN1MASK}${NOCOLOR}\n"
+printf "   DNS Logging Status                  Status:      " && { [[ "$DNSLOGGINGENABLED" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "   DNS Log Path                        Log Path:    ${LIGHTBLUE}${DNSLOGPATH}${NOCOLOR}\n"
+if [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
+  printf "   WAN0 FWMark                         WAN0 FWMark: ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
+  printf "   WAN0 Mask                           WAN0 Mask:   ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
+  printf "   WAN1 FWMark                         WAN1 FWMark: ${LIGHTBLUE}${WAN1FWMARK}${NOCOLOR}\n"
+  printf "   WAN1 Mask                           WAN1 Mask:   ${LIGHTBLUE}${WAN1MASK}${NOCOLOR}\n"
+else
+  printf "   WAN FWMark                          WAN FWMark: ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
+  printf "   WAN Mask                            WAN Mask:   ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
+fi
 
 
 if [[ "$mode" == "menu" ]] &>/dev/null;then
@@ -1015,7 +1030,8 @@ case "${configinput}" in
         "" ) SETOVPNC1FWMARK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC1FWMARK=|$SETOVPNC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1031,7 +1047,8 @@ case "${configinput}" in
         "" ) SETOVPNC1MASK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC1MASK=|$SETOVPNC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1047,7 +1064,8 @@ case "${configinput}" in
         "" ) SETOVPNC2FWMARK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC2FWMARK=|$SETOVPNC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1063,7 +1081,8 @@ case "${configinput}" in
         "" ) SETOVPNC2MASK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC2MASK=|$SETOVPNC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1079,7 +1098,8 @@ case "${configinput}" in
         "" ) SETOVPNC3FWMARK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC3FWMARK=|$SETOVPNC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1095,7 +1115,8 @@ case "${configinput}" in
         "" ) SETOVPNC3MASK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC3MASK=|$SETOVPNC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1111,7 +1132,8 @@ case "${configinput}" in
         "" ) SETOVPNC4FWMARK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC4FWMARK=|$SETOVPNC4FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1127,7 +1149,8 @@ case "${configinput}" in
         "" ) SETOVPNC4MASK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC4MASK=|$SETOVPNC4MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1143,7 +1166,8 @@ case "${configinput}" in
         "" ) SETOVPNC5FWMARK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC5FWMARK=|$SETOVPNC5FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1159,7 +1183,8 @@ case "${configinput}" in
         "" ) SETOVPNC5MASK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC5MASK=|$SETOVPNC5MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1175,7 +1200,8 @@ case "${configinput}" in
         "" ) SETWGC1FWMARK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} WGC1FWMARK=|$SETWGC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1191,7 +1217,8 @@ case "${configinput}" in
         "" ) SETWGC1MASK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} WGC1MASK=|$SETWGC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1207,7 +1234,8 @@ case "${configinput}" in
         "" ) SETWGC2FWMARK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} WGC2FWMARK=|$SETWGC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1223,7 +1251,8 @@ case "${configinput}" in
         "" ) SETWGC2MASK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} WGC2MASK=|$SETWGC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1239,7 +1268,8 @@ case "${configinput}" in
         "" ) SETWGC3FWMARK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} WGC3FWMARK=|$SETWGC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1255,7 +1285,8 @@ case "${configinput}" in
         "" ) SETWGC3MASK="${value}"; break;;
         * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
       esac
-    fi  done
+    fi
+  done
   NEWVARIABLES="${NEWVARIABLES} WGC3MASK=|$SETWGC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
@@ -1332,8 +1363,14 @@ case "${configinput}" in
   break
   ;;
   'x'|'X'|'reset'|'Reset'|'default' )
-  clear
-  resetconfig
+  while true &>/dev/null;do
+    read -p "Are you sure you want to reset back to default configuration? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
+    case $yn in
+      [Yy]* ) resetconfig && break;;
+      [Nn]* ) break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   'e'|'E'|'exit')
@@ -1909,7 +1946,6 @@ WGFILES='
   if [[ "$NEWPOLICYINTERFACE" != "$OLDINTERFACE" ]] &>/dev/null;then
 
     # Check if old interface is no longer being used by a policy
-    [[ -z "${ifnotinuse+x}" ]] &>/dev/null && ifnotinuse="0"
     if [[ -z "$(awk -F "|" '$4 == "'${OLDINTERFACE}'" {print $4}' "${CONFIGFILE}" | sort -u)" ]] &>/dev/null;then
       ifnotinuse="1"
     else
@@ -2213,7 +2249,7 @@ INTERFACES='
   fi
 fi
 # Reset ifnotinuse flag
-[[ -n "${ifnotinuse}+x" ]] &>/dev/null && unset ifnotinuse
+[[ -n "${ifnotinuse+x}" ]] &>/dev/null && unset ifnotinuse
 return
 }
 
@@ -2221,15 +2257,15 @@ return
 deletepolicy ()
 {
 # Prompt for confirmation
-if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
+if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   if [[ "$POLICY" == "all" ]] &>/dev/null;then
-    read -n 1 -s -r -p "Press any key to continue to delete all policies"
+    [[ "${mode}" != "uninstall" ]] &>/dev/null && read -n 1 -s -r -p "Press any key to continue to delete all policies"
     DELETEPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
   elif [[ "$POLICY" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
-    read -n 1 -s -r -p "Press any key to continue to delete Policy: $POLICY"
-    DELETEPOLICIES=$POLICY
+    read -n 1 -s -r -p "Press any key to continue to delete Policy: ${POLICY}"
+    DELETEPOLICIES=${POLICY}
   else
-    echo -e "${RED}Policy: $POLICY not found${NOCOLOR}"
+    echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
     return
   fi
   for DELETEPOLICY in ${DELETEPOLICIES};do
@@ -2499,7 +2535,7 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6"
         ipset del DomainVPNRouting-${POLICY}-ipv6 ${IPV6}:: \
         || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6" \
-        && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleting ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6" ;}
+        && { saveipv6ipset="1" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleting ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6" ;}
       fi
 
       # Delete IPv6 Route with prefix fixed
@@ -2515,18 +2551,8 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6"
         ipset del DomainVPNRouting-${POLICY}-ipv6 ${IPV6} \
         || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6" \
-        && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleting ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6" ;}
+        && { saveipv6ipset="1" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleting ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6" ;}
       fi
-
-      # Save IPv6 IPSET if modified or does not exist
-      [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-      if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-ipv6.ipset" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Delete Domain - Saving IPv6 IPSET for ${POLICY}"
-        ipset save DomainVPNRouting-${POLICY}-ipv6 -file ${POLICYDIR}/policy_${POLICY}-ipv6.ipset \
-        && logger -p 4 -t "$ALIAS" "Delete Domain - Saved IPv6 IPSET for ${POLICY}" \
-        || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to save IPv6 IPSET for ${POLICY}"
-      fi
-      [[ -n "${saveipv6ipset+x}" ]] &>/dev/null && unset saveipv6ipset
 
       # Delete IPv6 Route
       if [[ -n "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} 2>/dev/null)" ]] &>/dev/null;then
@@ -2535,8 +2561,18 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Route deleted for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" ;} \
         || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** ***Error*** Failed to delete route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
       fi
-
     done
+
+    # Save IPv6 IPSET if modified or does not exist
+    [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-ipv6.ipset" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Domain - Saving IPv6 IPSET for ${POLICY}"
+      ipset save DomainVPNRouting-${POLICY}-ipv6 -file ${POLICYDIR}/policy_${POLICY}-ipv6.ipset \
+      && logger -p 4 -t "$ALIAS" "Delete Domain - Saved IPv6 IPSET for ${POLICY}" \
+      || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to save IPv6 IPSET for ${POLICY}"
+    fi
+    [[ -n "${saveipv6ipset+x}" ]] &>/dev/null && unset saveipv6ipset
+
 
     # Delete IPv4
     for IPV4 in ${IPV4S};do
@@ -2549,21 +2585,11 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
         && { saveipv4ipset="1" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleted ${IPV4} to IPSET: DomainVPNRouting-${POLICY}-ipv4" ;}
       fi
 
-      # Save IPv4 IPSET if modified or does not exist
-      [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-      if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-ipv4.ipset" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Delete Domain - Saving IPv4 IPSET for ${POLICY}"
-        ipset save DomainVPNRouting-${POLICY}-ipv4 -file ${POLICYDIR}/policy_${POLICY}-ipv4.ipset \
-        && logger -p 4 -t "$ALIAS" "Delete Domain - Saved IPv4 IPSET for ${POLICY}" \
-        || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to save IPv4 IPSET for ${POLICY}"
-      fi
-      [[ -n "${saveipv4ipset+x}" ]] &>/dev/null && unset saveipv4ipset
-
       # Delete IPv4 IP Rule
       if [[ -n "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
         ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
-        && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleted IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" \
+        && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleted IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" ;} \
         || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
       fi
 
@@ -2576,6 +2602,15 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
       fi
     done
 
+    # Save IPv4 IPSET if modified or does not exist
+    [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
+    if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-ipv4.ipset" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Domain - Saving IPv4 IPSET for ${POLICY}"
+      ipset save DomainVPNRouting-${POLICY}-ipv4 -file ${POLICYDIR}/policy_${POLICY}-ipv4.ipset \
+      && logger -p 4 -t "$ALIAS" "Delete Domain - Saved IPv4 IPSET for ${POLICY}" \
+      || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to save IPv4 IPSET for ${POLICY}"
+    fi
+    [[ -n "${saveipv4ipset+x}" ]] &>/dev/null && unset saveipv4ipset
 
     # Delete domain from policy files
     logger -p 5 -st "$ALIAS" "Delete Domain - Deleting ${DOMAIN} from Policy: ${POLICY}"
@@ -3799,9 +3834,12 @@ return
 # Get System Parameters
 getsystemparameters || return
 # Perform PreV2 Config Update
-[[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null && { updateconfigprev2 || return ;}
+if [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
+  updateconfigprev2 || return
 # Get Global Configuration
-setglobalconfig || return
+elif [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
+  setglobalconfig || return
+fi
 # Check Alias
 if [[ -d "${POLICYDIR}" ]] &>/dev/null && [[ "${mode}" != "uninstall" ]] &>/dev/null;then
   checkalias || return

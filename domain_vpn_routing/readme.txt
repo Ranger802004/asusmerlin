@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/24/2023
-# Version: v2.0.1
+# Date: 10/06/2023
+# Version: v2.1.0
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -11,7 +11,7 @@ Requirements:
 - OpenVPN
 
 Installation Command:
-/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing-beta.sh" -o "/jffs/scripts/domain_vpn_routing.sh" && chmod 755 /jffs/scripts/domain_vpn_routing.sh && sh /jffs/scripts/domain_vpn_routing.sh install
+/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing.sh" -o "/jffs/scripts/domain_vpn_routing.sh" && chmod 755 /jffs/scripts/domain_vpn_routing.sh && sh /jffs/scripts/domain_vpn_routing.sh install
 
 Update Command:
 /jffs/scripts/domain_vpn_routing.sh update
@@ -37,11 +37,35 @@ Run Modes:
 - deleteip: Delete a queried IP from a policy.
 - kill: Kill any instances of the script.
 - uninstall: Uninstall the configuration files necessary to stop the script from running.
+- config: Configuration menu to change global configuration options.
+- resetconfig: Will reset the global configuration of Domain VPN Routing to defaults.
 
 Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
 - DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
 - CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Disabled 
 - PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
+- CHECKINTERVAL: This defines the policy check interval via cron job, value range is from 1 to 59 minutes. Default: 15 Minutes
+- BOOTDELAYTIMER: This will delay execution until System Uptime reaches this time. Default: 0 Seconds
+- OVPNC1FWMARK: This defines the FWMark value for OpenVPN Client 1. Default: 0x1000
+- OVPNC1MASK: This defines the Mask value for OpenVPN Client 1. Default: 0xf000
+- OVPNC2FWMARK: This defines the FWMark value for OpenVPN Client 2. Default: 0x2000
+- OVPNC2MASK: This defines the Mask value for OpenVPN Client 2. Default: 0xf000
+- OVPNC3FWMARK: This defines the FWMark value for OpenVPN Client 3. Default: 0x4000
+- OVPNC3MASK: This defines the Mask value for OpenVPN Client 3. Default: 0xf000
+- OVPNC4FWMARK: This defines the FWMark value for OpenVPN Client 4. Default: 0x7000
+- OVPNC4MASK: This defines the Mask value for OpenVPN Client 4. Default: 0xf000
+- OVPNC5FWMARK: This defines the FWMark value for OpenVPN Client 5. Default: 0x3000
+- OVPNC5MASK: This defines the Mask value for OpenVPN Client 5. Default: 0xf000
+- WGC1FWMARK: This defines the FWMark value for WireGuard Client 1. Default: 0xa000
+- WGC1MASK: This defines the Mask value for WireGuard Client 1. Default: 0xf000
+- WGC2FWMARK: This defines the FWMark value for WireGuard Client 2. Default: 0xb000
+- WGC2MASK: This defines the Mask value for WireGuard Client 2. Default: 0xf000
+- WGC3FWMARK: This defines the FWMark value for WireGuard Client 3. Default: 0xc000
+- WGC3MASK: This defines the Mask value for WireGuard Client 3. Default: 0xf000
+- WGC4FWMARK: This defines the FWMark value for WireGuard Client 4. Default: 0xd000
+- WGC4MASK: This defines the Mask value for WireGuard Client 4. Default: 0xf000
+- WGC5FWMARK: This defines the FWMark value for WireGuard Client 5. Default: 0xe000
+- WGC5MASK: This defines the Mask value for WireGuard Client 5. Default: 0xf000
 
 
 Creating a Policy:
@@ -109,6 +133,29 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
+v2.1.0 - 10/06/2023
+Enhancements:
+- DNSMasq log is now utilized if enabled to query for domain records to route.  The log path will be captured from the DNSMasq Configuration.
+- IPSets, IPTables Rules, and IP Rules using FWMarks have been implemented to reduce the amount of routes / rules that are created for policies.
+- Added Check Interval configuration options to Configuration Menu to modify the cron job schedule between 1 - 59 minutes.  Default: 15 minutes
+- The current interface for a Policy will be displayed when in the Edit Policy configuration menu.
+- Added default FWMark and Mask values for OpenVPN and WireGuard clients that can be changed in the configuration menu.  Reboot required for changes.
+- Log priority values added (Critical, Error, Warning, Notice, Informational, Debug)
+- Additional logging messages have been added.
+- Added Boot Delay Timer configuration setting to delay execution to wait and allow VPN tunnels to initalize during start up before querying for policies. Default: 0 Seconds
+- Added Reset Default Configuration to Configuration Menu, additionally the command argument resetconfig can be used.
+
+Fixes:
+- Fixed an issue where adding a domain with the same partial name as an existing in a policy prevented it from being added.
+- Fixed an issue that causes the update function to hang when complete as well as when terminating Domain VPN Routing.
+- Fixed an issue preventing installation where Domain VPN Routing was trying to access the global configuration before it was created.
+- Fixed an issue where the alias "domain_vpn_routing" was not being deleted during uninstallation.
+- Fixed an issue where changing the Check Interval causes the Domain VPN Routing to hang on Query Policy screen instead of returning to Configuration Menu.
+- Fixed an issue when editing a policy and changing the interface would cause a parameter not set error.
+- Fixed an issue that wouldn't allow FWMark and Mask settings in the configuration to be null.
+- Fixed an issue that caused uninstallation to prompt multiple times for confirmation during uninstall process.
+- Fixed an issue that prevented the menu from loading when Domain VPN Routing was not installed.
+
 v2.0.1 - 09/24/2023
 Enhancements:
 - Minor optimizations for performance
