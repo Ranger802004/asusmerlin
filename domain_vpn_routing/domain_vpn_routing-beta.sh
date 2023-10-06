@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/04/2023
-# Version: v2.1.0-beta5
+# Date: 10/05/2023
+# Version: v2.1.0-beta6
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.0-beta5"
+VERSION="v2.1.0-beta6"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -63,7 +63,7 @@ fi
 if [[ "$#" == "0" ]] &>/dev/null;then
   # Default to Menu Mode if no argument specified
   [[ -z "${mode+x}" ]] &>/dev/null && mode="menu"
-elif [[ "$#" -gt "1" ]] &>/dev/null;then
+elif [[ "$#" == "2" ]] &>/dev/null;then
   mode="$1"
   arg2="$2"
 else
@@ -205,7 +205,7 @@ menu ()
                           README="${REPO}readme.txt"
                         fi
                         clear
-                        /usr/sbin/curl --connect-timeout 30 --max-time 30 --url $README --ssl-reqd 2>/dev/null || echo -e "${RED}***Unable to access Readme***${NOCOLOR}"
+                        /usr/sbin/curl --connect-timeout 30 --max-time 30 --url ${README} --ssl-reqd 2>/dev/null || echo -e "${RED}***Unable to access Readme***${NOCOLOR}"
 		;;
 		'2')    # showpolicy
 			mode="showpolicy"
@@ -294,7 +294,7 @@ menu ()
                             * ) DOMAIN=$value; break;;
                           esac
                         done
-                        adddomain "$DOMAIN"
+                        adddomain "${DOMAIN}"
                         unset value DOMAIN
 		;;
 		'14')   # deletedomain
@@ -305,7 +305,7 @@ menu ()
                             * ) DOMAIN=$value; break;;
                           esac
                         done
-                        deletedomain "$DOMAIN"
+                        deletedomain "${DOMAIN}"
                         unset value DOMAIN
 		;;
 		'15')   # deleteip
@@ -587,7 +587,7 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
 
   # BOOTDELAYTIMER
   if [[ -z "$(sed -n '/\bBOOTDELAYTIMER\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
-    logger -p 6 -t "$ALIAS" "Debug - Creating BOOTDELAYTIMER Default: 180 seconds"
+    logger -p 6 -t "$ALIAS" "Debug - Creating BOOTDELAYTIMER Default: 0 seconds"
     echo -e "BOOTDELAYTIMER=0" >> ${GLOBALCONFIGFILE}
   fi
 
@@ -1006,208 +1006,304 @@ case "${configinput}" in
   '6')      # OVPNC1FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 FWMark - This defines the OVPNC1 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC1FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC1FWMARK="$value"; break;;
+        "" ) SETOVPNC1FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC1FWMARK=|$SETOVPNC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '7')      # OVPNC1MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 Mask - This defines the OVPNC1 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC1MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC1MASK="$value"; break;;
+        "" ) SETOVPNC1MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC1MASK=|$SETOVPNC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '8')      # OVPNC2FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 FWMark - This defines the OVPNC2 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC2FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC2FWMARK="$value"; break;;
+        "" ) SETOVPNC2FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC2FWMARK=|$SETOVPNC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '9')      # OVPNC2MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 Mask - This defines the OVPNC2 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC2MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC2MASK="$value"; break;;
+        "" ) SETOVPNC2MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC2MASK=|$SETOVPNC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '10')      # OVPNC3FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 FWMark - This defines the OVPNC3 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC3FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC3FWMARK="$value"; break;;
+        "" ) SETOVPNC3FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC3FWMARK=|$SETOVPNC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '11')      # OVPNC3MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 Mask - This defines the OVPNC3 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC3MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC3MASK="$value"; break;;
+        "" ) SETOVPNC3MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC3MASK=|$SETOVPNC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '12')      # OVPNC4FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 FWMark - This defines the OVPNC4 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC4FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC4FWMARK="$value"; break;;
+        "" ) SETOVPNC4FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC4FWMARK=|$SETOVPNC4FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '13')      # OVPNC4MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 Mask - This defines the OVPNC4 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC4MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC4MASK="$value"; break;;
+        "" ) SETOVPNC4MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC4MASK=|$SETOVPNC4MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '14')      # OVPNC5FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 FWMark - This defines the OVPNC5 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC5FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC5FWMARK="$value"; break;;
+        "" ) SETOVPNC5FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC5FWMARK=|$SETOVPNC5FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '15')      # OVPNC5MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 Mask - This defines the OVPNC5 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETOVPNC5MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETOVPNC5MASK="$value"; break;;
+        "" ) SETOVPNC5MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} OVPNC5MASK=|$SETOVPNC5MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '16')      # WGC1FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC1 FWMark - This defines the WGC1 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC1FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC1FWMARK="$value"; break;;
+        "" ) SETWGC1FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} WGC1FWMARK=|$SETWGC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '17')      # WGC1MASK
   while true &>/dev/null;do
     read -p "Configure WGC1 Mask - This defines the WGC1 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC1MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC1MASK="$value"; break;;
+        "" ) SETWGC1MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} WGC1MASK=|$SETWGC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '18')      # WGC2FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC2 FWMark - This defines the WGC2 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC2FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC2FWMARK="$value"; break;;
+        "" ) SETWGC2FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} WGC2FWMARK=|$SETWGC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '19')      # WGC2MASK
   while true &>/dev/null;do
     read -p "Configure WGC2 Mask - This defines the WGC2 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC2MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC2MASK="$value"; break;;
+        "" ) SETWGC2MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} WGC2MASK=|$SETWGC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '20')      # WGC3FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC3 FWMark - This defines the WGC3 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC3FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC3FWMARK="$value"; break;;
+        "" ) SETWGC3FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} WGC3FWMARK=|$SETWGC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '21')      # WGC3MASK
   while true &>/dev/null;do
     read -p "Configure WGC3 Mask - This defines the WGC3 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC3MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC3MASK="$value"; break;;
+        "" ) SETWGC3MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} WGC3MASK=|$SETWGC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '22')      # WGC4FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC4 FWMark - This defines the WGC4 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC4FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC4FWMARK="$value"; break;;
+        "" ) SETWGC4FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} WGC4FWMARK=|$SETWGC4FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '23')      # WGC4MASK
   while true &>/dev/null;do
     read -p "Configure WGC4 Mask - This defines the WGC4 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC4MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
-  done
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC4MASK="$value"; break;;
+        "" ) SETWGC4MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi  done
   NEWVARIABLES="${NEWVARIABLES} WGC4MASK=|$SETWGC4MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
   '24')      # WGC5FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC5 FWMark - This defines the WGC5 FWMark for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC5FWMARK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC5FWMARK="$value"; break;;
+        "" ) SETWGC5FWMARK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi
   done
   NEWVARIABLES="${NEWVARIABLES} WGC5FWMARK=|$SETWGC5FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
@@ -1215,10 +1311,16 @@ case "${configinput}" in
   '25')      # WGC5MASK
   while true &>/dev/null;do
     read -p "Configure WGC5 Mask - This defines the WGC5 Mask for marking traffic: " value
-    case $value in
-      [0123456789xf]* ) SETWGC5MASK="$value"; break;;
-      * ) echo -e "${RED}Invalid Selection!!!***${NOCOLOR}"
-    esac
+    if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
+      echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      continue
+    else
+      case $value in
+        0[xX][[:xdigit:]]* ) SETWGC5MASK="$value"; break;;
+        "" ) SETWGC5MASK="${value}"; break;;
+        * ) echo -e "${RED}***Invalid hexidecimal value*** Valid Range: 0x0 - 0xffffffff${NOCOLOR}"
+      esac
+    fi
   done
   NEWVARIABLES="${NEWVARIABLES} WGC5MASK=|$SETWGC5MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
@@ -1428,10 +1530,10 @@ elif [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
     OLDGATEWAY="$WAN1GATEWAY"
     IFNAME="$WAN0GWIFNAME"
     OLDIFNAME="$WAN1GWIFNAME"
-    FWMARK="0x80000000"
-    MASK="0xf0000000"
-    OLDFWMARK="0x90000000"
-    OLDMASK="0xf0000000"
+    FWMARK="$WAN0FWMARK"
+    MASK="$WAN0MASK"
+    OLDFWMARK="$WAN1FWMARK"
+    OLDMASK="$WAN1MASK"
     OLDSTATE="$WAN1STATE"
   elif [[ "$WAN1PRIMARY" == "1" ]] &>/dev/null;then
     STATE="$WAN1STATE"
@@ -1440,10 +1542,10 @@ elif [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
     OLDGATEWAY="$WAN0GATEWAY"
     IFNAME="$WAN1GWIFNAME"
     OLDIFNAME="$WAN0GWIFNAME"
-    FWMARK="0x90000000"
-    MASK="0xf0000000"
-    OLDFWMARK="0x80000000"
-    OLDMASK="0xf0000000"
+    FWMARK="$WAN1FWMARK"
+    MASK="$WAN1MASK"
+    OLDFWMARK="$WAN0FWMARK"
+    OLDMASK="$WAN0MASK"
     OLDSTATE="$WAN0STATE"
   fi
   ROUTETABLE="main"
@@ -1782,13 +1884,13 @@ WGFILES='
       esac
   done
 
-# Set process priority
-if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting Process Priority to ${PROCESSPRIORITY}"
-  renice -n ${PROCESSPRIORITY} $$ \
-  && logger -p 4 -t "$ALIAS" "Edit Policy - Set Process Priority to ${PROCESSPRIORITY}" \
-  || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to set Process Priority to ${PROCESSPRIORITY}"
-fi
+  # Set process priority
+  if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting Process Priority to ${PROCESSPRIORITY}"
+    renice -n ${PROCESSPRIORITY} $$ \
+    && logger -p 4 -t "$ALIAS" "Edit Policy - Set Process Priority to ${PROCESSPRIORITY}" \
+    || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to set Process Priority to ${PROCESSPRIORITY}"
+  fi
 
   # Editing Policy in Config File
   if [[ -n "$(awk -F "|" '/^'${EDITPOLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
@@ -1806,12 +1908,13 @@ fi
   # Check if routes need to be modified
   if [[ "$NEWPOLICYINTERFACE" != "$OLDINTERFACE" ]] &>/dev/null;then
 
-  # Check if old interface is no longer being used by a policy
-  if [[ -z "$(awk -F "|" '$4 == "'${OLDINTERFACE}'" {print $4}' "${CONFIGFILE}" | sort -u)" ]] &>/dev/null;then
-    ifnotinuse="1"
-  else
-    ifnotinuse="0"
-  fi
+    # Check if old interface is no longer being used by a policy
+    [[ -z "${ifnotinuse+x}" ]] &>/dev/null && ifnotinuse="0"
+    if [[ -z "$(awk -F "|" '$4 == "'${OLDINTERFACE}'" {print $4}' "${CONFIGFILE}" | sort -u)" ]] &>/dev/null;then
+      ifnotinuse="1"
+    else
+      ifnotinuse="0"
+    fi
 
 # Array for old and new interfaces
 INTERFACES='
@@ -1865,113 +1968,129 @@ INTERFACES='
     fi
 
     # Recreate IPv6
-    # Recreate FWMark IPv6 Rule
-    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip -6 rule list from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWIPV6ROUTETABLE} priority ${NEWPRIORITY})" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Checking for IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-      ip -6 rule add from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWIPV6ROUTETABLE} priority ${NEWPRIORITY} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-    elif [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && { [[ -z "$(ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null || [[ "$PRIMARY" == "0" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Checking for Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-      ip -6 rule add unreachable from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-    fi
-    # Recreate IPv6 IP6Tables PREROUTING Rule
-    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
-      ip6tables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
-    fi
-    # Recreate IPv6 IP6Tables POSTROUTING Rule
-    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${NEWIFNAME}'" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
-      ip6tables -t mangle -A POSTROUTING -o ${NEWIFNAME} -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
-    fi
-    # Delete Old FWMark IPv6 Rule
-    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 rule list from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDIPV6ROUTETABLE} priority ${OLDPRIORITY})" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Checking for IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
-      ip -6 rule del from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDIPV6ROUTETABLE} priority ${OLDPRIORITY} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
-    fi
-    # Delete Old FWMark IPv6 Unreachable Rule
-    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 rule list from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} | grep -w "unreachable")" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Checking for Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
-      ip -6 rule del unreachable from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
-    fi
-    # Delete Old IPv6 IP6Tables PREROUTING Rule
-    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
-      ip6tables -t mangle -D PREROUTING -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
-    fi
-    # Delete Old IPv6 IP6Tables POSTROUTING Rule
-    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${OLDIFNAME}'" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
-      ip6tables -t mangle -D POSTROUTING -o ${OLDIFNAME} -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
-    fi
-
-    # Recreate IPv6 Routes
-    for IPV6 in ${IPV6S}; do
-      # Delete old IPv6 Route
-      if [[ -n "$(ip -6 route list ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
-        ip -6 route del ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
-        && logger -p 4 -st "$ALIAS" "Edit Policy - Route deleted for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" \
-        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
+    if [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null;then
+      # Recreate FWMark IPv6 Rule
+      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip -6 rule list from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWIPV6ROUTETABLE} priority ${NEWPRIORITY})" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Checking for IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
+        ip -6 rule add from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWIPV6ROUTETABLE} priority ${NEWPRIORITY} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
+      elif [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && { [[ -z "$(ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null || [[ "$PRIMARY" == "0" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Checking for Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
+        ip -6 rule add unreachable from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
       fi
-      # Create IPv6 Routes if necessary due to lack of FWMark Rules
-      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -z "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
-        # Check for IPv6 prefix error and create new IPv6 routes
-        if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -w "Error: inet6 prefix is expected rather than \"${IPV6}\"." )" ]] &>/dev/null;then
-          if [[ -z "$(ip -6 route list ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
-            logger -p 5 -t "$ALIAS" "Edit Policy - Adding route for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
-            ip -6 route add ${IPV6}:: dev ${IFNAME} table ${NEWIPV6ROUTETABLE} &>/dev/null \
-            || rc="$?" \
-            && { rc="$?" && logger -p 4 -t "$ALIAS" "Edit Policy - Route added for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}" ;}
-            # Generate Error Log
-            if [[ "${rc+x}" ]] &>/dev/null;then
-              continue
-            elif [[ "$rc" == "2" ]] &>/dev/null;then
-              logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Route already exists for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
-            elif [[ "$rc" != "0" ]] &>/dev/null;then
-              logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
+      # Recreate IPv6 IP6Tables OUTPUT Rule
+      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
+        ip6tables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
+      fi
+      # Recreate IPv6 IP6Tables PREROUTING Rule
+      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
+        ip6tables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
+      fi
+      # Recreate IPv6 IP6Tables POSTROUTING Rule
+      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${NEWIFNAME}'" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
+        ip6tables -t mangle -A POSTROUTING -o ${NEWIFNAME} -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
+      fi
+      # Delete Old FWMark IPv6 Rule
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 rule list from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDIPV6ROUTETABLE} priority ${OLDPRIORITY})" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Checking for IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
+        ip -6 rule del from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDIPV6ROUTETABLE} priority ${OLDPRIORITY} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
+      fi
+      # Delete Old FWMark IPv6 Unreachable Rule
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 rule list from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} | grep -w "unreachable")" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Checking for Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
+        ip -6 rule del unreachable from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
+      fi
+      # Delete Old IPv6 IP6Tables OUTPUT Rule
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
+        ip6tables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
+      fi
+      # Delete Old IPv6 IP6Tables PREROUTING Rule
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
+        ip6tables -t mangle -D PREROUTING -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
+      fi
+      # Delete Old IPv6 IP6Tables POSTROUTING Rule
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${OLDIFNAME}'" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
+        ip6tables -t mangle -D POSTROUTING -o ${OLDIFNAME} -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
+      fi
+
+      # Recreate IPv6 Routes
+      for IPV6 in ${IPV6S}; do
+        # Delete old IPv6 Route
+        if [[ -n "$(ip -6 route list ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
+          logger -p 5 -t "$ALIAS" "Edit Policy - Deleting route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
+          ip -6 route del ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
+          && logger -p 4 -st "$ALIAS" "Edit Policy - Route deleted for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" \
+          || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
+        fi
+        # Create IPv6 Routes if necessary due to lack of FWMark Rules
+        if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -z "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
+          # Check for IPv6 prefix error and create new IPv6 routes
+          if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -w "Error: inet6 prefix is expected rather than \"${IPV6}\"." )" ]] &>/dev/null;then
+            if [[ -z "$(ip -6 route list ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
+              logger -p 5 -t "$ALIAS" "Edit Policy - Adding route for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
+              ip -6 route add ${IPV6}:: dev ${IFNAME} table ${NEWIPV6ROUTETABLE} &>/dev/null \
+              || rc="$?" \
+              && { rc="$?" && logger -p 4 -t "$ALIAS" "Edit Policy - Route added for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}" ;}
+              # Generate Error Log
+              if [[ "${rc+x}" ]] &>/dev/null;then
+                continue
+              elif [[ "$rc" == "2" ]] &>/dev/null;then
+                logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Route already exists for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
+              elif [[ "$rc" != "0" ]] &>/dev/null;then
+                logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
+              fi
             fi
-          fi
-        else
-          if [[ -z "$(ip -6 route list ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
-            logger -p 5 -t "$ALIAS" "Edit Policy - Adding route for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
-            ip -6 route add ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE} &>/dev/null \
-            || rc="$?" \
-            && { rc="$?" && logger -p 4 -t "$ALIAS" "Edit Policy - Route added for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}" ;}
-            # Generate Error Log
-            if [[ "${rc+x}" ]] &>/dev/null;then
-              continue
-            elif [[ "$rc" == "2" ]] &>/dev/null;then
-              logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Route already exists for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
-            elif [[ "$rc" != "0" ]] &>/dev/null;then
-              logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
+          else
+            if [[ -z "$(ip -6 route list ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
+              logger -p 5 -t "$ALIAS" "Edit Policy - Adding route for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
+              ip -6 route add ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE} &>/dev/null \
+              || rc="$?" \
+              && { rc="$?" && logger -p 4 -t "$ALIAS" "Edit Policy - Route added for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}" ;}
+              # Generate Error Log
+              if [[ "${rc+x}" ]] &>/dev/null;then
+                continue
+              elif [[ "$rc" == "2" ]] &>/dev/null;then
+                logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Route already exists for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
+              elif [[ "$rc" != "0" ]] &>/dev/null;then
+                logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Unable to add route for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
+              fi
             fi
           fi
         fi
-      fi
-    done
+      done
 
-    # Save IPv6 IPSET if save file does not exist
-    if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-ipv6.ipset" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Saving IPv6 IPSET for ${EDITPOLICY}"
-      ipset save DomainVPNRouting-${EDITPOLICY}-ipv6 -file ${POLICYDIR}/policy_${EDITPOLICY}-ipv6.ipset \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Save IPv6 IPSET for ${EDITPOLICY}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to save IPv6 IPSET for ${EDITPOLICY}"
+      # Save IPv6 IPSET if save file does not exist
+      if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Saving IPv6 IPSET for ${EDITPOLICY}"
+        ipset save DomainVPNRouting-${EDITPOLICY}-ipv6 -file ${POLICYDIR}/policy_${EDITPOLICY}-ipv6.ipset \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Save IPv6 IPSET for ${EDITPOLICY}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to save IPv6 IPSET for ${EDITPOLICY}"
+      fi
     fi
 
     # Recreate IPv4
@@ -1986,6 +2105,13 @@ INTERFACES='
       ip rule add unreachable from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} \
       && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
+    fi
+    # Recreate IPv4 IPTables OUTPUT Rule
+    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Edit Policy - Adding IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${NEWFWMARK}"
+      iptables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${NEWFWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${NEWFWMARK}"
     fi
     # Recreate IPv4 IPTables PREROUTING Rule
     if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
@@ -2014,6 +2140,13 @@ INTERFACES='
       ip rule del unreachable from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} \
       && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
+    fi
+    # Delete Old IPv4 IPTables OUTPUT Rule
+    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${OLDFWMARK}"
+      iptables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv4 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${OLDFWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${OLDFWMARK}"
     fi
     # Delete Old IPv4 IPTables PREROUTING Rule
     if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
@@ -2077,9 +2210,9 @@ INTERFACES='
       && logger -p 4 -st "$ALIAS" "Edit Policy - Save IPv4 IPSET for ${EDITPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to save IPv4 IPSET for ${EDITPOLICY}"
     fi
-
   fi
 fi
+# Reset ifnotinuse flag
 [[ -n "${ifnotinuse}+x" ]] &>/dev/null && unset ifnotinuse
 return
 }
@@ -2122,6 +2255,13 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
       ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Added Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to add Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    fi
+    # Delete IPv6 IP6Tables OUTPUT Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${DELETEPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 FWMark: ${FWMARK}"
     fi
     # Delete IPv6 IP6Tables PREROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
@@ -2175,6 +2315,13 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null;then
       ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    fi
+    # Delete IPv4 IPTables OUTPUT Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPTables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 FWMark: ${FWMARK}"
+      iptables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${DELETEPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPTables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPTables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 FWMark: ${FWMARK}"
     fi
     # Delete IPv4 IPTables PREROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
@@ -2256,7 +2403,7 @@ return
 adddomain ()
 {
 # Prompt for policy to select
-if [[ -n "$DOMAIN" ]] &>/dev/null;then
+if [[ -n "${DOMAIN}" ]] &>/dev/null;then
   # Select Policy for New Domain
   POLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
   echo -e "${LIGHTCYAN}Select a Policy for the new Domain:${NOCOLOR} \r\n$POLICIES"
@@ -2303,7 +2450,7 @@ echo -e "Select a Policy to delete ${DOMAIN}: \r\n${POLICIES}"
     read -r -p "Policy: " DELETEDOMAINPOLICY
     for POLICY in ${POLICIES};do
       if [[ "$DELETEDOMAINPOLICY" == "${POLICY}" ]] &>/dev/null;then
-        POLICY=$DELETEDOMAINPOLICY
+        POLICY=${DELETEDOMAINPOLICY}
         break 2
       elif [[ -n "$(echo "${POLICIES}" | grep -w "$DELETEDOMAINPOLICY")" ]] &>/dev/null;then
         continue
@@ -2649,16 +2796,16 @@ if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
 fi
 
 # Query Policies
-if [[ "$POLICY" == "all" ]] &>/dev/null;then
+if [[ "${POLICY}" == "all" ]] &>/dev/null;then
   QUERYPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
-  if [[ -z "$QUERYPOLICIES" ]] &>/dev/null;then
+  if [[ -z "${QUERYPOLICIES}" ]] &>/dev/null;then
     logger -p 3 -st "$ALIAS" "Query Policy - ***No Policies Detected***"
     return
   fi
-elif [[ "$POLICY" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
-  QUERYPOLICIES="$POLICY"
+elif [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+  QUERYPOLICIES="${POLICY}"
 else
-  echo -e "${RED}Policy: $POLICY not found${NOCOLOR}"
+  echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
   return
 fi
 for QUERYPOLICY in ${QUERYPOLICIES};do
@@ -2887,6 +3034,15 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
+
+    # Create IPv6 IP6Tables OUTPUT Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Query Policy - Adding IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${QUERYPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Query Policy - Added IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}"
+    fi
+
     # Create IPv6 IP6Tables PREROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Query Policy - Adding IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}"
@@ -2894,6 +3050,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       && logger -p 4 -t "$ALIAS" "Query Policy - Added IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}" \
       || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}"
     fi
+
     # Create IPv6 IP6Tables POSTROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Query Policy - Adding IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
@@ -3063,6 +3220,14 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     ip rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
     && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+  fi
+
+  # Create IPv4 IPTables OUTPUT Rule
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Query Policy - Adding IPTables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 FWMark: ${FWMARK}"
+    iptables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${QUERYPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Query Policy - Added IPTables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 FWMark: ${FWMARK}"
   fi
 
   # Create IPv4 IPTables PREROUTING Rule
@@ -3408,7 +3573,7 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
   # IPV6SERVICE
   if [[ -z "${IPV6SERVICE+x}" ]] &>/dev/null;then
     IPV6SERVICE="$(nvram get ipv6_service & nvramcheck)"
-    [[ -n "$IPV6SERVICE" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6SERVICE" && unset IPV6SERVICE && continue ;}
+    [[ -n "$IPV6SERVICE" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - IPv6 Service: ${IPV6SERVICE}" || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6SERVICE" && unset IPV6SERVICE && continue ;}
   fi
 
   # IPV6IPADDR
