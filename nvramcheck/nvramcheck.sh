@@ -2,8 +2,8 @@
 
 # NVRAM Check Test for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 2/25/2023
-# Version: v1.0.0
+# Date: 10/06/2023
+# Version: v1.0.1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,16 +12,25 @@ set -u
 # Function to check if NVRAM Background Process is Stuck and kill PID
 nvramcheck ()
 {
-[[ "$CHECKNVRAM" == "0" ]] >/dev/null 2>&1 && return
+# Return if CHECKNVRAM is Disabled
+if [[ -z "${CHECKNVRAM+x}" ]] &>/dev/null || [[ "$CHECKNVRAM" == "0" ]] &>/dev/null;then
+  return
 # Check if Background Process for NVRAM Call is still running
-lastpid="$!"
-if [ -z "$(ps | grep -v "grep" | awk '{print $1}' | grep -o "$lastpid")" ] >/dev/null 2>&1;then
-  unset lastpid
-elif [ ! -z "$(ps | grep -v "grep" | awk '{print $1}' | grep -o "$lastpid")" ] >/dev/null 2>&1;then
-  kill -9 $lastpid 2>/dev/null \
-  && { e=$(($e+1)) && sed -i '1s/.*/'$e'/' "/tmp/nvramcheck.tmp" ;}
-  unset lastpid
+else
+  lastpid="$!"
+  # Return if last PID is null
+  if [[ -z "$(ps | awk '$1 == "'${lastpid}'" {print}')" ]] &>/dev/null;then
+    unset lastpid
+    return
+  # Kill PID if stuck process
+  elif [[ -n "$(ps | awk '$1 == "'${lastpid}'" {print}')" ]] &>/dev/null;then
+    kill -9 $lastpid &>/dev/null \
+    && logger -p 2 -t "$ALIAS" "NVRAM Check - ***NVRAM Check Failure Detected***"
+    unset lastpid
+    return
+  fi
 fi
+
 return
 }
 
