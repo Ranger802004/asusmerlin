@@ -40,6 +40,7 @@ Run Modes:
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the command argument "cron" to use this mode.
 - Status Console Mode: This will display the Status Console for WAN Failover.  Add the command argument "status" to use this mode.
+- Reset Config Mode: This will reset the configuration of WAN Failover to defaults. Add the command argument "resetconfig" to use this mode.
 
 Configuration Options (/jffs/configs/wan-failover.conf):
 -	WAN0TARGET:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.8.8
@@ -89,6 +90,8 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
 - FOBLOCKIPV6: This defines if WAN Failover will to block IPv6 in Failover Mode from traversing Secondary WAN.  Default: Disabled
 - FAILOVERTIMEOUT: This defines the failover timeout setting.  Default: 30 Seconds
+- WAN0WEBGUI: This defines the IP Address of the WAN0 Device Web GUI Portal.  Default: N/A
+- WAN1WEBGUI: This defines the IP Address of the WAN1 Device Web GUI Portal.  Default: N/A
 
 Release Notes:
 v2.1.0-beta1 - 10/09/2023
