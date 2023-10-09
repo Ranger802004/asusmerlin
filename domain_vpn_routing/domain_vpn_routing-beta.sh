@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/06/2023
-# Version: v2.1.0
+# Date: 10/09/2023
+# Version: v2.1.1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.0"
+VERSION="v2.1.1"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -388,7 +388,6 @@ return
 install ()
 {
 if [[ "${mode}" == "install" ]] &>/dev/null;then
-  read -n 1 -s -r -p "Press any key to continue to install..."
   # Create Policy Directory
   if [[ ! -d "${POLICYDIR}" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Install - Creating ${POLICYDIR}"
@@ -554,6 +553,15 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
 
   # Remove Alias
   checkalias
+
+  # Check for Script File
+  if [[ -f $0 ]] &>/dev/null;then
+    logger -p 5 -st "$ALIAS" "Uninstall - Deleting $0"
+    rm -f $0 \
+    && logger -p 4 -st "$ALIAS" "Uninstall - $0 deleted" \
+    || logger -p 2 -st "$ALIAS" "Uninstall - $0 failed to delete"
+  fi
+
 fi
 return
 }
