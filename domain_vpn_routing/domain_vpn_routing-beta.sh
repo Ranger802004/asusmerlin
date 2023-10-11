@@ -1017,15 +1017,15 @@ if [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
   WAN1RPFILTER="$(cat /proc/sys/net/ipv4/conf/${WAN1GWIFNAME}/rp_filter)"
   printf "   WAN0 FWMark                         WAN0 FWMark:    ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
   printf "   WAN0 Mask                           WAN0 Mask:      ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
-  printf "   WAN0 Reverse Path Filter            WAN0 RP Filter: " && { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" || [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" || [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  printf "   WAN0 Reverse Path Filter            WAN0 RP Filter: " && { { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
   printf "   WAN1 FWMark                         WAN1 FWMark:    ${LIGHTBLUE}${WAN1FWMARK}${NOCOLOR}\n"
   printf "   WAN1 Mask                           WAN1 Mask:      ${LIGHTBLUE}${WAN1MASK}${NOCOLOR}\n"
-  printf "   WAN1 Reverse Path Filter            WAN1 RP Filter: " && { [[ "$WAN1RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" || [[ "$WAN1RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" || [[ "$WAN1RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  printf "   WAN1 Reverse Path Filter            WAN1 RP Filter: " && { { [[ "$WAN1RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN1RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN1RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
 else
   WAN0RPFILTER="$(cat /proc/sys/net/ipv4/conf/${WAN0GWIFNAME}/rp_filter)"
   printf "   WAN FWMark                          WAN FWMark:     ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
   printf "   WAN Mask                            WAN Mask:       ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
-  printf "   WAN Reverse Path Filter             WAN RP Filter:  " && { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" || [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" || [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  printf "   WAN Reverse Path Filter             WAN RP Filter:  " && { { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
 fi
 
 
