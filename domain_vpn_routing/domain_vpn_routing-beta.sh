@@ -3,7 +3,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 10/11/2023
-# Version: v2.1.2-beta2
+# Version: v2.1.2-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.2-beta2"
+VERSION="v2.1.2-beta3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -388,6 +388,12 @@ return
 install ()
 {
 if [[ "${mode}" == "install" ]] &>/dev/null;then
+  # Check to see if already installed
+  if [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null && [[ -f "${CONFIGFILE}" ]] &>/dev/null;then
+    mode="menu"
+    menu
+  fi
+
   # Create Policy Directory
   if [[ ! -d "${POLICYDIR}" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Install - Creating ${POLICYDIR}"
@@ -3498,7 +3504,7 @@ return
 cronjob ()
 {
 # Check CHECKINTERVAL Setting for valid range and if not default to 15
-if [[ "${CHECKINTERVAL}" -ge "1" ]] &>/dev/null && [[ "${CHECKINTERVAL}" -le "59" ]] &>/dev/null;then
+if [[ -n "${CHECKINTERVAL+x}" ]] &>/dev/null && { [[ "${CHECKINTERVAL}" -ge "1" ]] &>/dev/null && [[ "${CHECKINTERVAL}" -le "59" ]] &>/dev/null ;};then
   logger -p 6 -t "$ALIAS" "Debug - CHECKINTERVAL is within valid range: ${CHECKINTERVAL}"
 else
   logger -p 6 -t "$ALIAS" "Debug - CHECKINTERVAL is out of valid range: ${CHECKINTERVAL}"
@@ -4101,15 +4107,15 @@ return
 # Get System Parameters
 getsystemparameters || return
 # Perform PreV2 Config Update
-if [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
+if [[ "${mode}" != "install" ]] &>/dev/null && [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
   updateconfigprev2 || return
 # Get Global Configuration
-elif [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
+elif [[ "${mode}" != "install" ]] &>/dev/null && [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
   setglobalconfig || return
   updateconfigprev212 || return
 fi
 # Check Alias
-if [[ -d "${POLICYDIR}" ]] &>/dev/null && [[ "${mode}" != "uninstall" ]] &>/dev/null;then
+if [[ -d "${POLICYDIR}" ]] &>/dev/null && { [[ "${mode}" != "uninstall" ]] &>/dev/null || [[ "${mode}" != "install" ]] &>/dev/null ;};then
   checkalias || return
 fi
 # Set Mode and Execute
