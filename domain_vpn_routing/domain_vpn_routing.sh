@@ -1733,31 +1733,12 @@ if [[ -z "${STATE}" ]] &>/dev/null;then
   STATE="0"
 fi
 
-# Adjust Reverse Path Filter to Loose Filtering if enabled and FWMark is set
-if [[ -n "${FWMARK}" ]] &>/dev/null;then
-  # Adjust Reverse Path Filter to Loose Filtering if enabled for WAN Interfaces if FWMark is set
-  if [[ -n "${WAN0GWIFNAME}" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${WAN0GWIFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Routing Director - Setting Reverse Path Filter for ${WAN0GWIFNAME} to Loose Filtering"
-    echo 2 > /proc/sys/net/ipv4/conf/${WAN0GWIFNAME}/rp_filter \
-    && logger -p 4 -t "$ALIAS" "Routing Director - Set Reverse Path Filter for ${WAN0GWIFNAME} to Loose Filtering" \
-    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${WAN0GWIFNAME} to Loose Filtering"
-  fi
-
-  # Adjust Reverse Path Filter to Loose Filtering if enabled for WAN Interfaces if FWMark is set
-  if [[ -n "${WAN1GWIFNAME}" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${WAN1GWIFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Routing Director - Setting Reverse Path Filter for ${WAN1GWIFNAME} to Loose Filtering"
-    echo 2 > /proc/sys/net/ipv4/conf/${WAN1GWIFNAME}/rp_filter \
-    && logger -p 4 -t "$ALIAS" "Routing Director - Set Reverse Path Filter for ${WAN1GWIFNAME} to Loose Filtering" \
-    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${WAN1GWIFNAME} to Loose Filtering"
-  fi
-
-  # Adjust Reverse Path Filter to Loose Filtering if enabled for Interface if FWMark is set
-  if [[ "$(cat /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Routing Director - Setting Reverse Path Filter for ${IFNAME} to Loose Filtering"
-    echo 2 > /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter \
-    && logger -p 4 -t "$ALIAS" "Routing Director - Set Reverse Path Filter for ${IFNAME} to Loose Filtering" \
-    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${IFNAME} to Loose Filtering"
-  fi
+# Adjust Reverse Path Filter to Loose Filtering if enabled for Interface if FWMark is set
+if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
+  logger -p 5 -t "$ALIAS" "Routing Director - Setting Reverse Path Filter for ${IFNAME} to Loose Filtering"
+  echo 2 > /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter \
+  && logger -p 4 -t "$ALIAS" "Routing Director - Set Reverse Path Filter for ${IFNAME} to Loose Filtering" \
+  || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${IFNAME} to Loose Filtering"
 fi
 
 # Create Default Route for WAN Interface Routing Tables
