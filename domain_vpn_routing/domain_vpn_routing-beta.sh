@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/11/2023
-# Version: v2.1.2-beta3
+# Date: 10/14/2023
+# Version: v2.1.2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.2-beta3"
+VERSION="v2.1.2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -1733,12 +1733,31 @@ if [[ -z "${STATE}" ]] &>/dev/null;then
   STATE="0"
 fi
 
-# Adjust Reverse Path Filter to Enabled loose if enabled for WAN Interface if FWMark is set
-if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ "$IFNAME" == "$WAN0GWIFNAME" ]] &>/dev/null || [[ "$IFNAME" == "$WAN1GWIFNAME" ]] &>/dev/null ;} && [[ "$(cat /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
-  logger -p 5 -t "$ALIAS" "Routing Director - Setting Reverse Path Filter for ${IFNAME} to Enabled loose"
-  echo 2 > /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter \
-  && logger -p 4 -t "$ALIAS" "Routing Director - Set Reverse Path Filter for ${IFNAME} to Enabled loose" \
-  || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${IFNAME} to Enabled loose"
+# Adjust Reverse Path Filter to Loose Filtering if enabled and FWMark is set
+if [[ -n "${FWMARK}" ]] &>/dev/null;then
+  # Adjust Reverse Path Filter to Loose Filtering if enabled for WAN Interfaces if FWMark is set
+  if [[ -n "${WAN0GWIFNAME}" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${WAN0GWIFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Routing Director - Setting Reverse Path Filter for ${WAN0GWIFNAME} to Loose Filtering"
+    echo 2 > /proc/sys/net/ipv4/conf/${WAN0GWIFNAME}/rp_filter \
+    && logger -p 4 -t "$ALIAS" "Routing Director - Set Reverse Path Filter for ${WAN0GWIFNAME} to Loose Filtering" \
+    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${WAN0GWIFNAME} to Loose Filtering"
+  fi
+
+  # Adjust Reverse Path Filter to Loose Filtering if enabled for WAN Interfaces if FWMark is set
+  if [[ -n "${WAN1GWIFNAME}" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${WAN1GWIFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Routing Director - Setting Reverse Path Filter for ${WAN1GWIFNAME} to Loose Filtering"
+    echo 2 > /proc/sys/net/ipv4/conf/${WAN1GWIFNAME}/rp_filter \
+    && logger -p 4 -t "$ALIAS" "Routing Director - Set Reverse Path Filter for ${WAN1GWIFNAME} to Loose Filtering" \
+    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${WAN1GWIFNAME} to Loose Filtering"
+  fi
+
+  # Adjust Reverse Path Filter to Loose Filtering if enabled for Interface if FWMark is set
+  if [[ "$(cat /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Routing Director - Setting Reverse Path Filter for ${IFNAME} to Loose Filtering"
+    echo 2 > /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter \
+    && logger -p 4 -t "$ALIAS" "Routing Director - Set Reverse Path Filter for ${IFNAME} to Loose Filtering" \
+    || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${IFNAME} to Loose Filtering"
+  fi
 fi
 
 # Create Default Route for WAN Interface Routing Tables
@@ -3018,7 +3037,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null;then
       # Query dnsmasq log if enabled for IPv4
       if [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
-        for IP in $(awk '($5 == "reply" || $5 == "cached") && ($6 ~ /.'${DOMAIN}'/ || $6 == "'${DOMAIN}'") && $8 ~ /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u); do
+        for IP in $(awk '($5 == "reply" || $5 == "cached") && ($6 ~ /.'${DOMAIN}'/ || $6 == "'${DOMAIN}'") && $8 ~ /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
@@ -3035,7 +3054,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       fi
       # Perform nslookup if nslookup is installed for IPv4
       if [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
-        for IP in $(/usr/bin/nslookup ${DOMAIN} 2>/dev/null | awk '(NR>2)' | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"); do
+        for IP in $(/usr/bin/nslookup ${DOMAIN} 2>/dev/null | awk '(NR>2)' | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
@@ -3053,7 +3072,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     else
       # Query dnsmasq log if enabled for IPv6 and IPv4
       if [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
-        for IP in $(awk '($5 == "reply" || $5 == "cached") && ($6 ~ /.'${DOMAIN}'/ || $6 == "'${DOMAIN}'") && $8 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u); do
+        for IP in $(awk '($5 == "reply" || $5 == "cached") && ($6 ~ /.'${DOMAIN}'/ || $6 == "'${DOMAIN}'") && $8 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
@@ -3070,7 +3089,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       fi
       # Perform nslookup if nslookup is installed for IPv6 and IPv4
       if [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
-        for IP in $(/usr/bin/nslookup ${DOMAIN} 2>/dev/null | awk '(NR>2)' | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))"); do
+        for IP in $(/usr/bin/nslookup ${DOMAIN} 2>/dev/null | awk '(NR>2)' | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then

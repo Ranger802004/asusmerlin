@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/09/2023
-# Version: v2.1.1
+# Date: 10/14/2023
+# Version: v2.1.2
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -133,6 +133,19 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
+v2.1.2 - 10/14/2023
+Enhancements:
+- The wgclient-start start up script for WireGuard clients will now be created if it doesn't exist and will call Domain VPN Routing.
+- The Reverse Path Filter will now be set to Loose Filtering if set to Strict Filtering and FWMarks are being used for a policy.
+
+Fixes:
+- Fixed integration with Wireguard clients configured with IPv6.
+- Fixed issue where IPv4 ipsets were not being saved under some conditions.
+- Fixed issue where IPv6 addresses were not being deleted from ipsets.
+- Fixed an issue that caused Domain VPN Routing to be stuck in a loop if a WireGuard Client DNS Option was null.
+- Fixed integration issues with amtm.
+- Fixed an issue where a failed DNS query returned 0.0.0.0 as a queried IP Address for a policy, this entry will be excluded.
+
 v2.1.1 - 10/09/2023
 Enhancements:
 - Integration with amtm
