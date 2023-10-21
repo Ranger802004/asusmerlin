@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/09/2023
-# Version: v2.1.0-beta1
+# Date: 10/21/2023
+# Version: v2.1.0-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.1.0-beta1"
+VERSION="v2.1.0-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -2462,6 +2462,7 @@ if [[ -n "$BOOTDELAYTIMER" ]] &>/dev/null;then
   if [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$BOOTDELAYTIMER" ]] &>/dev/null;then
     logger -p 4 -st "$ALIAS" "Boot Delay - Waiting for System Uptime to reach $BOOTDELAYTIMER seconds"
     while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$BOOTDELAYTIMER" ]] &>/dev/null;do
+      # Sleep until Boot Delay Timer expires
       sleep $((($(awk -F "." '{print $1}' "/proc/uptime")-${BOOTDELAYTIMER})*-1))
     done
     logger -p 5 -st "$ALIAS" "Boot Delay - System Uptime is $(awk -F "." '{print $1}' "/proc/uptime") seconds"
@@ -2552,6 +2553,12 @@ else
         logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Status: $STATUS"
         setwanstatus && continue
       fi
+
+      # Check Reverse Path Filters
+      checkrpfilter &
+      CHECKRPFILTERPID="$!"
+      wait $CHECKRPFILTERPID
+      unset CHECKRPFILTERPID
 
       # Check WAN Routing Table for Default Routes
       checkroutingtable &
@@ -2771,6 +2778,29 @@ elif [[ "$WANSMODE" == "lb" ]] &>/dev/null;then
 else
   wanstatus
 fi
+}
+
+# Check Reverse Path Filtering
+checkrpfilter ()
+{
+logger -p 6 -t "$ALIAS" "Debug - Function: checkrpfilter"
+
+for WANPREFIX in ${WANPREFIXES};do
+  # Getting WAN Parameters
+  GETWANMODE="1"
+  getwanparameters || return
+
+  # Adjust Reverse Path Filter to Disabled if Enabled
+  if [[ "$(cat /proc/sys/net/ipv4/conf/${GWIFNAME}/rp_filter 2>/dev/null)" != "0" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Check Reverse Path Filter - Setting Reverse Path Filter for ${GWIFNAME} to Disabled"
+    echo 0 > /proc/sys/net/ipv4/conf/${GWIFNAME}/rp_filter 2>/dev/null \
+    && logger -p 4 -t "$ALIAS" "Check Reverse Path Filter - Set Reverse Path Filter for ${GWIFNAME} to Disabled" \
+    || logger -p 2 -t "$ALIAS" "Check Reverse Path Filter - ***Error*** Failed to set Reverse Path Filter for ${GWIFNAME} to Disabled"
+  fi
+
+done
+
+return
 }
 
 # Check WAN Routing Table
@@ -4196,7 +4226,7 @@ restartwan0pid="$!"
 restartwan0timeout="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
 while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan0timeout" ]] &>/dev/null && [[ -n "$(ps | awk '/^'${restartwan0pid}'/ {print $1}')" ]] &>/dev/null;do
   wait $restartwan0pid
-  wan0state="$(nvram get "$WAN0"_state_t & nvramcheck)"
+  wan0state="$(nvram get ${WAN0}_state_t & nvramcheck)"
   if [[ "$wan0state" == "0" ]] &>/dev/null || [[ "$wan0state" == "4" ]] &>/dev/null || [[ "$wan0state" == "6" ]] &>/dev/null;then
     sleep 1
     continue
@@ -4219,8 +4249,15 @@ done
 
 logger -p 6 -t "$ALIAS" "Debug - WAN0 Post-Restart State: $wan0state"
 
-# Check WAN Routing Table for Default Routes if WAN0 is Connected
+# Check Reverse Path Filter and WAN Routing Table for Default Routes if WAN0 is Connected
 if [[ "$wan0state" == "2" ]] &>/dev/null;then
+  # Check Reverse Path Filters
+  checkrpfilter &
+  CHECKRPFILTERPID="$!"
+  wait $CHECKRPFILTERPID
+  unset CHECKRPFILTERPID
+
+  # Check WAN Routing Table for Default Routes if WAN0 is Connected
   checkroutingtable &
   CHECKROUTINGTABLEPID=$!
   wait $CHECKROUTINGTABLEPID
@@ -4267,7 +4304,7 @@ restartwan1pid="$!"
 restartwan1timeout="$(($(awk -F "." '{print $1}' "/proc/uptime")+30))"
 while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "$restartwan1timeout" ]] &>/dev/null && [[ -n "$(ps | awk '/^'${restartwan1pid}'/ {print $1}')" ]] &>/dev/null;do
   wait $restartwan1pid
-  wan1state="$(nvram get "$WAN1"_state_t & nvramcheck)"
+  wan1state="$(nvram get ${WAN1}_state_t & nvramcheck)"
   if [[ "$wan1state" == "0" ]] &>/dev/null || [[ "$wan1state" == "4" ]] &>/dev/null || [[ "$wan1state" == "6" ]] &>/dev/null;then
     sleep 1
     continue
@@ -4290,8 +4327,15 @@ done
 
 logger -p 6 -t "$ALIAS" "Debug - WAN1 Post-Restart State: $wan1state"
 
-# Check WAN Routing Table for Default Routes if WAN1 is Connected
+# Check Reverse Path Filters and WAN Routing Table for Default Routes if WAN1 is Connected
 if [[ "$wan1state" == "2" ]] &>/dev/null;then
+  # Check Reverse Path Filters
+  checkrpfilter &
+  CHECKRPFILTERPID="$!"
+  wait $CHECKRPFILTERPID
+  unset CHECKRPFILTERPID
+
+  # Check WAN Routing Table for Default Routes if WAN1 is Connected
   checkroutingtable &
   CHECKROUTINGTABLEPID="$!"
   wait $CHECKROUTINGTABLEPID
