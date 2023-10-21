@@ -103,7 +103,7 @@ Enhancements:
 Fixes:
 - Fixed an issue where update would hang if WAN Failover wasn't running.
 - Fixed an issue that would allow Load Balance FWMarks and Masks to be non-hexidecimal values in console.
-- Added function to verify reverse path filtering is disabled after restarting WAN interfaces and when performing inital WAN Status checks.  This is already disabled by the firmware by default but automatically re-enables when an interface is restarted and can cause issues with the target IP rules.
+- Added function to verify reverse path filtering is disabled after restarting WAN interfaces and when performing initial WAN Status checks.  This is already disabled by the firmware by default but automatically re-enables when an interface is restarted and can cause issues with the target IP rules.
 
 v2.0.7 - 09/29/2023
 Enhancements:
