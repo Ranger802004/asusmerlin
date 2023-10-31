@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/21/2023
-# Version: v2.1.0-beta2
+# Date: 10/31/2023
+# Version: v2.1.0
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -94,7 +94,7 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - WAN1WEBGUI: This defines the IP Address of the WAN1 Device Web GUI Portal.  Default: N/A
 
 Release Notes:
-v2.1.0-beta2: - 10/21/2023
+v2.1.0: - 10/31/2023
 Enhancements:
 - Added WAN0 and WAN1 Web GUI configuration options to create routes for the device portals for each WAN interface.
 - Added Reset Default Configuration to Configuration Menu, additionally the command argument resetconfig can be used.

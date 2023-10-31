@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/21/2023
-# Version: v2.1.0-beta2
+# Date: 10/31/2023
+# Version: v2.1.0
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.1.0-beta2"
+VERSION="v2.1.0"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -2719,7 +2719,7 @@ switchdns || return
 checkiprules || return
 
 # Set Script Ready State
-if [[ "$READYSTATE" == "0" ]] &>/dev/null;then
+if [[ "${READYSTATE}" == "0" ]] &>/dev/null;then
   READYSTATE="1"
   email="0"
 fi
@@ -2728,8 +2728,8 @@ fi
 [[ -z "${email+x}" ]] &>/dev/null && email="1"
 
 # Set WAN Status to DISABLED, DISCONNECTED, or CONNECTED and select function.
-logger -p 6 -t "$ALIAS" "Debug - WAN0STATUS: $WAN0STATUS"
-logger -p 6 -t "$ALIAS" "Debug - WAN1STATUS: $WAN1STATUS"
+logger -p 6 -t "$ALIAS" "Debug - WAN0STATUS: ${WAN0STATUS}"
+logger -p 6 -t "$ALIAS" "Debug - WAN1STATUS: ${WAN1STATUS}"
 
 # Checking if WAN Disabled returned to WAN Status and resetting loop iterations if WAN Status has changed
 if [[ -z "${wandisabledloop+x}" ]] &>/dev/null;then
@@ -2748,32 +2748,39 @@ getwanparameters || return
 if [[ "${mode}" == "initiate" ]] &>/dev/null;then
   logger -p 4 -st "$ALIAS" "WAN Status - Initiate Completed"
   return
-elif [[ "$WAN0STATUS" != "CONNECTED" ]] &>/dev/null && [[ "$WAN1STATUS" != "CONNECTED" ]] &>/dev/null;then
+elif [[ "${WAN0STATUS}" != "CONNECTED" ]] &>/dev/null && [[ "${WAN1STATUS}" != "CONNECTED" ]] &>/dev/null;then
   wandisabled
-elif [[ "$WANSMODE" == "fo" ]] &>/dev/null && [[ "$WAN0STATUS" == "CONNECTED" ]] &>/dev/null;then
+elif [[ "${WANSMODE}" == "fo" ]] &>/dev/null && [[ "${WAN0STATUS}" == "CONNECTED" ]] &>/dev/null;then
   # Verify WAN Properties are synced with Primary WAN
-  [[ "$WAN0PRIMARY" == "1" ]] &>/dev/null && SWITCHPRIMARY="0" && switchwan && switchdns && checkiprules
+  if [[ "${WAN0PRIMARY}" == "1" ]] &>/dev/null;then
+    SWITCHPRIMARY="0"
+    switchwan
+    switchdns
+    checkiprules
   # Switch WAN to Primary WAN
-  [[ "$WAN0PRIMARY" != "1" ]] &>/dev/null && { logger -p 6 -t "$ALIAS" "Debug - WAN0 is not Primary WAN" && failover ;}
+  elif [[ "${WAN0PRIMARY}" != "1" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - WAN0 is not Primary WAN"
+    failover
+  fi
   # Send Email if Enabled
-  [[ "$email" == "1" ]] &>/dev/null && sendemail && email="0"
+  [[ "${email}" == "1" ]] &>/dev/null && sendemail && email="0"
   # Determine which function to use based on Secondary WAN
-  [[ "$WAN1STATUS" == "CONNECTED" ]] &>/dev/null && wan0failovermonitor
-  [[ "$WAN1STATUS" == "UNPLUGGED" ]] &>/dev/null && wandisabled
-  [[ "$WAN1STATUS" == "DISCONNECTED" ]] &>/dev/null && wandisabled
-  [[ "$WAN1STATUS" == "DISABLED" ]] &>/dev/null && wandisabled
-elif [[ "$WANSMODE" == "fo" ]] &>/dev/null && [[ "$WAN1STATUS" == "CONNECTED" ]] &>/dev/null;then
+  [[ "${WAN1STATUS}" == "CONNECTED" ]] &>/dev/null && wan0failovermonitor
+  [[ "${WAN1STATUS}" == "UNPLUGGED" ]] &>/dev/null && wandisabled
+  [[ "${WAN1STATUS}" == "DISCONNECTED" ]] &>/dev/null && wandisabled
+  [[ "${WAN1STATUS}" == "DISABLED" ]] &>/dev/null && wandisabled
+elif [[ "${WANSMODE}" == "fo" ]] &>/dev/null && [[ "${WAN1STATUS}" == "CONNECTED" ]] &>/dev/null;then
   # Verify WAN Properties are synced with Primary WAN
-  [[ "$WAN1PRIMARY" == "1" ]] &>/dev/null && SWITCHPRIMARY="0" && switchwan && switchdns && checkiprules
+  [[ "${WAN1PRIMARY}" == "1" ]] &>/dev/null && SWITCHPRIMARY="0" && switchwan && switchdns && checkiprules
   # Switch WAN to Primary WAN
-  [[ "$WAN1PRIMARY" != "1" ]] &>/dev/null && { logger -p 6 -t "$ALIAS" "Debug - WAN1 is not Primary WAN" && failover && email="0" ;}
+  [[ "${WAN1PRIMARY}" != "1" ]] &>/dev/null && { logger -p 6 -t "$ALIAS" "Debug - WAN1 is not Primary WAN" && failover && email="0" ;}
   # Send Email if Enabled
-  [[ "$email" == "1" ]] &>/dev/null && sendemail && email="0"
+  [[ "${email}" == "1" ]] &>/dev/null && sendemail && email="0"
   # Determine which function to use based on Secondary WAN
-  [[ "$WAN0STATUS" == "UNPLUGGED" ]] &>/dev/null && wandisabled
-  [[ "$WAN0STATUS" == "DISCONNECTED" ]] &>/dev/null && { [[ -n "${WAN0PACKETLOSS+x}" ]] &>/dev/null && [[ "$WAN0PACKETLOSS" == "100%" ]] &>/dev/null && wan0failbackmonitor || wandisabled ;}
-  [[ "$WAN0STATUS" == "DISABLED" ]] &>/dev/null && wandisabled
-elif [[ "$WANSMODE" == "lb" ]] &>/dev/null;then
+  [[ "${WAN0STATUS}" == "UNPLUGGED" ]] &>/dev/null && wandisabled
+  [[ "${WAN0STATUS}" == "DISCONNECTED" ]] &>/dev/null && { [[ -n "${WAN0PACKETLOSS+x}" ]] &>/dev/null && [[ "$WAN0PACKETLOSS" == "100%" ]] &>/dev/null && wan0failbackmonitor || wandisabled ;}
+  [[ "${WAN0STATUS}" == "DISABLED" ]] &>/dev/null && wandisabled
+elif [[ "${WANSMODE}" == "lb" ]] &>/dev/null;then
   lbmonitor
 else
   wanstatus
@@ -2790,15 +2797,20 @@ for WANPREFIX in ${WANPREFIXES};do
   GETWANMODE="1"
   getwanparameters || return
 
+  # Get Status of Reverse Path Filter
+  rpfilterstatus="$(cat /proc/sys/net/ipv4/conf/${GWIFNAME}/rp_filter 2>/dev/null)"
+  logger -p 6 -t "$ALIAS" "Debug - Current Reverse Path Filter setting for ${GWIFNAME}: ${rpfilterstatus}"
+
   # Adjust Reverse Path Filter to Disabled if Enabled
-  if [[ "$(cat /proc/sys/net/ipv4/conf/${GWIFNAME}/rp_filter 2>/dev/null)" != "0" ]] &>/dev/null;then
+  if [[ "${rpfilterstatus}" != "0" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Check Reverse Path Filter - Setting Reverse Path Filter for ${GWIFNAME} to Disabled"
     echo 0 > /proc/sys/net/ipv4/conf/${GWIFNAME}/rp_filter 2>/dev/null \
     && logger -p 4 -t "$ALIAS" "Check Reverse Path Filter - Set Reverse Path Filter for ${GWIFNAME} to Disabled" \
     || logger -p 2 -t "$ALIAS" "Check Reverse Path Filter - ***Error*** Failed to set Reverse Path Filter for ${GWIFNAME} to Disabled"
   fi
-
 done
+
+unset rpfilterstatus
 
 return
 }
@@ -6396,72 +6408,73 @@ if { [[ "$mode" == "manual" ]] &>/dev/null || [[ "$mode" == "run" ]] &>/dev/null
   GETWANMODE="3"
   getwanparameters || return
 
-  [[ -n "${MODEL+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Model: $MODEL"
-  [[ -n "${PRODUCTID+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Product ID: $PRODUCTID"
-  [[ -n "${BUILDNAME+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Build Name: $BUILDNAME"
-  [[ -n "${BUILDNO+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Firmware: $BUILDNO"
-  [[ -n "${IPVERSION+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - IPRoute Version: $IPVERSION"
-  [[ -n "${WANSCAP+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - WAN Capability: $WANSCAP"
-  [[ -n "${WANSMODE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Dual WAN Mode: $WANSMODE"
-  [[ -n "${WANSLBRATIO+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Load Balance Ratio: $WANSLBRATIO"
-  [[ -n "${WANSDUALWAN+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Dual WAN Interfaces: $WANSDUALWAN"
-  [[ -n "${WANDOGENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - ASUS Factory Watchdog: $WANDOGENABLE"
-  [[ -n "${DNSPROBE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - ASUS Factory DNS Probe: $DNSPROBE"
-  [[ -n "${JFFSSCRIPTS+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - JFFS custom scripts and configs: $JFFSSCRIPTS"
-  [[ -n "${HTTPENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - HTTP Web Access: $HTTPENABLE"
-  [[ -n "${FIREWALLENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Firewall Enabled: $FIREWALLENABLE"
-  [[ -n "${IPV6FIREWALLENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - IPv6 Firewall Enabled: $IPV6FIREWALLENABLE"
-  [[ -n "${LEDDISABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - LEDs Disabled: $LEDDISABLE"
-  [[ -n "${QOSENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - QoS Enabled: $QOSENABLE"
-  [[ -n "${DDNSENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - DDNS Enabled: $DDNSENABLE"
-  [[ -n "${DDNSHOSTNAME+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - DDNS Hostname: $DDNSHOSTNAME"
-  [[ -n "${LANHOSTNAME+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - LAN Hostname: $LANHOSTNAME"
-  [[ -n "${IPV6SERVICE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - WAN IPv6 Service: $IPV6SERVICE"
-  [[ -n "${IPV6IPADDR+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - WAN IPv6 Address: $IPV6IPADDR"
-  [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Process Priority: $PROCESSPRIORITY"
+  [[ -n "${MODEL+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Model: ${MODEL}"
+  [[ -n "${PRODUCTID+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Product ID: ${PRODUCTID}"
+  [[ -n "${BUILDNAME+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Build Name: ${BUILDNAME}"
+  [[ -n "${BUILDNO+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Firmware: ${BUILDNO}"
+  [[ -n "${IPVERSION+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - IPRoute Version: ${IPVERSION}"
+  [[ -n "${WANSCAP+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - WAN Capability: ${WANSCAP}"
+  [[ -n "${WANSMODE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Dual WAN Mode: ${WANSMODE}"
+  [[ -n "${WANSLBRATIO+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Load Balance Ratio: ${WANSLBRATIO}"
+  [[ -n "${WANSDUALWAN+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Dual WAN Interfaces: ${WANSDUALWAN}"
+  [[ -n "${WANDOGENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - ASUS Factory Watchdog: ${WANDOGENABLE}"
+  [[ -n "${DNSPROBE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - ASUS Factory DNS Probe: ${DNSPROBE}"
+  [[ -n "${JFFSSCRIPTS+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - JFFS custom scripts and configs: ${JFFSSCRIPTS}"
+  [[ -n "${HTTPENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - HTTP Web Access: ${HTTPENABLE}"
+  [[ -n "${FIREWALLENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Firewall Enabled: ${FIREWALLENABLE}"
+  [[ -n "${IPV6FIREWALLENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - IPv6 Firewall Enabled: ${IPV6FIREWALLENABLE}"
+  [[ -n "${LEDDISABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - LEDs Disabled: ${LEDDISABLE}"
+  [[ -n "${QOSENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - QoS Enabled: ${QOSENABLE}"
+  [[ -n "${DDNSENABLE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - DDNS Enabled: ${DDNSENABLE}"
+  [[ -n "${DDNSHOSTNAME+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - DDNS Hostname: ${DDNSHOSTNAME}"
+  [[ -n "${LANHOSTNAME+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - LAN Hostname: ${LANHOSTNAME}"
+  [[ -n "${IPV6SERVICE+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - WAN IPv6 Service: ${IPV6SERVICE}"
+  [[ -n "${IPV6IPADDR+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - WAN IPv6 Address: ${IPV6IPADDR}"
+  [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - Process Priority: ${PROCESSPRIORITY}"
 
   logger -p 6 -t "$ALIAS" "Debug - Default Route: $(ip route list default table main)"
-  logger -p 6 -t "$ALIAS" "Debug - OpenVPN Server Instances Enabled: $OVPNSERVERINSTANCES"
+  logger -p 6 -t "$ALIAS" "Debug - OpenVPN Server Instances Enabled: ${OVPNSERVERINSTANCES}"
   for WANPREFIX in ${WANPREFIXES};do
     # Getting WAN Parameters
     GETWANMODE="1"
     getwanparameters || return
 
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Enabled: $ENABLE"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Routing Table Default Route: $(ip route list default table $TABLE)"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Ping Path: $PINGPATH"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Target IP Rule: $(ip rule list from all iif lo to $TARGET lookup $TABLE)"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Enabled: ${ENABLE}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Routing Table Default Route: $(ip route list default table ${TABLE})"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Ping Path: ${PINGPATH}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Target IP Rule: $(ip rule list from all iif lo to ${TARGET} lookup ${TABLE})"
     if [[ "$PINGPATH" == "0" ]] &>/dev/null || [[ "$PINGPATH" == "3" ]] &>/dev/null;then
-      logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Target IP Route: $(ip route list $TARGET via $GATEWAY dev $GWIFNAME table main)"
+      logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Target IP Route: $(ip route list ${TARGET} via ${GATEWAY} dev ${GWIFNAME} table main)"
     else
-      logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Default IP Route: $(ip route list default table $TABLE)"
-      logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Target IP Route: $(ip route list $TARGET via $GATEWAY dev $GWIFNAME table $TABLE)"
+      logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Default IP Route: $(ip route list default table ${TABLE})"
+      logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Target IP Route: $(ip route list ${TARGET} via ${GATEWAY} dev ${GWIFNAME} table ${TABLE})"
     fi
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} IP Address: $IPADDR"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Real IP Address: $REALIPADDR"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Real IP Address State: $REALIPSTATE"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Gateway IP: $GATEWAY"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Gateway Interface: $GWIFNAME"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Interface: $IFNAME"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Automatic ISP DNS Enabled: $DNSENABLE"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Automatic ISP DNS Servers: $DNS"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Manual DNS Server 1: $DNS1"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Manual DNS Server 2: $DNS2"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} State: $STATE"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Aux State: $AUXSTATE"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Sb State: $SBSTATE"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Primary Status: $PRIMARY"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} USB Modem Status: $USBMODEMREADY"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} UPnP Enabled: $UPNPENABLE"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} NAT Enabled: $NAT"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Target IP Address: $TARGET"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Routing Table: $TABLE"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} IP Rule Priority: $PRIORITY"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Mark: $MARK"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Mask: $MASK"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} From WAN Priority: $FROMWANPRIORITY"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} To WAN Priority: $TOWANPRIORITY"
-    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} OVPN WAN Priority: $OVPNWANPRIORITY"
+    [[ -n "${GWIFNAME}" ]] &>/dev/null && logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Reverse Path Filter: $(cat /proc/sys/net/ipv4/conf/${GWIFNAME}/rp_filter 2>/dev/null)"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} IP Address: ${IPADDR}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Real IP Address: ${REALIPADDR}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Real IP Address State: ${REALIPSTATE}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Gateway IP: ${GATEWAY}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Gateway Interface: ${GWIFNAME}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Interface: ${IFNAME}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Automatic ISP DNS Enabled: ${DNSENABLE}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Automatic ISP DNS Servers: ${DNS}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Manual DNS Server 1: ${DNS1}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Manual DNS Server 2: ${DNS2}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} State: ${STATE}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Aux State: ${AUXSTATE}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Sb State: ${SBSTATE}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Primary Status: ${PRIMARY}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} USB Modem Status: ${USBMODEMREADY}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} UPnP Enabled: ${UPNPENABLE}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} NAT Enabled: ${NAT}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Target IP Address: ${TARGET}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Routing Table: ${TABLE}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} IP Rule Priority: ${PRIORITY}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Mark: ${MARK}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} Mask: ${MASK}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} From WAN Priority: ${FROMWANPRIORITY}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} To WAN Priority: ${TOWANPRIORITY}"
+    logger -p 6 -t "$ALIAS" "Debug - ${WANPREFIX} OVPN WAN Priority: ${OVPNWANPRIORITY}"
   done
 fi
 return
