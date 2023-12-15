@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/31/2023
-# Version: v2.1.0
+# Date: 12/15/2023
+# Version: v2.1.1-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.1.0"
+VERSION="v2.1.1-beta1"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -356,6 +356,7 @@ FWVERSIONS='
 388.1
 388.2
 388.4
+388.5
 '
 
 # Firmware Version Check
@@ -3084,12 +3085,20 @@ for WANPREFIX in ${WANPREFIXES};do
 
       # Create fwmark IP Rules
       logger -p 6 -t "$ALIAS" "Debug - Checking fwmark IP Rules"
-      if [[ -z "$(ip rule list from all fwmark ${MARK}/${MASK} lookup $TABLE priority $LBRULEPRIORITY)" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE"
-        ip rule add from all fwmark ${MARK}/${MASK} lookup $TABLE priority $LBRULEPRIORITY \
-          && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE" \
-          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE"
+      if [[ -z "$(ip rule list from all fwmark ${MARK}/${MASK} lookup ${TABLE} priority ${LBRULEPRIORITY})" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE}"
+        ip rule add from all fwmark ${MARK}/${MASK} lookup ${TABLE} priority ${LBRULEPRIORITY} \
+          && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE}" \
+          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE}"
       fi
+      # Delete default load balance rules if LBRULEPRIORITY is not default
+      if [[ "${LBRULEPRIORITY}" != "150" ]] &>/dev/null && [[ -n "$(ip rule list from all fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150)" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Deleting IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150"
+        ip rule del from all fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150 \
+          && logger -p 4 -t "$ALIAS" "Check IP Rules - Deleted IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150" \
+          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to delete IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150"
+      fi
+      # Delete blackhole rules
       if [[ -n "$(ip rule list from all fwmark ${MARK}/${MASK} | grep -w "blackhole")" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Check IP Rules - Removing Blackhole IP Rule for fwmark ${MARK}/${MASK}"
         ip rule del blackhole from all fwmark ${MARK}/${MASK} priority $LBRULEPRIORITY \
@@ -4088,13 +4097,23 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
 
     # IPV6IPADDR
     if [[ -z "${IPV6IPADDR+x}" ]] &>/dev/null || [[ -z "${zIPV6IPADDR+x}" ]] &>/dev/null;then
-      IPV6IPADDR="$(nvram get ipv6_wan_addr & nvramcheck)"
-      { [[ -n "$IPV6IPADDR" ]] &>/dev/null || [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null || [[ -z "$(nvram get ipv6_wan_addr & nvramcheck)" ]] &>/dev/null ;} \
+      ipv6ipaddr="$(nvram get ipv6_wan_addr & nvramcheck)"
+      if [[ -n "${ipv6ipaddr}" ]] &>/dev/null;then
+        IPV6IPADDR="$(echo ${ipv6ipaddr} | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+      else
+        IPV6IPADDR="$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print $0}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+      fi
+      { [[ -n "$IPV6IPADDR" ]] &>/dev/null || [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null || [[ -z "$(nvram get ipv6_wan_addr & nvramcheck)" ]] &>/dev/null || [[ -z "$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print $0}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")" ]] &>/dev/null ;} \
       && zIPV6IPADDR="$IPV6IPADDR" \
       || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6IPADDR" && unset IPV6IPADDR zIPV6IPADDR && continue ;}
     elif [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null;then
       [[ "$zIPV6IPADDR" != "$IPV6IPADDR" ]] &>/dev/null && zIPV6IPADDR="$IPV6IPADDR"
-      IPV6IPADDR="$(nvram get ipv6_wan_addr & nvramcheck)"
+      ipv6ipaddr="$(nvram get ipv6_wan_addr & nvramcheck)"
+      if [[ -n "${ipv6ipaddr}" ]] &>/dev/null;then
+        IPV6IPADDR="$(echo ${ipv6ipaddr} | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+      else
+        IPV6IPADDR="$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print $0}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+      fi
       [[ -n "$IPV6IPADDR" ]] &>/dev/null || IPV6IPADDR="$zIPV6IPADDR"
     fi
 
@@ -5600,6 +5619,8 @@ logger -p 6 -t "$ALIAS" "Debug - Checking which services need to be restarted"
 SERVICES=""
 SERVICESSTOP=""
 SERVICERESTARTPIDS=""
+OVPNS=""
+OVPNRESTARTPID=""
 WGVPNS=""
 WGVPNRESTARTPID=""
 # Check if dnsmasq is running
@@ -5636,6 +5657,16 @@ if [[ "$RESTARTSERVICESMODE" == "1" ]] &>/dev/null && [[ "$IPV6SERVICE" == "6in4
   SERVICE="wan6"
   SERVICES="${SERVICES} ${SERVICE}"
 fi
+
+# Restart OpenVPN Clients
+i="0"
+while [[ "$i" -le "5" ]] &>/dev/null;do
+  i="$(($i+1))"
+  if [[ -s "/etc/openvpn/client${i}/status" ]] &>/dev/null;then
+    OVPNS="${OVPNS} ${i}"
+  fi
+done
+
 # Restart WireGuard VPN Clients
 i="0"
 while [[ "$i" -le "5" ]] &>/dev/null;do
@@ -5646,9 +5677,9 @@ while [[ "$i" -le "5" ]] &>/dev/null;do
 done
 
 # Restart Services
-if [[ -n "$SERVICES" ]] &>/dev/null;then
+if [[ -n "${SERVICES}" ]] &>/dev/null;then
   for SERVICE in ${SERVICES};do
-    logger -p 5 -st "$ALIAS" "Service Restart - Restarting $SERVICE service"
+    logger -p 5 -st "$ALIAS" "Service Restart - Restarting ${SERVICE} service"
     service restart_${SERVICE} &>/dev/null &
     SERVICERESTARTPID="$!"
     SERVICERESTARTPIDS="${SERVICERESTARTPIDS} ${SERVICERESTARTPID}"
@@ -5656,17 +5687,27 @@ if [[ -n "$SERVICES" ]] &>/dev/null;then
 fi
 
 # Stop Services
-if [[ -n "$SERVICESSTOP" ]] &>/dev/null;then
+if [[ -n "${SERVICESSTOP}" ]] &>/dev/null;then
   for SERVICESTOP in ${SERVICESSTOP};do
-    logger -p 5 -st "$ALIAS" "Service Restart - Stopping $SERVICESTOP service"
+    logger -p 5 -st "$ALIAS" "Service Restart - Stopping ${SERVICESTOP} service"
     service stop_${SERVICESTOP} &>/dev/null &
   done
 fi
 
+# Restart OpenVPN Clients
+if [[ -n "${OVPNS}" ]] &>/dev/null;then
+  for OVPN in ${OVPNS};do
+    logger -p 5 -st "$ALIAS" "Service Restart - Restarting OpenVPN Client ${OVPN}"
+    service "restart_vpnclient${OVPN}" &>/dev/null &
+    OVPNRESTARTPID="$!"
+    SERVICERESTARTPIDS="${SERVICERESTARTPIDS} ${OVPNRESTARTPID}"
+  done
+fi
+
 # Restart WireGuard VPN Clients
-if [[ -n "$WGVPNS" ]] &>/dev/null;then
+if [[ -n "${WGVPNS}" ]] &>/dev/null;then
   for WGVPN in ${WGVPNS};do
-    logger -p 5 -st "$ALIAS" "Service Restart - Restarting WireGuard VPN Client $WGVPN"
+    logger -p 5 -st "$ALIAS" "Service Restart - Restarting WireGuard VPN Client ${WGVPN}"
     service "restart_wgc ${WGVPN}" &>/dev/null &
     WGVPNRESTARTPID="$!"
     SERVICERESTARTPIDS="${SERVICERESTARTPIDS} ${WGVPNRESTARTPID}"
@@ -5726,6 +5767,9 @@ fi
 [[ -n "${SERVICESTOP+x}" ]] &>/dev/null && unset SERVICESTOP
 [[ -n "${SERVICERESTARTPID+x}" ]] &>/dev/null && unset SERVICERESTARTPID
 [[ -n "${SERVICERESTARTPIDS+x}" ]] &>/dev/null && unset SERVICERESTARTPIDS
+[[ -n "${OVPNS+x}" ]] &>/dev/null && unset OVPNS
+[[ -n "${OVPN+x}" ]] &>/dev/null && unset OVPN
+[[ -n "${OVPNRESTARTPID+x}" ]] &>/dev/null && unset OVPNRESTARTPID
 [[ -n "${WGVPNS+x}" ]] &>/dev/null && unset WGVPNS
 [[ -n "${WGVPN+x}" ]] &>/dev/null && unset WGVPN
 [[ -n "${WGVPNRESTARTPID+x}" ]] &>/dev/null && unset WGVPNRESTARTPID
@@ -6292,7 +6336,7 @@ while true &>/dev/null;do
 
   if [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null || [[ "$DEVMODE" == "1" ]] &>/dev/null;then
     printf "\n"
-    printf "${BOLD}${UNDERLINE}IPV6:${NOCOLOR}\n"
+    printf "${BOLD}${UNDERLINE}IPv6:${NOCOLOR}\n"
     if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null;then
       echo -e "${BOLD}Type: ${NOCOLOR}${LIGHTGRAY}Disabled${NOCOLOR}"
     elif [[ "$IPV6SERVICE" == "dhcp6" ]] &>/dev/null;then
@@ -6313,7 +6357,7 @@ while true &>/dev/null;do
       echo -e "${BOLD}Type: ${NOCOLOR}${LIGHTGRAY}${IPV6SERVICE}${NOCOLOR}"
     fi
     if [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null;then
-      echo -e "${BOLD}IP Address: ${NOCOLOR}${LIGHTGRAY}${IPV6IPADDR}${NOCOLOR}" || echo -e "${BOLD}IP Address: ${NOCOLOR}${RED}N/A${NOCOLOR}"
+      echo -e "${BOLD}IPv6 Address: ${NOCOLOR}${LIGHTGRAY}${IPV6IPADDR}${NOCOLOR}" || echo -e "${BOLD}IP Address: ${NOCOLOR}${RED}N/A${NOCOLOR}"
     fi
   fi
 
