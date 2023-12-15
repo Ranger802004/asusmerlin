@@ -100,7 +100,7 @@ Enhancements:
 
 Fixes:
 - Updated logic for IPv6 Address data collection.
-- the default rules created by the firmware will be deleted if a custom load balancing rule priority is configured.
+- The default rules created by the firmware will be deleted if a custom load balancing rule priority is configured.
 - OpenVPN Clients will be restarted during failover events.
 
 v2.1.0: - 10/31/2023
