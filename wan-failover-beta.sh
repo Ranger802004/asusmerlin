@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 12/15/2023
-# Version: v2.1.1-beta1
+# Date: 01/19/2024
+# Version: v2.1.1-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.1.1-beta1"
+VERSION="v2.1.1-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -357,6 +357,7 @@ FWVERSIONS='
 388.2
 388.4
 388.5
+388.6
 '
 
 # Firmware Version Check
@@ -841,7 +842,7 @@ for WANPREFIX in ${WANPREFIXES};do
     && logger -p 4 -t "$ALIAS" "Cleanup - Deleted route for $TARGET via $GATEWAY dev $GWIFNAME" \
     || logger -p 2 -t "$ALIAS" "Cleanup - ***Error*** Unable to delete route for $TARGET via $GATEWAY dev $GWIFNAME"
   fi
-
+  
   # Delete Blackhole IPv6 Rules
   if [[ -n "$(ip -6 rule list from all oif $GWIFNAME priority $PRIORITY | grep -w "blackhole")" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Cleanup - Removing Blackhole IPv6 Rule for ${WANPREFIX}"
@@ -856,6 +857,7 @@ done
 [[ -n "${TABLE+x}" ]] &>/dev/null && unset TABLE
 [[ -n "${GATEWAY+x}" ]] &>/dev/null && unset GATEWAY
 [[ -n "${GWIFNAME+x}" ]] &>/dev/null && unset GWIFNAME
+[[ -n "${zWEBGUI+x}" ]] &>/dev/null && unset zWEBGUI
 
 # Remove Lock File
 logger -p 6 -t "$ALIAS" "Debug - Checking for Lock File: $LOCKFILE"
@@ -1647,6 +1649,10 @@ if [[ -z "${globalwansync+x}" ]] &>/dev/null;then
   getwanparameters || return
 fi
 
+# Get Active WAN Parameters
+GETWANMODE="3"
+getwanparameters || return
+
 # Determine QoS Display
 # WAN0_QOS_IBW
 if [[ "$WAN0_QOS_IBW" == "0" ]] &>/dev/null;then
@@ -2119,10 +2125,20 @@ case "${configinput}" in
           break 1
         else
           SETWAN0WEBGUI="$ip"
+          if [[ -n "${WAN0WEBGUI}" ]] &>/dev/null;then
+            zWAN0WEBGUI="${WAN0WEBGUI}"
+          fi
           logger -p 6 -t "$ALIAS" "Debug - WAN0 Web GUI IP Address: $ip"
           break 2
         fi
       done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWAN0WEBGUI="$ip"
+      if [[ -n "${WAN0WEBGUI}" ]] &>/dev/null;then
+        zWAN0WEBGUI="${WAN0WEBGUI}"
+      fi
+      logger -p 6 -t "$ALIAS" "Debug - WAN0 Web GUI IP Address not set"
+      break 1
     else  
       echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
       logger -p 6 -t "$ALIAS" "Debug - WAN0 Web GUI IP Address: $ip is an invalid IP Address"
@@ -2146,10 +2162,20 @@ case "${configinput}" in
           break 1
         else
           SETWAN1WEBGUI="$ip"
+          if [[ -n "${WAN1WEBGUI}" ]] &>/dev/null;then
+            zWAN1WEBGUI="${WAN1WEBGUI}"
+          fi
           logger -p 6 -t "$ALIAS" "Debug - WAN1 Web GUI IP Address: $ip"
           break 2
         fi
       done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWAN1WEBGUI="$ip"
+      if [[ -n "${WAN1WEBGUI}" ]] &>/dev/null;then
+        zWAN1WEBGUI="${WAN1WEBGUI}"
+      fi
+      logger -p 6 -t "$ALIAS" "Debug - WAN1 Web GUI IP Address not set"
+      break 1
     else  
       echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
       logger -p 6 -t "$ALIAS" "Debug - WAN1 Web GUI IP Address: $ip is an invalid IP Address"
@@ -2431,6 +2457,27 @@ if [[ -n "$NEWVARIABLES" ]] &>/dev/null;then
       echo -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')" >> $CONFIGFILE
     fi
   done
+  
+  # Check if WAN0 WEB GUI IP Changes were made and delete old record
+  if [[ -n "${zWAN0WEBGUI+x}" ]] &>/dev/null;then
+    if [[ -n "$(ip route list ${zWAN0WEBGUI} dev ${WAN0GWIFNAME} metric 1)" ]] &>/dev/null;then
+       logger -p 5 -t "$ALIAS" "Config - Deleting route to Web GUI IP: ${zWAN0WEBGUI}"
+       ip route del ${zWAN0WEBGUI} dev ${WAN0GWIFNAME} metric 1 \
+       && logger -p 4 -t "$ALIAS" "Config - Deleted route to Web GUI IP: ${zWAN0WEBGUI}" \
+       || logger -p 2 -t "$ALIAS" "Config - ***Error*** Unable to delete route to Web GUI IP: ${zWAN0WEBGUI}"
+    fi
+  fi
+
+  # Check if WAN1 WEB GUI IP Changes were made and delete old record
+  if [[ -n "${zWAN1WEBGUI+x}" ]] &>/dev/null;then
+    if [[ -n "$(ip route list ${zWAN1WEBGUI} dev ${WAN1GWIFNAME} metric 1)" ]] &>/dev/null;then
+       logger -p 5 -t "$ALIAS" "Config - Deleting route to Web GUI IP: ${zWAN1WEBGUI}"
+       ip route del ${zWAN1WEBGUI} dev ${WAN1GWIFNAME} metric 1 \
+       && logger -p 4 -t "$ALIAS" "Config - Deleted route to Web GUI IP: ${zWAN1WEBGUI}" \
+       || logger -p 2 -t "$ALIAS" "Config - ***Error*** Unable to delete route to Web GUI IP: ${zWAN1WEBGUI}"
+    fi
+  fi
+  # Prompt for Restart Required
   if [[ "$RESTARTREQUIRED" == "1" ]] &>/dev/null;then
     echo -e "${RED}***This change will require WAN Failover to restart to take effect***${NOCOLOR}"
     PressEnter
@@ -2862,12 +2909,14 @@ for WANPREFIX in ${WANPREFIXES};do
   fi
 
   # Check Main Routing Table for Web GUI IP Route
-  logger -p 6 -t "$ALIAS" "Debug - Checking ${WANPREFIX} for route to Web GUI IP: ${WEBGUI}"
-  if [[ -z "$(ip route list ${WEBGUI} dev ${GWIFNAME} metric 1)" ]] &>/dev/null;then
-     logger -p 5 -t "$ALIAS" "Check Routing Table - Adding route to Web GUI IP: ${WEBGUI}"
-     ip route add ${WEBGUI} dev ${GWIFNAME} metric 1 \
-     && logger -p 4 -t "$ALIAS" "Check Routing Table - Added route to Web GUI IP: ${WEBGUI}" \
-     || logger -p 2 -t "$ALIAS" "Check Routing Table - ***Error*** Unable to add route to Web GUI IP: ${WEBGUI}"
+  if [[ -n "${WEBGUI}" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Checking ${WANPREFIX} for route to Web GUI IP: ${WEBGUI}"
+    if [[ -z "$(ip route list ${WEBGUI} dev ${GWIFNAME} metric 1)" ]] &>/dev/null;then
+       logger -p 5 -t "$ALIAS" "Check Routing Table - Adding route to Web GUI IP: ${WEBGUI}"
+       ip route add ${WEBGUI} dev ${GWIFNAME} metric 1 \
+       && logger -p 4 -t "$ALIAS" "Check Routing Table - Added route to Web GUI IP: ${WEBGUI}" \
+       || logger -p 2 -t "$ALIAS" "Check Routing Table - ***Error*** Unable to add route to Web GUI IP: ${WEBGUI}"
+    fi
   fi
 
 done
@@ -3412,13 +3461,13 @@ if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
         fi
       fi
 
-    # WEBGUI
-    if [[ -n "${WAN0WEBGUI+x}" ]] &>/dev/null;then
-      WEBGUI="$WAN0WEBGUI"
-    else
-      setvariables || return
-      WEBGUI="$WAN0WEBGUI"
-    fi
+      # WEBGUI
+      if [[ -n "${WAN0WEBGUI+x}" ]] &>/dev/null;then
+        WEBGUI="$WAN0WEBGUI"
+      else
+        setvariables || return
+        WEBGUI="$WAN0WEBGUI"
+      fi
 
     elif [[ "${WANPREFIX}" == "$WAN1" ]] &>/dev/null;then
 
@@ -3570,13 +3619,13 @@ if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
         fi
       fi
 
-    # WEBGUI
-    if [[ -n "${WAN1WEBGUI+x}" ]] &>/dev/null;then
-      WEBGUI="$WAN1WEBGUI"
-    else
-      setvariables || return
-      WEBGUI="$WAN1WEBGUI"
-    fi
+      # WEBGUI
+      if [[ -n "${WAN1WEBGUI+x}" ]] &>/dev/null;then
+        WEBGUI="$WAN1WEBGUI"
+      else
+        setvariables || return
+        WEBGUI="$WAN1WEBGUI"
+      fi
 
     fi
     wansync="1"
