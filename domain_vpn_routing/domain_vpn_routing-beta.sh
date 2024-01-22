@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/14/2023
-# Version: v2.1.2
+# Date: 01/22/2024
+# Version: v2.1.3-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.2"
+VERSION="v2.1.3-beta1"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -103,6 +103,9 @@ elif [[ "${mode}" == "querypolicy" ]] &>/dev/null;then
   trap 'cleanup' EXIT HUP INT QUIT TERM
   POLICY="$arg2"
   querypolicy
+elif [[ "${mode}" == "restorepolicy" ]] &>/dev/null;then 
+  POLICY="$arg2"
+  restorepolicy
 elif [[ "${mode}" == "adddomain" ]] &>/dev/null;then 
   DOMAIN="$arg2"
   adddomain
@@ -177,15 +180,16 @@ menu ()
      printf "  ${BOLD}Operations:${NOCOLOR}\n"
    	printf "  (7)  cron              Schedule Cron Job to automate Query Policy for all policies\n"
      printf "  (8)  querypolicy       Perform a manual query of an existing policy\n"
-     printf "  (9)  kill              Kill any running instances of Domain VPN Routing\n"
+     printf "  (9)  restorepolicy     Perform a restore of an existing policy\n"
+     printf "  (10) kill              Kill any running instances of Domain VPN Routing\n"
      printf "\n"
      printf "  ${BOLD}Policy Configuration:${NOCOLOR}\n"
-     printf "  (10) createpolicy      Create Policy\n"
-	printf "  (11) editpolicy        Edit Policy\n"
-	printf "  (12) deletepolicy      Delete Policy\n"
-	printf "  (13) adddomain         Add Domain to an existing Policy\n"
-	printf "  (14) deletedomain      Delete Domain from an existing Policy\n"
-	printf "  (15) deleteip          Delete IP from an existing Policy\n"
+     printf "  (11) createpolicy      Create Policy\n"
+	printf "  (12) editpolicy        Edit Policy\n"
+	printf "  (13) deletepolicy      Delete Policy\n"
+	printf "  (14) adddomain         Add Domain to an existing Policy\n"
+	printf "  (15) deletedomain      Delete Domain from an existing Policy\n"
+	printf "  (16) deleteip          Delete IP from an existing Policy\n"
      printf "\n"
 	printf "  (e)  exit              Exit Domain VPN Routing Menu\n"
 	printf "\nMake a selection: "
@@ -251,16 +255,29 @@ menu ()
                         done
                         querypolicy "$value"
                         unset value
-                ;;
-		'9')    # kill
+        ;;
+		'9')    # restorepolicy
+			mode="restorepolicy"
+                        POLICY="all"
+                        showpolicy
+			while true &>/dev/null;do  
+                          read -r -p "Select the Policy You Want to Restore: " value
+                          case $value in
+                            * ) POLICY=$value; break;;
+                          esac
+                        done
+                        restorepolicy "$value"
+                        unset value
+        ;;
+		'10')    # kill
 			mode="kill"
                         killscript
 		;;
-		'10')    # createpolicy
+		'11')    # createpolicy
 			mode="createpolicy"
                         createpolicy
 		;;
-		'11')   # editpolicy
+		'12')   # editpolicy
 			mode="editpolicy"
                         POLICY="all"
                         showpolicy
@@ -273,7 +290,7 @@ menu ()
                         editpolicy "$value"
                         unset value
 		;;
-		'12')   # deletepolicy
+		'13')   # deletepolicy
 			mode="deletepolicy"
                         POLICY="all"
                         showpolicy
@@ -286,7 +303,7 @@ menu ()
                         deletepolicy "$value"
                         unset value
 		;;
-		'13')   # adddomain
+		'14')   # adddomain
 			mode="adddomain"
 			while true &>/dev/null;do  
                           read -r -p "Select a domain to add to a policy: " value
@@ -297,7 +314,7 @@ menu ()
                         adddomain "${DOMAIN}"
                         unset value DOMAIN
 		;;
-		'14')   # deletedomain
+		'15')   # deletedomain
 			mode="deletedomain"
 			while true &>/dev/null;do  
                           read -r -p "Select a domain to delete from a policy: " value
@@ -308,7 +325,7 @@ menu ()
                         deletedomain "${DOMAIN}"
                         unset value DOMAIN
 		;;
-		'15')   # deleteip
+		'16')   # deleteip
 			mode="deleteip"
 			while true &>/dev/null;do  
                           read -r -p "Select an IP Address to delete from a policy: " value
@@ -2965,6 +2982,10 @@ else
   echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
   return
 fi
+
+# Check if existing policies are configured
+restorepolicy
+
 for QUERYPOLICY in ${QUERYPOLICIES};do
   # Check if IPv6 IP Addresses are in policy file if IPv6 is Disabled and delete them
   if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null && [[ -n "$(grep -m1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" "${POLICYDIR}/policy_${QUERYPOLICY}_domaintoIP")" ]] &>/dev/null;then
@@ -3493,6 +3514,431 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 done
 # Clear Parameters
 unset VERBOSELOGGING PRIVATEIPS INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE DOMAIN IP FWMARK MASK IPV6ROUTETABLE OLDIPV6ROUTETABLE
+
+if tty >/dev/null 2>&1;then
+  printf '\033[K'
+fi
+return
+}
+
+# Restore Existing Policies
+restorepolicy ()
+{
+# Set process priority
+if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Setting Process Priority to ${PROCESSPRIORITY}"
+  renice -n ${PROCESSPRIORITY} $$ \
+  && logger -p 4 -t "$ALIAS" "Restore Policy - Set Process Priority to ${PROCESSPRIORITY}" \
+  || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to set Process Priority to ${PROCESSPRIORITY}"
+fi
+
+# Restore Policies
+if [[ "${POLICY}" == "all" ]] &>/dev/null;then
+  RESTOREPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+  if [[ -z "${RESTOREPOLICIES}" ]] &>/dev/null;then
+    logger -p 3 -st "$ALIAS" "Restore Policy - ***No Policies Detected***"
+    return
+  fi
+elif [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+  RESTOREPOLICIES="${POLICY}"
+else
+  echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
+  return
+fi
+for RESTOREPOLICY in ${RESTOREPOLICIES};do
+  
+  # Display Restore Policy
+  if [[ "${mode}" == "restorepolicy" ]] &>/dev/null;then
+    if tty >/dev/null 2>&1;then
+      printf '\033[K%b\r' "${BOLD}${UNDERLINE}Restore Policy: ${RESTOREPOLICY}${NOCOLOR}\n"
+    fi
+  fi
+
+  # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
+  DOMAINIPLIST="$(grep -w "$RESTOREPOLICY" "$CONFIGFILE" | awk -F"|" '{print $3}')"
+  INTERFACE="$(grep -w "$RESTOREPOLICY" "$CONFIGFILE" | awk -F"|" '{print $4}')"
+  routingdirector || return
+
+  # Check if Interface State is Up or Down
+  if [[ "$STATE" == "0" ]] &>/dev/null;then
+    logger -p 3 -st "$ALIAS" "Restore Policy - Interface ${INTERFACE} for ${RESTOREPOLICY} is down"
+    continue
+  fi
+
+  # Create IPv6 IPSET
+  # Check for saved IPSET
+  if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Restoring IPv6 IPSET for ${RESTOREPOLICY}"
+    ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Restored IPv6 IPSET for ${RESTOREPOLICY}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to restore IPv6 IPSET for ${RESTOREPOLICY}"
+  # Create saved IPv6 IPSET file if IPSET exists
+  elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv6 IPSET for ${RESTOREPOLICY}"
+    ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv6 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Saved IPv6 IPSET for ${RESTOREPOLICY}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv6 IPSET for ${RESTOREPOLICY}"
+  # Create new IPv6 IPSET if it does not exist
+  elif [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Creating IPv6 IPSET for ${RESTOREPOLICY}"
+    ipset create DomainVPNRouting-${RESTOREPOLICY}-ipv6 hash:ip family inet6 comment \
+    && { saveipv6ipset="1" && logger -p 4 -t "$ALIAS" "Restore Policy - Created IPv6 IPSET for ${RESTOREPOLICY}" ;} \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to create IPv6 IPSET for ${RESTOREPOLICY}"
+  fi
+  # Create IPv4 IPSET
+  # Check for saved IPv4 IPSET
+  if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Restoring IPv4 IPSET for ${RESTOREPOLICY}"
+    ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Restored IPv4 IPSET for ${RESTOREPOLICY}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to restore IPv4 IPSET for ${RESTOREPOLICY}"
+  # Create saved IPv4 IPSET file if IPSET exists
+  elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv4 IPSET for ${RESTOREPOLICY}"
+    ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv4 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Saved IPv4 IPSET for ${RESTOREPOLICY}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv4 IPSET for ${RESTOREPOLICY}"
+  # Create new IPv4 IPSET if it does not exist
+  elif [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Creating IPv4 IPSET for ${RESTOREPOLICY}"
+    ipset create DomainVPNRouting-${RESTOREPOLICY}-ipv4 hash:ip family inet comment \
+    && { saveipv4ipset="1" && logger -p 4 -t "$ALIAS" "Restore Policy - Created IPv4 IPSET for ${RESTOREPOLICY}" ;} \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to create IPv4 IPSET for ${RESTOREPOLICY}"
+  fi
+
+  # Create IPv4 and IPv6 Arrays from Policy File. 
+  IPV6S="$(grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" "${DOMAINIPLIST}" | sort -u)"
+  IPV4S="$(grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" "${DOMAINIPLIST}" | sort -u)"
+  
+  # Show visual status for updating routes and rules
+  if tty >/dev/null 2>&1;then
+    printf '\033[K%b\r' "${LIGHTCYAN}Restore Policy: Restoring IP Routes and IP Rules${NOCOLOR}"
+  fi
+
+  # IPv6
+  if [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
+    # Create FWMark IPv6 Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "${IPV6ADDR}" ]] &>/dev/null || [[ -n "$(ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Checking for IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      ip -6 rule add from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - Failed to add IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      # Remove FWMark Unreachable IPv6 Rule if it exists
+      if [[ -n "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Restore Policy - Checking for Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+        ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+        && logger -p 4 -t "$ALIAS" "Restore Policy - Added Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+        || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      fi
+    # Create FWMark Unreachable IPv6 Rule
+    elif [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -z "${IPV6ADDR}" ]] &>/dev/null && [[ -z "$(ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Checking for Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      ip -6 rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Added Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    fi
+
+    # Create IPv6 IP6Tables OUTPUT Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}"
+    fi
+
+    # Create IPv6 IP6Tables PREROUTING Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}"
+    fi
+
+    # Create IPv6 IP6Tables POSTROUTING Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    fi
+
+    # Add IPv6s to IPSET or create IPv6 Routes
+    if [[ -n "${FWMARK}" ]] &>/dev/null;then
+      for IPV6 in ${IPV6S};do
+        # Check IPv6 for prefix error
+        if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
+          # Add to IPv6 IPSET with prefix fixed
+          if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
+            comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6"
+            ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv6 ${IPV6}:: comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" ;} ;}
+            unset comment
+          fi
+          # Remove IPv6 Route
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Removing route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            ip -6 route del ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            || rc="$?" \
+            && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route removed for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
+            # Generate Error Log
+            if [[ "${rc+x}" ]] &>/dev/null;then
+              continue
+            elif [[ "$rc" == "2" ]] &>/dev/null;then
+              logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Route does not exist for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            elif [[ "$rc" != "0" ]] &>/dev/null;then
+              logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to remove route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            fi
+          fi
+          # Remove IPv6 Route for WAN Failover
+          if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ -n "${OLDIPV6ROUTETABLE+x}" ]] &>/dev/null && [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
+            if [[ -n "$(ip route list ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
+              [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Deleting route for ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
+              ip route del ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
+              || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to delete route for ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" \
+              && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route deleted for ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" ;}
+            fi
+          fi
+        else
+          # Add to IPv6 IPSET
+          if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6"
+            comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv6 ${IPV6} comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" ;} ;}
+            unset comment
+          fi
+          # Remove IPv6 Route
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Removing route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            || rc="$?" \
+            && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route removed for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
+            # Generate Error Log
+            if [[ "${rc+x}" ]] &>/dev/null;then
+              continue
+            elif [[ "$rc" == "2" ]] &>/dev/null;then
+              logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Route does not exist for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            elif [[ "$rc" != "0" ]] &>/dev/null;then
+              logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to remove route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            fi
+          fi
+          # Remove IPv6 Route for WAN Failover
+          if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ -n "${OLDIPV6ROUTETABLE+x}" ]] &>/dev/null && [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
+            if [[ -n "$(ip route list ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
+              [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Deleting route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
+              ip route del ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
+              || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to delete route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" \
+              && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route deleted for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" ;}
+            fi
+          fi
+        fi
+      done
+    elif [[ -z "${FWMARK}" ]] &>/dev/null;then
+      for IPV6 in ${IPV6S};do
+        # Check IPv6 for prefix error
+        if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
+          # Add to IPv6 IPSET with prefix fixed
+          if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6"
+            comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv6 ${IPV6}:: comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" ;} ;}
+            unset comment
+          fi
+          # Add IPv6 Route
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            ip -6 route add ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            || rc="$?" \
+            && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route added for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
+            # Generate Error Log
+            if [[ "${rc+x}" ]] &>/dev/null;then
+              continue
+            elif [[ "$rc" == "2" ]] &>/dev/null;then
+              logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Route already exists for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            elif [[ "$rc" != "0" ]] &>/dev/null;then
+              logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            fi
+          fi
+        else
+          # Add to IPv6 IPSET
+          if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6"
+            comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv6 ${IPV6} comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" ;} ;}
+          fi
+          # Add IPv6 Route
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            ip -6 route add ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            || rc="$?" \
+            && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route added for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
+            # Generate Error Log
+            if [[ "${rc+x}" ]] &>/dev/null;then
+              continue
+            elif [[ "$rc" == "2" ]] &>/dev/null;then
+              logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Route already exists for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            elif [[ "$rc" != "0" ]] &>/dev/null;then
+              logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
+            fi
+          fi
+        fi
+      done
+    fi
+
+    # Save IPv6 IPSET if modified or does not exist
+    [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv6 IPSET for ${RESTOREPOLICY}"
+      ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv6 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Save IPv6 IPSET for ${RESTOREPOLICY}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv6 IPSET for ${RESTOREPOLICY}"
+    fi
+    [[ -n "${saveipv6ipset+x}" ]] &>/dev/null && unset saveipv6ipset
+  fi
+
+  # IPv4
+  # Create FWMark IPv4 Rule
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Checking for IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    ip rule add from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    # Remove FWMark Unreachable IPv4 Rule if it exists
+    if [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    fi
+  # Create FWMark Unreachable IPv4 Rule
+  elif [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    ip rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+  fi
+
+  # Create IPv4 IPTables OUTPUT Rule
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Adding IPTables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}"
+    iptables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPTables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}"
+  fi
+
+  # Create IPv4 IPTables PREROUTING Rule
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Adding IPTables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}"
+    iptables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPTables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}"
+  fi
+
+  # Create IPv4 IPTables POSTROUTING Rule
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Adding IPTables rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPTables rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPTables rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+  fi
+
+  # Add IPv4s to IPSET or create IPv4 Routes or rules and remove old IPv4 Routes or Rules
+  if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "$(ip rule list from all fwmark ${FWMARK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null || [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
+    for IPV4 in ${IPV4S};do
+      # Add to IPv4 IPSET
+      if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4"
+        comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+        ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv4 ${IPV4} comment "${comment}" \
+        || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4" \
+        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4" ;} ;}
+        unset comment
+      fi
+      # Remove IPv4 Routes
+      if [[ "${RGW}" == "0" ]] &>/dev/null;then
+        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+          [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Removing route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
+          ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
+          || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to remove route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" \
+          && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route removed for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" ;}
+        fi
+        if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
+          if [[ -n "$(ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Deleting route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}"
+            ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to delete route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" \
+            && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route deleted for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" ;}
+          fi
+        fi
+      elif [[ "${RGW}" != "0" ]] &>/dev/null;then
+        # Remove IPv4 Rules
+        if [[ -n "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+          [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Removing IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
+          ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
+          || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to remove IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" \
+          && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Removed IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" ;}
+        fi
+      fi
+    done
+  elif [[ -z "${FWMARK}" ]] &>/dev/null || [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+    for IPV4 in ${IPV4S};do
+      # Add to IPv4 IPSET
+      if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4"
+        comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+        ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv4 ${IPV4} comment "${comment}" \
+        || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4" \
+        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4" ;} ;}
+        unset comment
+      fi
+      # Create IPv4 Routes
+      if [[ "${RGW}" == "0" ]] &>/dev/null;then
+        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+          [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
+          ip route add ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
+          || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" \
+          && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route added for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" ;}
+        fi
+        if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
+          if [[ -n "$(ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Deleting route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}"
+            ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to delete route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" \
+            && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route deleted for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" ;}
+          fi
+        fi
+      elif [[ "${RGW}" != "0" ]] &>/dev/null;then
+        # Create IPv4 Rules
+        if [[ -z "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+          [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
+          ip rule add from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
+          || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" \
+          && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" ;}
+        fi
+      fi
+    done
+  fi
+
+  # Save IPv4 IPSET if modified or does not exist
+  [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
+  if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv4 IPSET for ${RESTOREPOLICY}"
+    ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv4 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Save IPv4 IPSET for ${RESTOREPOLICY}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv4 IPSET for ${RESTOREPOLICY}"
+  fi
+  [[ -n "${saveipv4ipset+x}" ]] &>/dev/null && unset saveipv4ipset
+
+done
+# Clear Parameters
+unset INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE DOMAIN IP FWMARK MASK IPV6ROUTETABLE OLDIPV6ROUTETABLE
 
 if tty >/dev/null 2>&1;then
   printf '\033[K'
