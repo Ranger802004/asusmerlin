@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 01/22/2024
-# Version: v2.1.3-beta1
+# Date: 02/02/2024
+# Version: v2.1.3-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.3-beta1"
+VERSION="v2.1.3-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -127,6 +127,18 @@ elif [[ "${mode}" == "config" ]] &>/dev/null;then
   config
 elif [[ "${mode}" == "resetconfig" ]] &>/dev/null;then 
   resetconfig
+fi
+return
+}
+
+# Set Script to use System Binaries
+systembinaries ()
+{
+# Check System Binaries Path
+if [[ "$(echo $PATH | awk -F ":" '{print $1":"$2":"$3":"$4":"}')" != "/sbin:/bin:/usr/sbin:/usr/bin:" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Setting System Binaries Path"
+  export PATH=/sbin:/bin:/usr/sbin:/usr/bin:$PATH
+  logger -p 6 -t "$ALIAS" "Debug - PATH: $PATH"
 fi
 return
 }
@@ -4549,7 +4561,8 @@ fi
 
 return
 }
-
+# Set System Binaries
+systembinaries || return
 # Get System Parameters
 getsystemparameters || return
 # Perform PreV2 Config Update
