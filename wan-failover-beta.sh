@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 01/19/2024
-# Version: v2.1.1-beta2
+# Date: 02/02/2024
+# Version: v2.1.1-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.1.1-beta2"
+VERSION="v2.1.1-beta3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -1525,6 +1525,10 @@ if [[ "$configdefaultssync" == "0" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Setting WAN1WEBGUI Default: N/A"
     echo -e "WAN1WEBGUI=" >> ${CONFIGFILE}
   fi
+  if [[ -z "$(sed -n '/\bFLUSHCONNTRACK=\b/p' "$CONFIGFILE")" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting FLUSHCONNTRACK Default: Disabled"
+    echo -e "FLUSHCONNTRACK=0" >> $CONFIGFILE
+  fi
 
 # Cleanup Config file of deprecated options
 DEPRECATEDOPTIONS='
@@ -1741,17 +1745,18 @@ printf "  (26) Configure Status Check          Status Check Interval: ${LIGHTBLU
 printf "  (27) Configure Process Priority      Process Priority: " && { { [[ "$PROCESSPRIORITY" == "0" ]] && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-20" ]] && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-10" ]] && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "10" ]] && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "20" ]] && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}$PROCESSPRIORITY${NOCOLOR}" ;} && printf "\n"
 printf "  (28) Configure Failover Block IPV6   Failover Block IPV6: " && { [[ "$FOBLOCKIPV6" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 printf "  (29) Configure Failover Timeout      Failover Timeout: ${LIGHTBLUE}${FAILOVERTIMEOUT} Seconds${NOCOLOR}\n"
+printf "  (30) Configure Conntrack Flushing    Conntrack Flushing: " && { [[ "$FLUSHCONNTRACK" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 
 if [[ "$WANSMODE" == "lb" ]] &>/dev/null || [[ "$DEVMODE" == "1" ]] &>/dev/null;then
   printf "\n  ${BOLD}Load Balance Mode Settings:${NOCOLOR}\n"
-  printf "  (30) Configure LB Rule Priority      Load Balance Rule Priority: ${LIGHTBLUE}$LBRULEPRIORITY${NOCOLOR}\n"
-  printf "  (31) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-  printf "  (32) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${LIGHTBLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
-  printf "  (33) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${LIGHTBLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
-  printf "  (34) Configure WAN0 FWMark           WAN0 FWMark: ${LIGHTBLUE}$WAN0MARK${NOCOLOR}\n"
-  printf "  (35) Configure WAN1 FWMark           WAN1 FWMark: ${LIGHTBLUE}$WAN1MARK${NOCOLOR}\n"
-  printf "  (36) Configure WAN0 Mask             WAN0 Mask: ${LIGHTBLUE}$WAN0MASK${NOCOLOR}\n"
-  printf "  (37) Configure WAN1 Mask             WAN1 Mask: ${LIGHTBLUE}$WAN1MASK${NOCOLOR}\n"
+  printf "  (31) Configure LB Rule Priority      Load Balance Rule Priority: ${LIGHTBLUE}$LBRULEPRIORITY${NOCOLOR}\n"
+  printf "  (32) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  printf "  (33) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${LIGHTBLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
+  printf "  (34) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${LIGHTBLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
+  printf "  (35) Configure WAN0 FWMark           WAN0 FWMark: ${LIGHTBLUE}$WAN0MARK${NOCOLOR}\n"
+  printf "  (36) Configure WAN1 FWMark           WAN1 FWMark: ${LIGHTBLUE}$WAN1MARK${NOCOLOR}\n"
+  printf "  (37) Configure WAN0 Mask             WAN0 Mask: ${LIGHTBLUE}$WAN0MASK${NOCOLOR}\n"
+  printf "  (38) Configure WAN1 Mask             WAN1 Mask: ${LIGHTBLUE}$WAN1MASK${NOCOLOR}\n"
 fi
 
 # Unset Variables
@@ -2308,7 +2313,19 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   done
 NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   ;;
-  '30')      # LBRULEPRIORITY
+  '30')      # FLUSHCONNTRACK
+  while true &>/dev/null;do
+    read -p "Do you want to enable Conntrack flushing? This defines if the script will flush conntrack table during failover events: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETFLUSHCONNTRACK="1"; break;;
+      [Nn]* ) SETFLUSHCONNTRACK="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} FLUSHCONNTRACK=|$SETFLUSHCONNTRACK"
+  [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
+  ;;
+  '31')      # LBRULEPRIORITY
   while true &>/dev/null;do
     read -p "Configure Load Balance Rule Priority - This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change: " value
     case $value in
@@ -2319,7 +2336,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} LBRULEPRIORITY=|$SETLBRULEPRIORITY"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '31')      # OVPNSPLITTUNNEL
+  '32')      # OVPNSPLITTUNNEL
   while true &>/dev/null;do
     read -p "Do you want to enable OpenVPN Split Tunneling? This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode: ***Enter Y for Yes or N for No***" yn
     case $yn in
@@ -2331,7 +2348,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} OVPNSPLITTUNNEL=|$SETOVPNSPLITTUNNEL"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '32')      # OVPNWAN0PRIORITY
+  '33')      # OVPNWAN0PRIORITY
   while true &>/dev/null;do
     read -p "Configure OpenVPN WAN0 Priority - This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is Disabled: " value
     case $value in
@@ -2342,7 +2359,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} OVPNWAN0PRIORITY=|$SETOVPNWAN0PRIORITY"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '33')      # OVPNWAN1PRIORITY
+  '34')      # OVPNWAN1PRIORITY
   while true &>/dev/null;do
     read -p "Configure OpenVPN WAN1 Priority - This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is Disabled: " value
     case $value in
@@ -2353,7 +2370,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} OVPNWAN1PRIORITY=|$SETOVPNWAN1PRIORITY"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '34')      # WAN0MARK
+  '35')      # WAN0MARK
   while true &>/dev/null;do
     read -p "Configure WAN0 FWMark - This defines the WAN0 FWMark for Load Balance Mode: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2369,7 +2386,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} WAN0MARK=|$SETWAN0MARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '35')      # WAN1MARK
+  '36')      # WAN1MARK
   while true &>/dev/null;do
     read -p "Configure WAN1 FWMark - This defines the WAN1 FWMark for Load Balance Mode: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2385,7 +2402,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} WAN1MARK=|$SETWAN1MARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '36')      # WAN0MASK
+  '37')      # WAN0MASK
   while true &>/dev/null;do
     read -p "Configure WAN0 Mask - This defines the WAN0 Mask for Load Balance Mode: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2401,7 +2418,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} WAN0MASK=|$SETWAN0MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '37')      # WAN1MASK
+  '38')      # WAN1MASK
   while true &>/dev/null;do
     read -p "Configure WAN1 Mask - This defines the WAN1 Mask for Load Balance Mode: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -4638,6 +4655,8 @@ switchdns || return
 
 restartservices || return
 
+flushconntrack || return
+
 checkiprules || return
 
 [[ "$email" == "1" ]] &>/dev/null && { sendemail && email="0" || return ;}
@@ -5823,6 +5842,30 @@ fi
 [[ -n "${WGVPN+x}" ]] &>/dev/null && unset WGVPN
 [[ -n "${WGVPNRESTARTPID+x}" ]] &>/dev/null && unset WGVPNRESTARTPID
 
+
+return
+}
+
+# Flush Conntrack
+flushconntrack ()
+{
+logger -p 6 -t "$ALIAS" "Debug - Function: flushconntrack"
+
+# Check if flush conntrack is Enabled
+if [[ "$FLUSHCONNTRACK" == "0" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Flush conntrack is disabled"
+  return
+elif [[ "$FLUSHCONNTRACK" == "1" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Flush conntrack is enabled"
+  if [[ -f "/usr/sbin/conntrack" ]] &>/dev/null;then
+    logger -p 5 -st "$ALIAS" "Flush Conntrack - Flushing conntrack table"
+    /usr/sbin/conntrack -F \
+	&& logger -p 4 -st "$ALIAS" "Flush Conntrack - Flushed conntrack table" \
+    || logger -p 2 -st "$ALIAS" "Flush Conntrack - ***Error*** Unable to flush conntrack table"
+  else
+    logger -p 2 -st "$ALIAS" "Flush Conntrack - ***Error*** Conntrack is not installed"
+  fi
+fi
 
 return
 }
