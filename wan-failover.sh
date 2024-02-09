@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/31/2023
-# Version: v2.1.0
+# Date: 02/09/2024
+# Version: v2.1.1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.1.0"
+VERSION="v2.1.1"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -356,6 +356,8 @@ FWVERSIONS='
 388.1
 388.2
 388.4
+388.5
+388.6
 '
 
 # Firmware Version Check
@@ -840,7 +842,7 @@ for WANPREFIX in ${WANPREFIXES};do
     && logger -p 4 -t "$ALIAS" "Cleanup - Deleted route for $TARGET via $GATEWAY dev $GWIFNAME" \
     || logger -p 2 -t "$ALIAS" "Cleanup - ***Error*** Unable to delete route for $TARGET via $GATEWAY dev $GWIFNAME"
   fi
-
+  
   # Delete Blackhole IPv6 Rules
   if [[ -n "$(ip -6 rule list from all oif $GWIFNAME priority $PRIORITY | grep -w "blackhole")" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Cleanup - Removing Blackhole IPv6 Rule for ${WANPREFIX}"
@@ -855,6 +857,7 @@ done
 [[ -n "${TABLE+x}" ]] &>/dev/null && unset TABLE
 [[ -n "${GATEWAY+x}" ]] &>/dev/null && unset GATEWAY
 [[ -n "${GWIFNAME+x}" ]] &>/dev/null && unset GWIFNAME
+[[ -n "${zWEBGUI+x}" ]] &>/dev/null && unset zWEBGUI
 
 # Remove Lock File
 logger -p 6 -t "$ALIAS" "Debug - Checking for Lock File: $LOCKFILE"
@@ -1522,6 +1525,10 @@ if [[ "$configdefaultssync" == "0" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Setting WAN1WEBGUI Default: N/A"
     echo -e "WAN1WEBGUI=" >> ${CONFIGFILE}
   fi
+  if [[ -z "$(sed -n '/\bFLUSHCONNTRACK=\b/p' "$CONFIGFILE")" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting FLUSHCONNTRACK Default: Disabled"
+    echo -e "FLUSHCONNTRACK=0" >> $CONFIGFILE
+  fi
 
 # Cleanup Config file of deprecated options
 DEPRECATEDOPTIONS='
@@ -1646,6 +1653,10 @@ if [[ -z "${globalwansync+x}" ]] &>/dev/null;then
   getwanparameters || return
 fi
 
+# Get Active WAN Parameters
+GETWANMODE="3"
+getwanparameters || return
+
 # Determine QoS Display
 # WAN0_QOS_IBW
 if [[ "$WAN0_QOS_IBW" == "0" ]] &>/dev/null;then
@@ -1734,17 +1745,18 @@ printf "  (26) Configure Status Check          Status Check Interval: ${LIGHTBLU
 printf "  (27) Configure Process Priority      Process Priority: " && { { [[ "$PROCESSPRIORITY" == "0" ]] && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-20" ]] && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-10" ]] && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "10" ]] && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "20" ]] && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}$PROCESSPRIORITY${NOCOLOR}" ;} && printf "\n"
 printf "  (28) Configure Failover Block IPV6   Failover Block IPV6: " && { [[ "$FOBLOCKIPV6" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 printf "  (29) Configure Failover Timeout      Failover Timeout: ${LIGHTBLUE}${FAILOVERTIMEOUT} Seconds${NOCOLOR}\n"
+printf "  (30) Configure Conntrack Flushing    Conntrack Flushing: " && { [[ "$FLUSHCONNTRACK" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 
 if [[ "$WANSMODE" == "lb" ]] &>/dev/null || [[ "$DEVMODE" == "1" ]] &>/dev/null;then
   printf "\n  ${BOLD}Load Balance Mode Settings:${NOCOLOR}\n"
-  printf "  (30) Configure LB Rule Priority      Load Balance Rule Priority: ${LIGHTBLUE}$LBRULEPRIORITY${NOCOLOR}\n"
-  printf "  (31) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-  printf "  (32) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${LIGHTBLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
-  printf "  (33) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${LIGHTBLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
-  printf "  (34) Configure WAN0 FWMark           WAN0 FWMark: ${LIGHTBLUE}$WAN0MARK${NOCOLOR}\n"
-  printf "  (35) Configure WAN1 FWMark           WAN1 FWMark: ${LIGHTBLUE}$WAN1MARK${NOCOLOR}\n"
-  printf "  (36) Configure WAN0 Mask             WAN0 Mask: ${LIGHTBLUE}$WAN0MASK${NOCOLOR}\n"
-  printf "  (37) Configure WAN1 Mask             WAN1 Mask: ${LIGHTBLUE}$WAN1MASK${NOCOLOR}\n"
+  printf "  (31) Configure LB Rule Priority      Load Balance Rule Priority: ${LIGHTBLUE}$LBRULEPRIORITY${NOCOLOR}\n"
+  printf "  (32) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "$OVPNSPLITTUNNEL" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  printf "  (33) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${LIGHTBLUE}$OVPNWAN0PRIORITY${NOCOLOR}\n"
+  printf "  (34) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${LIGHTBLUE}$OVPNWAN1PRIORITY${NOCOLOR}\n"
+  printf "  (35) Configure WAN0 FWMark           WAN0 FWMark: ${LIGHTBLUE}$WAN0MARK${NOCOLOR}\n"
+  printf "  (36) Configure WAN1 FWMark           WAN1 FWMark: ${LIGHTBLUE}$WAN1MARK${NOCOLOR}\n"
+  printf "  (37) Configure WAN0 Mask             WAN0 Mask: ${LIGHTBLUE}$WAN0MASK${NOCOLOR}\n"
+  printf "  (38) Configure WAN1 Mask             WAN1 Mask: ${LIGHTBLUE}$WAN1MASK${NOCOLOR}\n"
 fi
 
 # Unset Variables
@@ -2118,10 +2130,20 @@ case "${configinput}" in
           break 1
         else
           SETWAN0WEBGUI="$ip"
+          if [[ -n "${WAN0WEBGUI}" ]] &>/dev/null;then
+            zWAN0WEBGUI="${WAN0WEBGUI}"
+          fi
           logger -p 6 -t "$ALIAS" "Debug - WAN0 Web GUI IP Address: $ip"
           break 2
         fi
       done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWAN0WEBGUI="$ip"
+      if [[ -n "${WAN0WEBGUI}" ]] &>/dev/null;then
+        zWAN0WEBGUI="${WAN0WEBGUI}"
+      fi
+      logger -p 6 -t "$ALIAS" "Debug - WAN0 Web GUI IP Address not set"
+      break 1
     else  
       echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
       logger -p 6 -t "$ALIAS" "Debug - WAN0 Web GUI IP Address: $ip is an invalid IP Address"
@@ -2145,10 +2167,20 @@ case "${configinput}" in
           break 1
         else
           SETWAN1WEBGUI="$ip"
+          if [[ -n "${WAN1WEBGUI}" ]] &>/dev/null;then
+            zWAN1WEBGUI="${WAN1WEBGUI}"
+          fi
           logger -p 6 -t "$ALIAS" "Debug - WAN1 Web GUI IP Address: $ip"
           break 2
         fi
       done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWAN1WEBGUI="$ip"
+      if [[ -n "${WAN1WEBGUI}" ]] &>/dev/null;then
+        zWAN1WEBGUI="${WAN1WEBGUI}"
+      fi
+      logger -p 6 -t "$ALIAS" "Debug - WAN1 Web GUI IP Address not set"
+      break 1
     else  
       echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
       logger -p 6 -t "$ALIAS" "Debug - WAN1 Web GUI IP Address: $ip is an invalid IP Address"
@@ -2281,7 +2313,19 @@ NEWVARIABLES="${NEWVARIABLES} PROCESSPRIORITY=|$SETPROCESSPRIORITY"
   done
 NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   ;;
-  '30')      # LBRULEPRIORITY
+  '30')      # FLUSHCONNTRACK
+  while true &>/dev/null;do
+    read -p "Do you want to enable Conntrack flushing? This defines if the script will flush conntrack table during failover events: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETFLUSHCONNTRACK="1"; break;;
+      [Nn]* ) SETFLUSHCONNTRACK="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} FLUSHCONNTRACK=|$SETFLUSHCONNTRACK"
+  [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
+  ;;
+  '31')      # LBRULEPRIORITY
   while true &>/dev/null;do
     read -p "Configure Load Balance Rule Priority - This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change: " value
     case $value in
@@ -2292,7 +2336,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} LBRULEPRIORITY=|$SETLBRULEPRIORITY"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '31')      # OVPNSPLITTUNNEL
+  '32')      # OVPNSPLITTUNNEL
   while true &>/dev/null;do
     read -p "Do you want to enable OpenVPN Split Tunneling? This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode: ***Enter Y for Yes or N for No***" yn
     case $yn in
@@ -2304,7 +2348,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} OVPNSPLITTUNNEL=|$SETOVPNSPLITTUNNEL"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '32')      # OVPNWAN0PRIORITY
+  '33')      # OVPNWAN0PRIORITY
   while true &>/dev/null;do
     read -p "Configure OpenVPN WAN0 Priority - This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is Disabled: " value
     case $value in
@@ -2315,7 +2359,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} OVPNWAN0PRIORITY=|$SETOVPNWAN0PRIORITY"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '33')      # OVPNWAN1PRIORITY
+  '34')      # OVPNWAN1PRIORITY
   while true &>/dev/null;do
     read -p "Configure OpenVPN WAN1 Priority - This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is Disabled: " value
     case $value in
@@ -2326,7 +2370,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} OVPNWAN1PRIORITY=|$SETOVPNWAN1PRIORITY"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '34')      # WAN0MARK
+  '35')      # WAN0MARK
   while true &>/dev/null;do
     read -p "Configure WAN0 FWMark - This defines the WAN0 FWMark for Load Balance Mode: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2342,7 +2386,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} WAN0MARK=|$SETWAN0MARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '35')      # WAN1MARK
+  '36')      # WAN1MARK
   while true &>/dev/null;do
     read -p "Configure WAN1 FWMark - This defines the WAN1 FWMark for Load Balance Mode: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2358,7 +2402,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} WAN1MARK=|$SETWAN1MARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '36')      # WAN0MASK
+  '37')      # WAN0MASK
   while true &>/dev/null;do
     read -p "Configure WAN0 Mask - This defines the WAN0 Mask for Load Balance Mode: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2374,7 +2418,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|$SETFAILOVERTIMEOUT"
   NEWVARIABLES="${NEWVARIABLES} WAN0MASK=|$SETWAN0MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '37')      # WAN1MASK
+  '38')      # WAN1MASK
   while true &>/dev/null;do
     read -p "Configure WAN1 Mask - This defines the WAN1 Mask for Load Balance Mode: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2430,6 +2474,27 @@ if [[ -n "$NEWVARIABLES" ]] &>/dev/null;then
       echo -e "$(echo ${NEWVARIABLE} | awk -F "|" '{print $1}')$(echo ${NEWVARIABLE} | awk -F "|" '{print $2}')" >> $CONFIGFILE
     fi
   done
+  
+  # Check if WAN0 WEB GUI IP Changes were made and delete old record
+  if [[ -n "${zWAN0WEBGUI+x}" ]] &>/dev/null;then
+    if [[ -n "$(ip route list ${zWAN0WEBGUI} dev ${WAN0GWIFNAME} metric 1)" ]] &>/dev/null;then
+       logger -p 5 -t "$ALIAS" "Config - Deleting route to Web GUI IP: ${zWAN0WEBGUI}"
+       ip route del ${zWAN0WEBGUI} dev ${WAN0GWIFNAME} metric 1 \
+       && logger -p 4 -t "$ALIAS" "Config - Deleted route to Web GUI IP: ${zWAN0WEBGUI}" \
+       || logger -p 2 -t "$ALIAS" "Config - ***Error*** Unable to delete route to Web GUI IP: ${zWAN0WEBGUI}"
+    fi
+  fi
+
+  # Check if WAN1 WEB GUI IP Changes were made and delete old record
+  if [[ -n "${zWAN1WEBGUI+x}" ]] &>/dev/null;then
+    if [[ -n "$(ip route list ${zWAN1WEBGUI} dev ${WAN1GWIFNAME} metric 1)" ]] &>/dev/null;then
+       logger -p 5 -t "$ALIAS" "Config - Deleting route to Web GUI IP: ${zWAN1WEBGUI}"
+       ip route del ${zWAN1WEBGUI} dev ${WAN1GWIFNAME} metric 1 \
+       && logger -p 4 -t "$ALIAS" "Config - Deleted route to Web GUI IP: ${zWAN1WEBGUI}" \
+       || logger -p 2 -t "$ALIAS" "Config - ***Error*** Unable to delete route to Web GUI IP: ${zWAN1WEBGUI}"
+    fi
+  fi
+  # Prompt for Restart Required
   if [[ "$RESTARTREQUIRED" == "1" ]] &>/dev/null;then
     echo -e "${RED}***This change will require WAN Failover to restart to take effect***${NOCOLOR}"
     PressEnter
@@ -2861,12 +2926,14 @@ for WANPREFIX in ${WANPREFIXES};do
   fi
 
   # Check Main Routing Table for Web GUI IP Route
-  logger -p 6 -t "$ALIAS" "Debug - Checking ${WANPREFIX} for route to Web GUI IP: ${WEBGUI}"
-  if [[ -z "$(ip route list ${WEBGUI} dev ${GWIFNAME} metric 1)" ]] &>/dev/null;then
-     logger -p 5 -t "$ALIAS" "Check Routing Table - Adding route to Web GUI IP: ${WEBGUI}"
-     ip route add ${WEBGUI} dev ${GWIFNAME} metric 1 \
-     && logger -p 4 -t "$ALIAS" "Check Routing Table - Added route to Web GUI IP: ${WEBGUI}" \
-     || logger -p 2 -t "$ALIAS" "Check Routing Table - ***Error*** Unable to add route to Web GUI IP: ${WEBGUI}"
+  if [[ -n "${WEBGUI}" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Checking ${WANPREFIX} for route to Web GUI IP: ${WEBGUI}"
+    if [[ -z "$(ip route list ${WEBGUI} dev ${GWIFNAME} metric 1)" ]] &>/dev/null;then
+       logger -p 5 -t "$ALIAS" "Check Routing Table - Adding route to Web GUI IP: ${WEBGUI}"
+       ip route add ${WEBGUI} dev ${GWIFNAME} metric 1 \
+       && logger -p 4 -t "$ALIAS" "Check Routing Table - Added route to Web GUI IP: ${WEBGUI}" \
+       || logger -p 2 -t "$ALIAS" "Check Routing Table - ***Error*** Unable to add route to Web GUI IP: ${WEBGUI}"
+    fi
   fi
 
 done
@@ -3084,12 +3151,20 @@ for WANPREFIX in ${WANPREFIXES};do
 
       # Create fwmark IP Rules
       logger -p 6 -t "$ALIAS" "Debug - Checking fwmark IP Rules"
-      if [[ -z "$(ip rule list from all fwmark ${MARK}/${MASK} lookup $TABLE priority $LBRULEPRIORITY)" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE"
-        ip rule add from all fwmark ${MARK}/${MASK} lookup $TABLE priority $LBRULEPRIORITY \
-          && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE" \
-          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for fwmark ${MARK}/${MASK} lookup $TABLE"
+      if [[ -z "$(ip rule list from all fwmark ${MARK}/${MASK} lookup ${TABLE} priority ${LBRULEPRIORITY})" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Adding IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE}"
+        ip rule add from all fwmark ${MARK}/${MASK} lookup ${TABLE} priority ${LBRULEPRIORITY} \
+          && logger -p 4 -t "$ALIAS" "Check IP Rules - Added IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE}" \
+          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to add IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE}"
       fi
+      # Delete default load balance rules if LBRULEPRIORITY is not default
+      if [[ "${LBRULEPRIORITY}" != "150" ]] &>/dev/null && [[ -n "$(ip rule list from all fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150)" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Check IP Rules - Deleting IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150"
+        ip rule del from all fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150 \
+          && logger -p 4 -t "$ALIAS" "Check IP Rules - Deleted IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150" \
+          || logger -p 2 -t "$ALIAS" "Check IP Rules - ***Error*** Unable to delete IP Rule for fwmark ${MARK}/${MASK} lookup ${TABLE} priority 150"
+      fi
+      # Delete blackhole rules
       if [[ -n "$(ip rule list from all fwmark ${MARK}/${MASK} | grep -w "blackhole")" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Check IP Rules - Removing Blackhole IP Rule for fwmark ${MARK}/${MASK}"
         ip rule del blackhole from all fwmark ${MARK}/${MASK} priority $LBRULEPRIORITY \
@@ -3403,13 +3478,13 @@ if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
         fi
       fi
 
-    # WEBGUI
-    if [[ -n "${WAN0WEBGUI+x}" ]] &>/dev/null;then
-      WEBGUI="$WAN0WEBGUI"
-    else
-      setvariables || return
-      WEBGUI="$WAN0WEBGUI"
-    fi
+      # WEBGUI
+      if [[ -n "${WAN0WEBGUI+x}" ]] &>/dev/null;then
+        WEBGUI="$WAN0WEBGUI"
+      else
+        setvariables || return
+        WEBGUI="$WAN0WEBGUI"
+      fi
 
     elif [[ "${WANPREFIX}" == "$WAN1" ]] &>/dev/null;then
 
@@ -3561,13 +3636,13 @@ if [[ "$GETWANMODE" == "1" ]] &>/dev/null;then
         fi
       fi
 
-    # WEBGUI
-    if [[ -n "${WAN1WEBGUI+x}" ]] &>/dev/null;then
-      WEBGUI="$WAN1WEBGUI"
-    else
-      setvariables || return
-      WEBGUI="$WAN1WEBGUI"
-    fi
+      # WEBGUI
+      if [[ -n "${WAN1WEBGUI+x}" ]] &>/dev/null;then
+        WEBGUI="$WAN1WEBGUI"
+      else
+        setvariables || return
+        WEBGUI="$WAN1WEBGUI"
+      fi
 
     fi
     wansync="1"
@@ -4088,13 +4163,23 @@ elif [[ "$GETWANMODE" == "3" ]] &>/dev/null;then
 
     # IPV6IPADDR
     if [[ -z "${IPV6IPADDR+x}" ]] &>/dev/null || [[ -z "${zIPV6IPADDR+x}" ]] &>/dev/null;then
-      IPV6IPADDR="$(nvram get ipv6_wan_addr & nvramcheck)"
-      { [[ -n "$IPV6IPADDR" ]] &>/dev/null || [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null || [[ -z "$(nvram get ipv6_wan_addr & nvramcheck)" ]] &>/dev/null ;} \
+      ipv6ipaddr="$(nvram get ipv6_wan_addr & nvramcheck)"
+      if [[ -n "${ipv6ipaddr}" ]] &>/dev/null;then
+        IPV6IPADDR="$(echo ${ipv6ipaddr} | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+      else
+        IPV6IPADDR="$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print $0}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+      fi
+      { [[ -n "$IPV6IPADDR" ]] &>/dev/null || [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null || [[ -z "$(nvram get ipv6_wan_addr & nvramcheck)" ]] &>/dev/null || [[ -z "$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print $0}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")" ]] &>/dev/null ;} \
       && zIPV6IPADDR="$IPV6IPADDR" \
       || { logger -p 6 -t "$ALIAS" "Debug - failed to set IPV6IPADDR" && unset IPV6IPADDR zIPV6IPADDR && continue ;}
     elif [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null;then
       [[ "$zIPV6IPADDR" != "$IPV6IPADDR" ]] &>/dev/null && zIPV6IPADDR="$IPV6IPADDR"
-      IPV6IPADDR="$(nvram get ipv6_wan_addr & nvramcheck)"
+      ipv6ipaddr="$(nvram get ipv6_wan_addr & nvramcheck)"
+      if [[ -n "${ipv6ipaddr}" ]] &>/dev/null;then
+        IPV6IPADDR="$(echo ${ipv6ipaddr} | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+      else
+        IPV6IPADDR="$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print $0}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+      fi
       [[ -n "$IPV6IPADDR" ]] &>/dev/null || IPV6IPADDR="$zIPV6IPADDR"
     fi
 
@@ -4569,6 +4654,8 @@ fi
 switchdns || return
 
 restartservices || return
+
+flushconntrack || return
 
 checkiprules || return
 
@@ -5600,6 +5687,8 @@ logger -p 6 -t "$ALIAS" "Debug - Checking which services need to be restarted"
 SERVICES=""
 SERVICESSTOP=""
 SERVICERESTARTPIDS=""
+OVPNS=""
+OVPNRESTARTPID=""
 WGVPNS=""
 WGVPNRESTARTPID=""
 # Check if dnsmasq is running
@@ -5636,6 +5725,16 @@ if [[ "$RESTARTSERVICESMODE" == "1" ]] &>/dev/null && [[ "$IPV6SERVICE" == "6in4
   SERVICE="wan6"
   SERVICES="${SERVICES} ${SERVICE}"
 fi
+
+# Restart OpenVPN Clients
+i="0"
+while [[ "$i" -le "5" ]] &>/dev/null;do
+  i="$(($i+1))"
+  if [[ -s "/etc/openvpn/client${i}/status" ]] &>/dev/null;then
+    OVPNS="${OVPNS} ${i}"
+  fi
+done
+
 # Restart WireGuard VPN Clients
 i="0"
 while [[ "$i" -le "5" ]] &>/dev/null;do
@@ -5646,9 +5745,9 @@ while [[ "$i" -le "5" ]] &>/dev/null;do
 done
 
 # Restart Services
-if [[ -n "$SERVICES" ]] &>/dev/null;then
+if [[ -n "${SERVICES}" ]] &>/dev/null;then
   for SERVICE in ${SERVICES};do
-    logger -p 5 -st "$ALIAS" "Service Restart - Restarting $SERVICE service"
+    logger -p 5 -st "$ALIAS" "Service Restart - Restarting ${SERVICE} service"
     service restart_${SERVICE} &>/dev/null &
     SERVICERESTARTPID="$!"
     SERVICERESTARTPIDS="${SERVICERESTARTPIDS} ${SERVICERESTARTPID}"
@@ -5656,17 +5755,27 @@ if [[ -n "$SERVICES" ]] &>/dev/null;then
 fi
 
 # Stop Services
-if [[ -n "$SERVICESSTOP" ]] &>/dev/null;then
+if [[ -n "${SERVICESSTOP}" ]] &>/dev/null;then
   for SERVICESTOP in ${SERVICESSTOP};do
-    logger -p 5 -st "$ALIAS" "Service Restart - Stopping $SERVICESTOP service"
+    logger -p 5 -st "$ALIAS" "Service Restart - Stopping ${SERVICESTOP} service"
     service stop_${SERVICESTOP} &>/dev/null &
   done
 fi
 
+# Restart OpenVPN Clients
+if [[ -n "${OVPNS}" ]] &>/dev/null;then
+  for OVPN in ${OVPNS};do
+    logger -p 5 -st "$ALIAS" "Service Restart - Restarting OpenVPN Client ${OVPN}"
+    service "restart_vpnclient${OVPN}" &>/dev/null &
+    OVPNRESTARTPID="$!"
+    SERVICERESTARTPIDS="${SERVICERESTARTPIDS} ${OVPNRESTARTPID}"
+  done
+fi
+
 # Restart WireGuard VPN Clients
-if [[ -n "$WGVPNS" ]] &>/dev/null;then
+if [[ -n "${WGVPNS}" ]] &>/dev/null;then
   for WGVPN in ${WGVPNS};do
-    logger -p 5 -st "$ALIAS" "Service Restart - Restarting WireGuard VPN Client $WGVPN"
+    logger -p 5 -st "$ALIAS" "Service Restart - Restarting WireGuard VPN Client ${WGVPN}"
     service "restart_wgc ${WGVPN}" &>/dev/null &
     WGVPNRESTARTPID="$!"
     SERVICERESTARTPIDS="${SERVICERESTARTPIDS} ${WGVPNRESTARTPID}"
@@ -5726,10 +5835,37 @@ fi
 [[ -n "${SERVICESTOP+x}" ]] &>/dev/null && unset SERVICESTOP
 [[ -n "${SERVICERESTARTPID+x}" ]] &>/dev/null && unset SERVICERESTARTPID
 [[ -n "${SERVICERESTARTPIDS+x}" ]] &>/dev/null && unset SERVICERESTARTPIDS
+[[ -n "${OVPNS+x}" ]] &>/dev/null && unset OVPNS
+[[ -n "${OVPN+x}" ]] &>/dev/null && unset OVPN
+[[ -n "${OVPNRESTARTPID+x}" ]] &>/dev/null && unset OVPNRESTARTPID
 [[ -n "${WGVPNS+x}" ]] &>/dev/null && unset WGVPNS
 [[ -n "${WGVPN+x}" ]] &>/dev/null && unset WGVPN
 [[ -n "${WGVPNRESTARTPID+x}" ]] &>/dev/null && unset WGVPNRESTARTPID
 
+
+return
+}
+
+# Flush Conntrack
+flushconntrack ()
+{
+logger -p 6 -t "$ALIAS" "Debug - Function: flushconntrack"
+
+# Check if flush conntrack is Enabled
+if [[ "$FLUSHCONNTRACK" == "0" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Flush conntrack is disabled"
+  return
+elif [[ "$FLUSHCONNTRACK" == "1" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Flush conntrack is enabled"
+  if [[ -f "/usr/sbin/conntrack" ]] &>/dev/null;then
+    logger -p 5 -st "$ALIAS" "Flush Conntrack - Flushing conntrack table"
+    /usr/sbin/conntrack -F \
+	&& logger -p 4 -st "$ALIAS" "Flush Conntrack - Flushed conntrack table" \
+    || logger -p 2 -st "$ALIAS" "Flush Conntrack - ***Error*** Unable to flush conntrack table"
+  else
+    logger -p 2 -st "$ALIAS" "Flush Conntrack - ***Error*** Conntrack is not installed"
+  fi
+fi
 
 return
 }
@@ -6292,7 +6428,7 @@ while true &>/dev/null;do
 
   if [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null || [[ "$DEVMODE" == "1" ]] &>/dev/null;then
     printf "\n"
-    printf "${BOLD}${UNDERLINE}IPV6:${NOCOLOR}\n"
+    printf "${BOLD}${UNDERLINE}IPv6:${NOCOLOR}\n"
     if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null;then
       echo -e "${BOLD}Type: ${NOCOLOR}${LIGHTGRAY}Disabled${NOCOLOR}"
     elif [[ "$IPV6SERVICE" == "dhcp6" ]] &>/dev/null;then
@@ -6313,7 +6449,7 @@ while true &>/dev/null;do
       echo -e "${BOLD}Type: ${NOCOLOR}${LIGHTGRAY}${IPV6SERVICE}${NOCOLOR}"
     fi
     if [[ "$IPV6SERVICE" != "disabled" ]] &>/dev/null;then
-      echo -e "${BOLD}IP Address: ${NOCOLOR}${LIGHTGRAY}${IPV6IPADDR}${NOCOLOR}" || echo -e "${BOLD}IP Address: ${NOCOLOR}${RED}N/A${NOCOLOR}"
+      echo -e "${BOLD}IPv6 Address: ${NOCOLOR}${LIGHTGRAY}${IPV6IPADDR}${NOCOLOR}" || echo -e "${BOLD}IP Address: ${NOCOLOR}${RED}N/A${NOCOLOR}"
     fi
   fi
 

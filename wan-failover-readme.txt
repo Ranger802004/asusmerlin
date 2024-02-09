@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/31/2023
-# Version: v2.1.0
+# Date: 02/09/2023
+# Version: v2.1.1
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -91,8 +91,21 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
 - FOBLOCKIPV6: This defines if WAN Failover will to block IPv6 in Failover Mode from traversing Secondary WAN.  Default: Disabled
 - FAILOVERTIMEOUT: This defines the failover timeout setting.  Default: 30 Seconds
+- FLUSHCONNTRACK: This defines if the conntrack table is flushed during a wan failover event.  Default: Disabled
 
 Release Notes:
+v2.1.1 - 02/09/2024
+Enhancements:
+- Added 388.5 to supported firmware list.
+- Added 388.6 to supported firmware list.
+- Added configuration option to perform a conntrack flush during failover.
+
+Fixes:
+- Updated logic for IPv6 Address data collection.
+- The default rules created by the firmware will be deleted if a custom load balancing rule priority is configured.
+- OpenVPN Clients will be restarted during failover events.
+- Null values for WAN Web GUI IP Addresses are now valid.
+
 v2.1.0: - 10/31/2023
 Enhancements:
 - Added WAN0 and WAN1 Web GUI configuration options to create routes for the device portals for each WAN interface.
