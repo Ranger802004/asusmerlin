@@ -137,6 +137,7 @@ v2.1.3-beta3 - 02/13/2024
 Enhancements:
 - Added restore policy mode that will recreate objects for policies to function without performing an active query.  This will increase the time of restoration of policies during reboot or WAN failover events, restore policy mode is also called at the beginning of query policy mode.
 - Simplified policy selection in menu interface where only a number has to be selected to select a policy instead of manually typing it.
+- Optional configuration item added to add restorepolicy command during firewall restart events.
 
 Fixes:
 - System binaries will now be used over optional binaries installed from repos such as Entware.
