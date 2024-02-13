@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 02/02/2024
-# Version: v2.1.3-beta2
+# Date: 02/13/2024
+# Version: v2.1.3-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.3-beta2"
+VERSION="v2.1.3-beta3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -226,15 +226,26 @@ menu ()
 		'2')    # showpolicy
 			mode="showpolicy"
                         POLICY="all"
+                        clear
                         showpolicy
-			while true &>/dev/null;do  
+			while true &>/dev/null;do
+                          printf "\n"
                           read -r -p "Select the Policy You Want to View: " value
-                          case $value in
-                            * ) POLICY=$value; break;;
-                          esac
+                          for policysel in ${policiesnum};do
+                            if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                              POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+                              break 2
+                            elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                              break 1
+                            else
+                              continue
+                            fi
+                          done
                         done
-                        showpolicy
-                        unset value
+                        printf "\n"
+                        showpolicy ${POLICY}
+                        unset value policysel
 		;;
 		'3')    # install
 			mode="install"
@@ -258,28 +269,47 @@ menu ()
 		'8')    # querypolicy
 			mode="querypolicy"
                         POLICY="all"
+                        clear
                         showpolicy
-			while true &>/dev/null;do  
+			while true &>/dev/null;do
+                          printf "\n"
                           read -r -p "Select the Policy You Want to Query: " value
-                          case $value in
-                            * ) POLICY=$value; break;;
-                          esac
+                          for policysel in ${policiesnum};do
+                            if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                              POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+                              break 2
+                            elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                              break 1
+                            else
+                              continue
+                            fi
+                          done
                         done
-                        querypolicy "$value"
-                        unset value
+                        querypolicy ${POLICY}
+                        unset value policysel
         ;;
 		'9')    # restorepolicy
 			mode="restorepolicy"
                         POLICY="all"
                         showpolicy
-			while true &>/dev/null;do  
+			while true &>/dev/null;do
+                          printf "\n"
                           read -r -p "Select the Policy You Want to Restore: " value
-                          case $value in
-                            * ) POLICY=$value; break;;
-                          esac
+                          for policysel in ${policiesnum};do
+                            if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                              POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+                              break 2
+                            elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                              break 1
+                            else
+                              continue
+                            fi
+                          done
                         done
-                        restorepolicy "$value"
-                        unset value
+                        restorepolicy ${POLICY}
+                        unset value policysel
         ;;
 		'10')    # kill
 			mode="kill"
@@ -293,27 +323,45 @@ menu ()
 			mode="editpolicy"
                         POLICY="all"
                         showpolicy
-			while true &>/dev/null;do  
+			while true &>/dev/null;do
+                          printf "\n"
                           read -r -p "Select the Policy You Want to Edit: " value
-                          case $value in
-                            * ) POLICY=$value; break;;
-                          esac
+                          for policysel in ${policiesnum};do
+                            if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                              POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+                              break 2
+                            elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                              break 1
+                            else
+                              continue
+                            fi
+                          done
                         done
-                        editpolicy "$value"
-                        unset value
+                        editpolicy ${POLICY}
+                        unset value policysel
 		;;
 		'13')   # deletepolicy
 			mode="deletepolicy"
                         POLICY="all"
                         showpolicy
-			while true &>/dev/null;do  
+			while true &>/dev/null;do
+                          printf "\n"
                           read -r -p "Select the Policy You Want to Delete: " value
-                          case $value in
-                            * ) POLICY=$value; break;;
-                          esac
+                          for policysel in ${policiesnum};do
+                            if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                              POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+                              break 2
+                            elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                              break 1
+                            else
+                              continue
+                            fi
+                          done
                         done
-                        deletepolicy "$value"
-                        unset value
+                        deletepolicy ${POLICY}
+                        unset value policysel
 		;;
 		'14')   # adddomain
 			mode="adddomain"
@@ -323,8 +371,25 @@ menu ()
                             * ) DOMAIN=$value; break;;
                           esac
                         done
-                        adddomain "${DOMAIN}"
-                        unset value DOMAIN
+                        POLICY="all"
+                        showpolicy
+			while true &>/dev/null;do
+                          printf "\n"
+                          read -r -p "Select the Policy where you want to add ${DOMAIN}: " value
+                          for policysel in ${policiesnum};do
+                            if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                              POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+                              break 2
+                            elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                              break 1
+                            else
+                              continue
+                            fi
+                          done
+                        done
+                        adddomain ${DOMAIN}
+                        unset value DOMAIN policysel
 		;;
 		'15')   # deletedomain
 			mode="deletedomain"
@@ -334,8 +399,25 @@ menu ()
                             * ) DOMAIN=$value; break;;
                           esac
                         done
-                        deletedomain "${DOMAIN}"
-                        unset value DOMAIN
+                        POLICY="all"
+                        showpolicy
+			while true &>/dev/null;do
+                          printf "\n"
+                          read -r -p "Select the Policy where you want to delete ${DOMAIN}: " value
+                          for policysel in ${policiesnum};do
+                            if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                              POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+                              break 2
+                            elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                              break 1
+                            else
+                              continue
+                            fi
+                          done
+                        done
+                        deletedomain ${DOMAIN}
+                        unset value DOMAIN policysel
 		;;
 		'16')   # deleteip
 			mode="deleteip"
@@ -345,8 +427,25 @@ menu ()
                             * ) IP=$value; break;;
                           esac
                         done
-                        deleteip "$IP"
-                        unset value IP
+                        POLICY="all"
+                        showpolicy
+			while true &>/dev/null;do
+                          printf "\n"
+                          read -r -p "Select the Policy where you want to delete ${IP}: " value
+                          for policysel in ${policiesnum};do
+                            if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                              POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+                              break 2
+                            elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                              break 1
+                            else
+                              continue
+                            fi
+                          done
+                        done
+                        deleteip ${IP}
+                        unset value IP policysel
 		;;
 		'e'|'E'|'exit')
 			exit 0
@@ -643,6 +742,48 @@ fi
 return
 }
 
+# Firewall Restore
+setfirewallrestore ()
+{
+  # Set Firewall Event File
+  firewallfile="/jffs/scripts/firewall-start"
+
+  if [[ -z "${FIREWALLRESTORE+x}" ]] &>/dev/null;then
+    return
+  elif [[ "${FIREWALLRESTORE}" == "1" ]] &>/dev/null;then
+    # Create file if it does not exist
+    if [[ ! -f "${firewallfile}" ]] &>/dev/null;then
+      logger -p 5 -st "$ALIAS" "Firewall Restore - Creating ${firewallfile}"
+      touch -a ${firewallfile} \
+      && chmod 755 ${firewallfile} \
+      && echo "#!/bin/sh" >> ${firewallfile} \
+      && logger -p 4 -st "$ALIAS" "Firewall Restore - ${firewallfile} has been created" \
+      || logger -p 2 -st "$ALIAS" "Firewall Restore - ***Error*** Failed to create ${firewallfile}"
+    fi
+    # Add Script to file
+    if [[ -z "$(grep -w "# domain_vpn_routing_restoreall" ${firewallfile})" ]] &>/dev/null;then
+      cmdline="sh $0 restorepolicy all"
+      logger -p 5 -st "$ALIAS" "Firewall Restore - Adding ${ALIAS} to ${firewallfile}"
+      echo -e "\n$cmdline # domain_vpn_routing_restoreall" >> ${firewallfile} \
+      && logger -p 4 -st "$ALIAS" "Firewall Restore - ${ALIAS} added to ${firewallfile}" \
+      || logger -p 2 -st "$ALIAS" "Firewall Restore - ***Error*** Failed to add ${ALIAS} to ${firewallfile}"
+    fi
+  elif [[ "${FIREWALLRESTORE}" == "0" ]] &>/dev/null;then
+    # Remove Script from file
+    cmdline="sh $0 restorepolicy all"
+    if [[ -n "$(grep -e "^$cmdline" ${firewallfile})" ]] &>/dev/null;then 
+      logger -p 5 -st "$ALIAS" "Firewall Restore - Removing ${ALIAS} from ${firewallfile}"
+      sed -i '\~# domain_vpn_routing_restoreall~d' ${firewallfile} \
+      && logger -p 4 -st "$ALIAS" "Firewall Restore - Removed ${ALIAS} from ${firewallfile}" \
+      || logger -p 2 -st "$ALIAS" "Firewall Restore - ***Error*** Failed to remove ${ALIAS} from ${firewallfile}"
+    fi
+  fi
+  
+  unset cmdline
+  
+  return
+}
+
 # Set Global Configuration
 setglobalconfig ()
 {
@@ -684,6 +825,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   if [[ -z "$(sed -n '/\bBOOTDELAYTIMER\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating BOOTDELAYTIMER Default: 0 seconds"
     echo -e "BOOTDELAYTIMER=0" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # FIREWALLRESTORE
+  if [[ -z "$(sed -n '/\bFIREWALLRESTORE=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating FIREWALLRESTORE Default: Disabled"
+    echo -e "FIREWALLRESTORE=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC1FWMARK
@@ -1016,33 +1163,34 @@ fi
 # Load Config Menu
 clear
 printf "\n  ${BOLD}Global Settings:${NOCOLOR}\n"
-printf "  (1)  Configure Dev Mode              Dev Mode: " && { [[ "$DEVMODE" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-printf "  (2)  Configure NVRAM Checks          NVRAM Checks: " && { [[ "$CHECKNVRAM" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-printf "  (3)  Configure Process Priority      Process Priority: " && { { [[ "$PROCESSPRIORITY" == "0" ]] &>/dev/null && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-20" ]] &>/dev/null && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "-10" ]] &>/dev/null && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "10" ]] &>/dev/null && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "$PROCESSPRIORITY" == "20" ]] &>/dev/null && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}$PROCESSPRIORITY${NOCOLOR}" ;} && printf "\n"
+printf "  (1)  Configure Dev Mode              Dev Mode: " && { [[ "${DEVMODE}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (2)  Configure NVRAM Checks          NVRAM Checks: " && { [[ "${CHECKNVRAM}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (3)  Configure Process Priority      Process Priority: " && { { [[ "${PROCESSPRIORITY}" == "0" ]] &>/dev/null && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "${PROCESSPRIORITY}" == "-20" ]] &>/dev/null && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "${PROCESSPRIORITY}" == "-10" ]] &>/dev/null && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "${PROCESSPRIORITY}" == "10" ]] &>/dev/null && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "${PROCESSPRIORITY}" == "20" ]] &>/dev/null && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}${PROCESSPRIORITY}${NOCOLOR}" ;} && printf "\n"
 printf "  (4)  Configure Check Interval        Check Interval: ${LIGHTBLUE}${CHECKINTERVAL} Minutes${NOCOLOR}\n"
 printf "  (5)  Configure Boot Delay Timer      Boot Delay Timer: ${LIGHTBLUE}${BOOTDELAYTIMER} Seconds${NOCOLOR}\n"
+printf "  (6)  Configure Firewall Restore      Firewall Restore: " && { [[ "${FIREWALLRESTORE}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 
 printf "\n  ${BOLD}Advanced Settings:${NOCOLOR}  ${LIGHTRED}***Recommended to leave default unless necessary to change***${NOCOLOR}\n"
-printf "  (6)  OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
-printf "  (7)  OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
-printf "  (8)  OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
-printf "  (9)  OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
-printf "  (10) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
+printf "  (7)  OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
+printf "  (8)  OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
+printf "  (9)  OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
+printf "  (10) OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
+printf "  (11) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
 printf "  (12) OpenVPN Client 3 Mask           OpenVPN Client 3 Mask:     ${LIGHTBLUE}${OVPNC3MASK}${NOCOLOR}\n"
-printf "  (12) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
-printf "  (13) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
-printf "  (14) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
-printf "  (15) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
-printf "  (16) Wireguard Client 1 FWMark       Wireguard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
-printf "  (17) Wireguard Client 1 Mask         Wireguard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
-printf "  (18) Wireguard Client 2 FWMark       Wireguard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
-printf "  (19) Wireguard Client 2 Mask         Wireguard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
-printf "  (20) Wireguard Client 3 FWMark       Wireguard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
-printf "  (21) Wireguard Client 3 Mask         Wireguard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
-printf "  (22) Wireguard Client 4 FWMark       Wireguard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
-printf "  (23) Wireguard Client 4 Mask         Wireguard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
-printf "  (24) Wireguard Client 5 FWMark       Wireguard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
-printf "  (25) Wireguard Client 5 Mask         Wireguard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
+printf "  (13) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
+printf "  (14) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
+printf "  (15) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
+printf "  (16) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
+printf "  (17) Wireguard Client 1 FWMark       Wireguard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
+printf "  (18) Wireguard Client 1 Mask         Wireguard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
+printf "  (19) Wireguard Client 2 FWMark       Wireguard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
+printf "  (20) Wireguard Client 2 Mask         Wireguard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
+printf "  (21) Wireguard Client 3 FWMark       Wireguard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
+printf "  (22) Wireguard Client 3 Mask         Wireguard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
+printf "  (23) Wireguard Client 4 FWMark       Wireguard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
+printf "  (24) Wireguard Client 4 Mask         Wireguard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
+printf "  (25) Wireguard Client 5 FWMark       Wireguard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
+printf "  (26) Wireguard Client 5 Mask         Wireguard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
 
 printf "\n  ${BOLD}System Information:${NOCOLOR}\n"
 printf "   DNS Logging Status                  Status:         " && { [[ "$DNSLOGGINGENABLED" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
@@ -1144,7 +1292,19 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} BOOTDELAYTIMER=|$SETBOOTDELAYTIMER"
   ;;
-  '6')      # OVPNC1FWMARK
+  '6')      # FIREWALLRESTORE
+  while true &>/dev/null;do
+    read -p "Do you want to enable restore policy during firewall restarts?: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETFIREWALLRESTORE="1"; break;;
+      [Nn]* ) SETFIREWALLRESTORE="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  zFIREWALLRESTORE="${FIREWALLRESTORE}"
+  NEWVARIABLES="${NEWVARIABLES} FIREWALLRESTORE=|$SETFIREWALLRESTORE"
+  ;;
+  '7')      # OVPNC1FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 FWMark - This defines the OVPNC1 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1161,7 +1321,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC1FWMARK=|$SETOVPNC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '7')      # OVPNC1MASK
+  '8')      # OVPNC1MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 Mask - This defines the OVPNC1 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1178,7 +1338,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC1MASK=|$SETOVPNC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '8')      # OVPNC2FWMARK
+  '9')      # OVPNC2FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 FWMark - This defines the OVPNC2 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1195,7 +1355,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC2FWMARK=|$SETOVPNC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '9')      # OVPNC2MASK
+  '10')      # OVPNC2MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 Mask - This defines the OVPNC2 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1212,7 +1372,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC2MASK=|$SETOVPNC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '10')      # OVPNC3FWMARK
+  '11')      # OVPNC3FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 FWMark - This defines the OVPNC3 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1229,7 +1389,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC3FWMARK=|$SETOVPNC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '11')      # OVPNC3MASK
+  '12')      # OVPNC3MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 Mask - This defines the OVPNC3 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1246,7 +1406,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC3MASK=|$SETOVPNC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '12')      # OVPNC4FWMARK
+  '13')      # OVPNC4FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 FWMark - This defines the OVPNC4 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1263,7 +1423,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC4FWMARK=|$SETOVPNC4FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '13')      # OVPNC4MASK
+  '14')      # OVPNC4MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 Mask - This defines the OVPNC4 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1280,7 +1440,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC4MASK=|$SETOVPNC4MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '14')      # OVPNC5FWMARK
+  '15')      # OVPNC5FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 FWMark - This defines the OVPNC5 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1297,7 +1457,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC5FWMARK=|$SETOVPNC5FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '15')      # OVPNC5MASK
+  '16')      # OVPNC5MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 Mask - This defines the OVPNC5 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1314,7 +1474,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC5MASK=|$SETOVPNC5MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '16')      # WGC1FWMARK
+  '17')      # WGC1FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC1 FWMark - This defines the WGC1 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1331,7 +1491,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC1FWMARK=|$SETWGC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '17')      # WGC1MASK
+  '18')      # WGC1MASK
   while true &>/dev/null;do
     read -p "Configure WGC1 Mask - This defines the WGC1 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1348,7 +1508,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC1MASK=|$SETWGC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '18')      # WGC2FWMARK
+  '19')      # WGC2FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC2 FWMark - This defines the WGC2 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1365,7 +1525,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC2FWMARK=|$SETWGC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '19')      # WGC2MASK
+  '20')      # WGC2MASK
   while true &>/dev/null;do
     read -p "Configure WGC2 Mask - This defines the WGC2 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1382,7 +1542,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC2MASK=|$SETWGC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '20')      # WGC3FWMARK
+  '21')      # WGC3FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC3 FWMark - This defines the WGC3 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1399,7 +1559,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC3FWMARK=|$SETWGC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '21')      # WGC3MASK
+  '22')      # WGC3MASK
   while true &>/dev/null;do
     read -p "Configure WGC3 Mask - This defines the WGC3 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1416,7 +1576,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC3MASK=|$SETWGC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '22')      # WGC4FWMARK
+  '23')      # WGC4FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC4 FWMark - This defines the WGC4 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1432,7 +1592,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC4FWMARK=|$SETWGC4FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '23')      # WGC4MASK
+  '24')      # WGC4MASK
   while true &>/dev/null;do
     read -p "Configure WGC4 Mask - This defines the WGC4 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1448,7 +1608,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC4MASK=|$SETWGC4MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '24')      # WGC5FWMARK
+  '25')      # WGC5FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC5 FWMark - This defines the WGC5 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1465,7 +1625,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC5FWMARK=|$SETWGC5FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '25')      # WGC5MASK
+  '26')      # WGC5MASK
   while true &>/dev/null;do
     read -p "Configure WGC5 Mask - This defines the WGC5 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1524,11 +1684,18 @@ if [[ -n "$NEWVARIABLES" ]] &>/dev/null;then
     fi
   done
 
+  # Update Configuration
+  setglobalconfig || return
+
   # Check if cron job needs to be updated
   if [[ -n "${zCHECKINTERVAL+x}" ]] &>/dev/null;then
-    setglobalconfig || return
     cronjob || return
     unset zCHECKINTERVAL
+  fi
+  
+  # Check if Firewall Restore needs to be modified
+  if [[ -n "${zFIREWALLRESTORE+x}" ]] &>/dev/null;then
+    setfirewallrestore || return
   fi
 fi
 
@@ -1927,29 +2094,37 @@ return
 showpolicy ()
 {
 if [[ "$POLICY" == "all" ]] &>/dev/null;then
-  echo -e "Policies: \n$(awk -F "|" '{print $1}' ${CONFIGFILE})"
+  [[ -z "${policiesnum+x}" ]] &>/dev/null && policiesnum=""
+  policies="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
+  policynum="1"
+  for policy in ${policies};do
+    echo -e "${BOLD}${policynum}:${NOCOLOR} ${policy}"
+	policiesnum="${policiesnum} ${policynum}|${policy}"
+    policynum="$((${policynum}+1))"
+  done
+  unset policynum
   return
 elif [[ "$POLICY" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
-  echo "Policy Name: $(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})"
-  echo "Interface: $(awk -F "|" '/^'${POLICY}'/ {print $4}' ${CONFIGFILE})"
+  echo -e "${BOLD}Policy Name:${NOCOLOR} $(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})"
+  echo -e "${BOLD}Interface:${NOCOLOR} $(awk -F "|" '/^'${POLICY}'/ {print $4}' ${CONFIGFILE})"
   if [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
-    echo "Verbose Logging: Enabled"
+    echo -e "${BOLD}Verbose Logging:${NOCOLOR} Enabled"
   elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
-    echo "Verbose Logging: Disabled"
+    echo -e "${BOLD}Verbose Logging:${NOCOLOR} Disabled"
   elif [[ -z "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
-    echo "Verbose Logging: Not Configured"
+    echo -e "${BOLD}Verbose Logging:${NOCOLOR} Not Configured"
   fi
   if [[ "$(awk -F "|" '/^'${POLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=1" ]] &>/dev/null;then
-    echo "Private IP Addresses: Enabled"
+    echo -e "${BOLD}Private IP Addresses:${NOCOLOR} Enabled"
   elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=0" ]] &>/dev/null;then
-    echo "Private IP Addresses: Disabled"
+    echo -e "${BOLD}Private IP Addresses:${NOCOLOR} Disabled"
   elif [[ -z "$(awk -F "|" '/^'${POLICY}'/ {print $6}' ${CONFIGFILE})" ]] &>/dev/null;then
-    echo "Private IP Addresses: Not Configured"
+    echo -e "${BOLD}Private IP Addresses:${NOCOLOR} Not Configured"
   fi
   DOMAINS="$(cat ${POLICYDIR}/policy_${POLICY}_domainlist | sort -u)"
 
 
-  echo -e "Domains:"
+  echo -e "${BOLD}Domains:${NOCOLOR}"
   for DOMAIN in ${DOMAINS};do
     echo -e "${DOMAIN}"
   done
@@ -2589,65 +2764,72 @@ return
 # Add Domain to Policy
 adddomain ()
 {
-# Prompt for policy to select
 if [[ -n "${DOMAIN}" ]] &>/dev/null;then
-  # Select Policy for New Domain
-  POLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
-  echo -e "${LIGHTCYAN}Select a Policy for the new Domain:${NOCOLOR} \r\n$POLICIES"
-  # User Input for Policy for New Domain
-  while true;do  
-    read -r -p "Policy: " NEWDOMAINPOLICY
-    for POLICY in ${POLICIES};do
-      if [[ "$NEWDOMAINPOLICY" == "${POLICY}" ]] &>/dev/null;then
-        POLICY=$NEWDOMAINPOLICY
-        break 2
-      elif [[ -n "$(echo "${POLICIES}" | grep -w "$NEWDOMAINPOLICY")" ]] &>/dev/null;then
-        continue
-      else
-        echo -e "${RED}***Enter a Valid Policy***${NOCOLOR}"
-        echo -e "Policies: \r\n${POLICIES}"
-        break 1
-      fi
+
+  # If policy is not selected, pick one.
+  if [[ -z "${POLICY+x}" ]] &>/dev/null;then
+    # Select Policy for New Domain
+    POLICY="all"
+    showpolicy
+    while true &>/dev/null;do
+      printf "\n"
+      read -r -p "Select the Policy where you want to add ${DOMAIN}: " value
+      for policysel in ${policiesnum};do
+        if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+          POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+          break 2
+        elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+          echo -e "${RED}***Select a valid number***${NOCOLOR}"
+          break 1
+        else
+          continue
+        fi
+      done
     done
-  done
+  fi
 
   # Check if Domain is already added to policy and if not add it
   if [[ -z "$(awk '$0 == "'${DOMAIN}'" {print}' "${POLICYDIR}/policy_${POLICY}_domainlist")" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Add Domain - Adding ${DOMAIN} to ${POLICY}"
-    echo -e "$DOMAIN" >> "${POLICYDIR}/policy_${POLICY}_domainlist" \
+    echo -e "${DOMAIN}" >> "${POLICYDIR}/policy_${POLICY}_domainlist" \
     && logger -p 4 -st "$ALIAS" "Add Domain - Added ${DOMAIN} to ${POLICY}" \
     || logger -p 2 -st "$ALIAS" "Add Domain - ***Error*** Failed to add ${DOMAIN} to ${POLICY}"
   else
     echo -e "${RED}***Domain already added to ${POLICY}***${NOCOLOR}"
   fi
-elif [[ -z "$DOMAIN" ]] &>/dev/null;then
+elif [[ -z "${DOMAIN}" ]] &>/dev/null;then
   echo -e "${RED}***No Domain Specified***${NOCOLOR}"
 fi
+
+unset DOMAIN POLICY
+
 return
 }
 
 # Delete domain from policy
 deletedomain ()
 {
-# Select Policy for Domain to Delete
-POLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
-echo -e "Select a Policy to delete ${DOMAIN}: \r\n${POLICIES}"
-  # User Input for Policy for Deleting Domain
-  while true;do  
-    read -r -p "Policy: " DELETEDOMAINPOLICY
-    for POLICY in ${POLICIES};do
-      if [[ "$DELETEDOMAINPOLICY" == "${POLICY}" ]] &>/dev/null;then
-        POLICY=${DELETEDOMAINPOLICY}
+# If policy is not selected, pick one.
+if [[ -z "${POLICY+x}" ]] &>/dev/null;then
+  # Select Policy for New Domain
+  POLICY="all"
+  showpolicy
+  while true &>/dev/null;do
+    printf "\n"
+    read -r -p "Select the Policy where you want to delete ${DOMAIN}: " value
+    for policysel in ${policiesnum};do
+      if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+        POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
         break 2
-      elif [[ -n "$(echo "${POLICIES}" | grep -w "$DELETEDOMAINPOLICY")" ]] &>/dev/null;then
-        continue
-      else
-        echo -e "${RED}***Enter a valid Policy***${NOCOLOR}"
-        echo -e "Policies: \r\n${POLICIES}"
+      elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+        echo -e "${RED}***Select a valid number***${NOCOLOR}"
         break 1
+      else
+        continue
       fi
     done
   done
+fi
 
 # Set process priority
 if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
@@ -2784,13 +2966,16 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
     echo -e "${RED}***Domain not added to Policy: ${POLICY}***${NOCOLOR}"
   fi
 fi
+
+unset POLICY DOMAIN DOMAINLIST DOMAINIPLIST
+
 return
 }
 
 # Delete IP from Policy
 deleteip ()
 {
-#Select IP if null
+# Select IP if null
 if [[ -z "${IP}" ]] &>/dev/null;then
   while true &>/dev/null;do
     read -r -p "Select an IP Address to delete from a policy: " value
@@ -2800,25 +2985,27 @@ if [[ -z "${IP}" ]] &>/dev/null;then
   done
 fi
 
-# Select Policy to delete IP
-POLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
-echo -e "Select a Policy to delete $IP: \r\n$POLICIES"
-  # User Input for Policy for Deleting IP
-  while true;do  
-    read -r -p "Policy: " DELETEIPPOLICY
-    for POLICY in ${POLICIES};do
-      if [[ "$DELETEIPPOLICY" == "${POLICY}" ]] &>/dev/null;then
-        POLICY=$DELETEIPPOLICY
+# If policy is not selected, pick one.
+if [[ -z "${POLICY+x}" ]] &>/dev/null;then
+  # Select Policy for New Domain
+  POLICY="all"
+  showpolicy
+  while true &>/dev/null;do
+    printf "\n"
+    read -r -p "Select the Policy where you want to delete ${IP}: " value
+    for policysel in ${policiesnum};do
+      if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+        POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
         break 2
-      elif [[ -n "$(echo "${POLICIES}" | grep -w "$DELETEIPPOLICY")" ]] &>/dev/null;then
-        continue
-      else
-        echo -e "${RED}***Enter a valid Policy***${NOCOLOR}"
-        echo -e "Policies: \r\n${POLICIES}"
+      elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+        echo -e "${RED}***Select a valid number***${NOCOLOR}"
         break 1
+      else
+        continue
       fi
     done
   done
+fi
 
 # Set process priority
 if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
@@ -2952,6 +3139,9 @@ if [[ -n "$IP" ]] &>/dev/null;then
     echo -e "${RED}***IP not added to Policy: ${POLICY}***${NOCOLOR}"
   fi
 fi
+
+unset POLICY IP DOMAINIPLIST
+
 return
 }
 
@@ -3565,6 +3755,15 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
       printf '\033[K%b\r' "${BOLD}${UNDERLINE}Restore Policy: ${RESTOREPOLICY}${NOCOLOR}\n"
     fi
   fi
+  
+  # Check if Verbose Logging is Enabled
+  if [[ -z "$(awk -F "|" '/^'${RESTOREPOLICY}'/ {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
+    VERBOSELOGGING="1"
+  elif [[ "$(awk -F "|" '/^'${RESTOREPOLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
+    VERBOSELOGGING="0"
+  elif [[ "$(awk -F "|" '/^'${RESTOREPOLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
+    VERBOSELOGGING="1"
+  fi
 
   # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
   DOMAINIPLIST="$(grep -w "$RESTOREPOLICY" "$CONFIGFILE" | awk -F"|" '{print $3}')"
@@ -3576,6 +3775,10 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     logger -p 3 -st "$ALIAS" "Restore Policy - Interface ${INTERFACE} for ${RESTOREPOLICY} is down"
     continue
   fi
+  
+  # Set Restore Mode to default flags - Mode 1: Does not check IPSet against policy files, Mode 2: Check IPSet against policy files
+  restoreipv6mode="0"
+  restoreipv4mode="0"
 
   # Create IPv6 IPSET
   # Check for saved IPSET
@@ -3584,18 +3787,24 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Restored IPv6 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to restore IPv6 IPSET for ${RESTOREPOLICY}"
+	[[ "${restoreipv6mode}" == "0" ]] &>/dev/null && restoreipv6mode="1"
   # Create saved IPv6 IPSET file if IPSET exists
   elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv6 IPSET for ${RESTOREPOLICY}"
     ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv6 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Saved IPv6 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv6 IPSET for ${RESTOREPOLICY}"
+	[[ "${restoreipv6mode}" == "0" ]] &>/dev/null && restoreipv6mode="1"
   # Create new IPv6 IPSET if it does not exist
   elif [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Creating IPv6 IPSET for ${RESTOREPOLICY}"
     ipset create DomainVPNRouting-${RESTOREPOLICY}-ipv6 hash:ip family inet6 comment \
     && { saveipv6ipset="1" && logger -p 4 -t "$ALIAS" "Restore Policy - Created IPv6 IPSET for ${RESTOREPOLICY}" ;} \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to create IPv6 IPSET for ${RESTOREPOLICY}"
+	[[ "${restoreipv6mode}" == "0" ]] &>/dev/null && restoreipv6mode="2"
+  # Set IPSet restore flag if both IPSET and file exist
+  elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+	[[ "${restoreipv6mode}" == "0" ]] &>/dev/null && restoreipv6mode="1"
   fi
   # Create IPv4 IPSET
   # Check for saved IPv4 IPSET
@@ -3604,18 +3813,24 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Restored IPv4 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to restore IPv4 IPSET for ${RESTOREPOLICY}"
+	[[ "${restoreipv4mode}" == "0" ]] &>/dev/null && restoreipv4mode="1"
   # Create saved IPv4 IPSET file if IPSET exists
   elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv4 IPSET for ${RESTOREPOLICY}"
     ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv4 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Saved IPv4 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv4 IPSET for ${RESTOREPOLICY}"
+	[[ "${restoreipv4mode}" == "0" ]] &>/dev/null && restoreipv4mode="1"
   # Create new IPv4 IPSET if it does not exist
   elif [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Creating IPv4 IPSET for ${RESTOREPOLICY}"
     ipset create DomainVPNRouting-${RESTOREPOLICY}-ipv4 hash:ip family inet comment \
     && { saveipv4ipset="1" && logger -p 4 -t "$ALIAS" "Restore Policy - Created IPv4 IPSET for ${RESTOREPOLICY}" ;} \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to create IPv4 IPSET for ${RESTOREPOLICY}"
+	[[ "${restoreipv4mode}" == "0" ]] &>/dev/null && restoreipv4mode="2"
+  # Set IPSet restore flag if both IPSET and file exist
+  elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+	[[ "${restoreipv4mode}" == "0" ]] &>/dev/null && restoreipv4mode="1"
   fi
 
   # Create IPv4 and IPv6 Arrays from Policy File. 
@@ -3623,7 +3838,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   IPV4S="$(grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" "${DOMAINIPLIST}" | sort -u)"
   
   # Show visual status for updating routes and rules
-  if tty >/dev/null 2>&1;then
+  if tty >/dev/null 2>&1 && { [[ "${restoreipv6mode}" == "2" ]] || [[ "${restoreipv4mode}" == "2" ]] ;}&>/dev/null;then
     printf '\033[K%b\r' "${LIGHTCYAN}Restore Policy: Restoring IP Routes and IP Rules${NOCOLOR}"
   fi
 
@@ -3675,7 +3890,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     fi
 
     # Add IPv6s to IPSET or create IPv6 Routes
-    if [[ -n "${FWMARK}" ]] &>/dev/null;then
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${restoreipv6mode}" == "2" ]] &>/dev/null;then
       for IPV6 in ${IPV6S};do
         # Check IPv6 for prefix error
         if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
@@ -3862,7 +4077,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   fi
 
   # Add IPv4s to IPSET or create IPv4 Routes or rules and remove old IPv4 Routes or Rules
-  if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "$(ip rule list from all fwmark ${FWMARK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null || [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && { [[ -n "$(ip rule list from all fwmark ${FWMARK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null || [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
       if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
@@ -3899,7 +4114,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
         fi
       fi
     done
-  elif [[ -z "${FWMARK}" ]] &>/dev/null || [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+  elif [[ -z "${FWMARK}" ]] &>/dev/null || { [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
       if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
@@ -3947,6 +4162,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv4 IPSET for ${RESTOREPOLICY}"
   fi
   [[ -n "${saveipv4ipset+x}" ]] &>/dev/null && unset saveipv4ipset
+
+  # Reset Restore flags
+  unset restoreipv6mode restoreipv4mode
 
 done
 # Clear Parameters
@@ -4571,6 +4789,7 @@ if [[ "${mode}" != "install" ]] &>/dev/null && [[ ! -f "${GLOBALCONFIGFILE}" ]] 
 # Get Global Configuration
 elif [[ "${mode}" != "install" ]] &>/dev/null && [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
   setglobalconfig || return
+  setfirewallrestore || return
   updateconfigprev212 || return
 fi
 # Check Alias
