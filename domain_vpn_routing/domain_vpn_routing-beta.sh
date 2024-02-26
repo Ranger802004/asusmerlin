@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 02/13/2024
-# Version: v2.1.3-beta3
+# Date: 02/26/2024
+# Version: v2.1.3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.3-beta3"
+VERSION="v2.1.3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -2095,10 +2095,14 @@ showpolicy ()
 {
 if [[ "$POLICY" == "all" ]] &>/dev/null;then
   [[ -z "${policiesnum+x}" ]] &>/dev/null && policiesnum=""
-  policies="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
+  policies="all $(awk -F "|" '{print $1}' ${CONFIGFILE})"
   policynum="1"
   for policy in ${policies};do
-    echo -e "${BOLD}${policynum}:${NOCOLOR} ${policy}"
+    if [[ "${policy}" == "all" ]] &>/dev/null;then
+      echo -e "${BOLD}${policynum}:${NOCOLOR} (All Policies)"
+    else
+      echo -e "${BOLD}${policynum}:${NOCOLOR} ${policy}"
+    fi
 	policiesnum="${policiesnum} ${policynum}|${policy}"
     policynum="$((${policynum}+1))"
   done

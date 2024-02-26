@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/14/2023
-# Version: v2.1.2
+# Date: 02/26/2023
+# Version: v2.1.3
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -46,6 +46,7 @@ Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
 - PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
 - CHECKINTERVAL: This defines the policy check interval via cron job, value range is from 1 to 59 minutes. Default: 15 Minutes
 - BOOTDELAYTIMER: This will delay execution until System Uptime reaches this time. Default: 0 Seconds
+- FIREWALLRESTORE: This will execute the restorepolicy mode during a firewall restart event.  Default: Disabled
 - OVPNC1FWMARK: This defines the FWMark value for OpenVPN Client 1. Default: 0x1000
 - OVPNC1MASK: This defines the Mask value for OpenVPN Client 1. Default: 0xf000
 - OVPNC2FWMARK: This defines the FWMark value for OpenVPN Client 2. Default: 0x2000
@@ -133,6 +134,15 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
+v2.1.3 - 02/26/2024
+Enhancements:
+- Added restore policy mode that will recreate objects for policies to function without performing an active query.  This will increase the time of restoration of policies during reboot or WAN failover events, restore policy mode is also called at the beginning of query policy mode.
+- Simplified policy selection in menu interface where only a number has to be selected to select a policy instead of manually typing it.
+- Optional configuration item added to add restorepolicy command during firewall restart events.
+
+Fixes:
+- System binaries will now be used over optional binaries installed from repos such as Entware.
+
 v2.1.2 - 10/14/2023
 Enhancements:
 - The wgclient-start start up script for WireGuard clients will now be created if it doesn't exist and will call Domain VPN Routing.
