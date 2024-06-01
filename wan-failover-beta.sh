@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/05/2024
-# Version: v2.1.2-beta2
+# Date: 06/01/2024
+# Version: v2.1.2-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,12 +11,13 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.1.2-beta2"
+VERSION="v2.1.2-beta3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
 RT_TABLESFILE="/etc/iproute2/rt_tables"
 LOCKFILE="/var/lock/wan-failover.lock"
+CRONLOCKFILE="/var/lock/wan-failover-cron.lock"
 PIDFILE="/var/run/wan-failover.pid"
 WAN0PACKETLOSSFILE="/tmp/wan0packetloss.tmp"
 WAN1PACKETLOSSFILE="/tmp/wan1packetloss.tmp"
@@ -101,6 +102,7 @@ elif [[ "${mode}" == "run" ]] &>/dev/null;then
   echo -e "$$" > ${PIDFILE}
   logger -p 6 -t "${ALIAS}" "Debug - Locked File: ${LOCKFILE}"
   trap 'cleanup && kill -9 "$$"' EXIT HUP INT QUIT TERM
+  cronjob delete
   logger -p 6 -t "${ALIAS}" "Debug - Trap set to remove ${LOCKFILE} on exit"
   logger -p 6 -t "${ALIAS}" "Debug - Script Mode: ${mode}"
   systemcheck || return 1
@@ -113,6 +115,7 @@ elif [[ "${mode}" == "manual" ]] &>/dev/null;then
   echo -e "$$" > ${PIDFILE}
   logger -p 6 -t "${ALIAS}" "Debug - Locked File: ${LOCKFILE}"
   trap 'cleanup && kill -9 "$$"' EXIT HUP INT QUIT TERM
+  cronjob delete
   logger -p 6 -t "${ALIAS}" "Debug - Trap set to remove ${LOCKFILE} on exit"
   logger -p 6 -t "${ALIAS}" "Debug - Script Mode: ${mode}"
   systemcheck || return 1
@@ -126,8 +129,13 @@ elif [[ "${mode}" == "initiate" ]] &>/dev/null;then
   wanstatus || return 1
 elif [[ "${mode}" == "restart" ]] &>/dev/null;then
   killscript
-elif [[ "${mode}" == "monitor" ]] &>/dev/null || [[ "${mode}" == "capture" ]] &>/dev/null;then
+elif [[ "${mode}" == "monitor" ]] &>/dev/null;then
   trap 'exit' EXIT HUP INT QUIT TERM
+  logger -p 6 -t "${ALIAS}" "Debug - Trap set to kill background process on exit"
+  logger -p 6 -t "${ALIAS}" "Debug - Script Mode: ${mode}"
+  monitor || return 1
+elif [[ "${mode}" == "capture" ]] &>/dev/null;then
+  trap 'captureexit' EXIT HUP INT QUIT TERM
   logger -p 6 -t "${ALIAS}" "Debug - Trap set to kill background process on exit"
   logger -p 6 -t "${ALIAS}" "Debug - Script Mode: ${mode}"
   monitor || return 1
@@ -139,6 +147,9 @@ elif [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   uninstall
 elif [[ "${mode}" == "cron" ]] &>/dev/null;then
   logger -p 6 -t "${ALIAS}" "Debug - Script Mode: ${mode}"
+  exec 101>"${CRONLOCKFILE}" || return 1
+  flock -x -n 101 && echo  || { echo -e "${RED}${ALIAS} Cron Job Mode is already running...${NOCOLOR}" && return ;}
+  trap 'rm -f "${CRONLOCKFILE}" || return 1' EXIT HUP INT QUIT TERM
   setvariables || return 1
   cronjob || return 1
 elif [[ "${mode}" == "switchwan" ]] &>/dev/null;then
@@ -1203,12 +1214,6 @@ cronjob ()
 {
 logger -p 6 -t "${ALIAS}" "Debug - Function: cronjob"
 
-# Lock Cron Job to ensure only one instance is ran at a time
-  CRONLOCKFILE="/var/lock/wan-failover-cron.lock"
-  exec 101>"${CRONLOCKFILE}" || return 1
-  flock -x -n 101 && echo  || { echo -e "${RED}${ALIAS} Cron Job Mode is already running...${NOCOLOR}" && return ;}
-  trap 'rm -f "${CRONLOCKFILE}" || return 1' EXIT HUP INT QUIT TERM
-  
 # Set Cron Job Argument
 if [[ "$#" == "1" ]] &>/dev/null;then
   cron_arg1="${1#}"
@@ -1298,22 +1303,34 @@ fi
 if [[ "${systemlogset}" == "0" ]] &>/dev/null;then
   echo -e "${RED}***Unable to locate System Log Path***${NOCOLOR}"
   logger -p 2 -t "${ALIAS}" "Monitor - ***Unable to locate System Log Path***"
-  return
+  return 1
 elif [[ "${systemlogset}" == "1" ]] &>/dev/null;then
   if [[ "${mode}" == "monitor" ]] &>/dev/null;then
     clear
     tail -1 -F ${SYSLOG} 2>/dev/null | awk '/'${ALIAS}'/ {print}' \
     && { unset systemlogset && return ;} \
-    || echo -e "${RED}***Unable to load Monitor Mode***${NOCOLOR}"
+    || { echo -e "${RED}***Unable to load Monitor Mode***${NOCOLOR}" && return 1 ;}
   elif [[ "${mode}" == "capture" ]] &>/dev/null;then
-    LOGFILE="/tmp/wan-failover-$(date +"%F-%T-%Z").log"
-    touch -a ${LOGFILE}
+    capturefile="/tmp/wan-failover-$(date +"%F-%T-%Z").log"
+    touch -a ${capturefile}
     clear
-    tail -1 -F ${SYSLOG} 2>/dev/null | awk '/'${ALIAS}'/ {print}' | tee -a "${LOGFILE}" \
+    tail -1 -F ${SYSLOG} 2>/dev/null | awk '/'${ALIAS}'/ {print}' | tee -a "${capturefile}" \
     && { unset systemlogset && return ;} \
-    || echo -e "${RED}***Unable to load Capture Mode***${NOCOLOR}"
+    || { echo -e "${RED}***Unable to load Capture Mode***${NOCOLOR}" && return 1 ;}
   fi
 fi
+}
+
+# Capture Exit
+captureexit ()
+{
+if [[ -z "${capturefilesent+x}" ]] &>/dev/null && [[ -f "${capturefile}" ]] &>/dev/null;then
+  printf "\n"
+  echo -e "${LIGHTCYAN}Capture File Path: ${capturefile}${NOCOLOR}" \
+  && capturefilesent="1"
+fi
+
+exit
 }
 
 # Set Variables
@@ -3984,7 +4001,7 @@ elif [[ "${GETWANMODE}" == "3" ]] &>/dev/null;then
       elif [[ -n "$(nvram get wan0_gw_mac & nvramcheck)" ]] &>/dev/null;then
         WAN0GWMAC="$(nvram get wan0_gw_mac & nvramcheck)"
       elif [[ -n "${WAN0GWIFNAME}" ]] &>/dev/null && [[ -n "$(arp -i ${WAN0GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
-        WAN0GWMAC="$(arp -i ${WAN0GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper(${0})}')"
+        WAN0GWMAC="$(arp -i ${WAN0GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper($0)}')"
       else
         WAN0GWMAC=""
       fi
@@ -3997,7 +4014,7 @@ elif [[ "${GETWANMODE}" == "3" ]] &>/dev/null;then
         WAN0GWMAC="$(nvram get wan0_gw_mac & nvramcheck)"
         { [[ -z "${WAN0GWMAC}" ]] &>/dev/null && [[ -n "${zWAN0GWMAC}" ]] &>/dev/null ;} && WAN0GWMAC="${zWAN0GWMAC}"
       elif [[ -n "${WAN0GWIFNAME}" ]] &>/dev/null && [[ -n "$(arp -i ${WAN0GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
-        WAN0GWMAC="$(arp -i ${WAN0GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper(${0})}')"
+        WAN0GWMAC="$(arp -i ${WAN0GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper($0)}')"
         { [[ -z "${WAN0GWMAC}" ]] &>/dev/null && [[ -n "${zWAN0GWMAC}" ]] &>/dev/null ;} && WAN0GWMAC="${zWAN0GWMAC}"
       else
         WAN0GWMAC=""
@@ -4170,7 +4187,7 @@ elif [[ "${GETWANMODE}" == "3" ]] &>/dev/null;then
       elif [[ -n "$(nvram get wan1_gw_mac & nvramcheck)" ]] &>/dev/null;then
         WAN1GWMAC="$(nvram get wan1_gw_mac & nvramcheck)"
       elif [[ -n "${WAN1GWIFNAME}" ]] &>/dev/null && [[ -n "$(arp -i ${WAN1GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
-        WAN1GWMAC="$(arp -i ${WAN1GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper(${0})}')"
+        WAN1GWMAC="$(arp -i ${WAN1GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper($0)}')"
       else
         WAN1GWMAC=""
       fi
@@ -4183,7 +4200,7 @@ elif [[ "${GETWANMODE}" == "3" ]] &>/dev/null;then
         WAN1GWMAC="$(nvram get wan1_gw_mac & nvramcheck)"
         { [[ -z "${WAN1GWMAC}" ]] &>/dev/null && [[ -n "${zWAN1GWMAC}" ]] &>/dev/null ;} && WAN1GWMAC="${zWAN1GWMAC}"
       elif [[ -n "${WAN1GWIFNAME}" ]] &>/dev/null && [[ -n "$(arp -i ${WAN1GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}")" ]] &>/dev/null;then
-        WAN1GWMAC="$(arp -i ${WAN1GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper(${0})}')"
+        WAN1GWMAC="$(arp -i ${WAN1GWIFNAME} | grep -m 1 -oE "([[:xdigit:]]{1,2}:){5}[[:xdigit:]]{1,2}" | awk '{print toupper($0)}')"
         { [[ -z "${WAN1GWMAC}" ]] &>/dev/null && [[ -n "${zWAN1GWMAC}" ]] &>/dev/null ;} && WAN1GWMAC="${zWAN1GWMAC}"
       else
         WAN1GWMAC=""
@@ -4257,9 +4274,9 @@ elif [[ "${GETWANMODE}" == "3" ]] &>/dev/null;then
       if [[ -n "${ipv6ipaddr}" ]] &>/dev/null;then
         IPV6IPADDR="$(echo ${ipv6ipaddr} | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
       else
-        IPV6IPADDR="$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print ${0}}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+        IPV6IPADDR="$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print $0}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
       fi
-      { [[ -n "${IPV6IPADDR}" ]] &>/dev/null || [[ "${IPV6SERVICE}" == "disabled" ]] &>/dev/null || [[ -z "$(nvram get ipv6_wan_addr & nvramcheck)" ]] &>/dev/null || [[ -z "$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print ${0}}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")" ]] &>/dev/null ;} \
+      { [[ -n "${IPV6IPADDR}" ]] &>/dev/null || [[ "${IPV6SERVICE}" == "disabled" ]] &>/dev/null || [[ -z "$(nvram get ipv6_wan_addr & nvramcheck)" ]] &>/dev/null || [[ -z "$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print $0}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")" ]] &>/dev/null ;} \
       && zIPV6IPADDR="${IPV6IPADDR}" \
       || { logger -p 6 -t "${ALIAS}" "Debug - failed to set IPV6IPADDR" && unset IPV6IPADDR zIPV6IPADDR && continue ;}
     elif [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
@@ -4268,7 +4285,7 @@ elif [[ "${GETWANMODE}" == "3" ]] &>/dev/null;then
       if [[ -n "${ipv6ipaddr}" ]] &>/dev/null;then
         IPV6IPADDR="$(echo ${ipv6ipaddr} | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
       else
-        IPV6IPADDR="$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print ${0}}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
+        IPV6IPADDR="$({ ifconfig ${WAN0GWIFNAME} ; ifconfig ${WAN1GWIFNAME}; } | awk '$1 == "inet6" && $3 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})\/128/ && $NF == "Scope:Global" {print $0}' | grep -m 1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]]{1,4})")"
       fi
       [[ -n "${IPV6IPADDR}" ]] &>/dev/null || IPV6IPADDR="${zIPV6IPADDR}"
     fi
@@ -5525,7 +5542,7 @@ until { [[ "$(nvram get ${INACTIVEWAN}_primary & nvramcheck)" == "0" ]] &>/dev/n
     logger -p 5 -st "${ALIAS}" "${SWITCHWANMODE} - Adding default route via $(nvram get ${ACTIVEWAN}_gateway & nvramcheck) dev $(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)"
     ip route add default via $(nvram get ${ACTIVEWAN}_gateway & nvramcheck) dev $(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck) \
     && logger -p 4 -st "${ALIAS}" "${SWITCHWANMODE} - Added default route via $(nvram get ${ACTIVEWAN}_gateway & nvramcheck) dev $(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)" \
-    || logger -p 2 -st "${ALIAS}" "${SWITCHWANMODE} - ***Error*** Unable to delete default route via $(nvram get ${ACTIVEWAN}_gateway & nvramcheck) dev $(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)"
+    || logger -p 2 -st "${ALIAS}" "${SWITCHWANMODE} - ***Error*** Unable to add default route via $(nvram get ${ACTIVEWAN}_gateway & nvramcheck) dev $(nvram get ${ACTIVEWAN}_gw_ifname & nvramcheck)"
   fi
 
   # Change QoS Settings
@@ -6054,7 +6071,7 @@ if [[ -f "${AIPROTECTION_EMAILCONFIG}" ]] &>/dev/null || [[ -f "${AMTM_EMAILCONF
   logger -p 6 -t "${ALIAS}" "Debug - Selecting Subject Name"
   if [[ "${WANSMODE}" == "lb" ]] &>/dev/null;then
     echo "Subject: WAN Load Balance Failover Notification" >"${TMPEMAILFILE}"
-  elif [[ "${WANSMODE}" != "lb" ]] &>/dev/null;then
+  else
     echo "Subject: WAN Failover Notification" >"${TMPEMAILFILE}"
   fi
 
@@ -6072,7 +6089,7 @@ if [[ -f "${AIPROTECTION_EMAILCONFIG}" ]] &>/dev/null || [[ -f "${AMTM_EMAILCONF
   logger -p 6 -t "${ALIAS}" "Debug - Selecting Email Header"
   if [[ "${WANSMODE}" == "lb" ]] &>/dev/null;then
     echo "***WAN Load Balance Failover Notification***" >>"${TMPEMAILFILE}"
-  elif [[ "${WANSMODE}" != "lb" ]] &>/dev/null;then
+  else
     echo "***WAN Failover Notification***" >>"${TMPEMAILFILE}"
   fi
   echo "----------------------------------------------------------------------------------------" >>"${TMPEMAILFILE}"
@@ -6107,7 +6124,7 @@ if [[ -f "${AIPROTECTION_EMAILCONFIG}" ]] &>/dev/null || [[ -f "${AMTM_EMAILCONF
 
     # Determine Active ISP
     logger -p 6 -t "${ALIAS}" "Debug - Connecting to ipinfo.io for Active ISP"
-    ACTIVEISP="$(/usr/sbin/curl --connect-timeout ${EMAILTIMEOUT} --max-time ${EMAILTIMEOUT} ipinfo.io 2>/dev/null | grep -w '"org":' | awk -F " " '{$1=$2=""; print ${0}}' | cut -c 3- | cut -f 1 -d '"')"
+    ACTIVEISP="$(/usr/sbin/curl --connect-timeout ${EMAILTIMEOUT} --max-time ${EMAILTIMEOUT} ipinfo.io 2>/dev/null | grep -w '"org":' | awk -F " " '{$1=$2=""; print $0}' | cut -c 3- | cut -f 1 -d '"')"
     [[ -n "${ACTIVEISP+x}" ]] &>/dev/null && echo "Active ISP: ${ACTIVEISP}" >>"${TMPEMAILFILE}" || echo "Active ISP: Unavailable" >>"${TMPEMAILFILE}"
 
     # Determine Primary WAN for WAN IP Address, Gateway IP Address and Interface
