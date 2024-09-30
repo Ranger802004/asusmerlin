@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 02/26/2024
-# Version: v2.1.3
+# Date: 09/30/2024
+# Version: v3.0.0-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,8 @@ set -u
 
 # Global Variables
 ALIAS="domain_vpn_routing"
-VERSION="v2.1.3"
+FRIENDLYNAME="Domain VPN Routing"
+VERSION="v2.2.0-beta1"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -19,6 +20,8 @@ POLICYDIR="/jffs/configs/domain_vpn_routing"
 SYSTEMLOG="/tmp/syslog.log"
 LOCKFILE="/var/lock/domain_vpn_routing.lock"
 DNSMASQCONFIGFILE="/etc/dnsmasq.conf"
+IPSETPREFIX="DVR"
+POLICYNAMEMAXLENGTH="24"
 
 # Checksum
 if [[ -f "/usr/sbin/openssl" ]] &>/dev/null;then
@@ -134,13 +137,13 @@ return
 # Set Script to use System Binaries
 systembinaries ()
 {
-# Check System Binaries Path
-if [[ "$(echo $PATH | awk -F ":" '{print $1":"$2":"$3":"$4":"}')" != "/sbin:/bin:/usr/sbin:/usr/bin:" ]] &>/dev/null;then
-  logger -p 6 -t "$ALIAS" "Debug - Setting System Binaries Path"
-  export PATH=/sbin:/bin:/usr/sbin:/usr/bin:$PATH
-  logger -p 6 -t "$ALIAS" "Debug - PATH: $PATH"
-fi
-return
+  # Check System Binaries Path
+  if [[ "$(echo $PATH | awk -F ":" '{print $1":"$2":"$3":"$4":"}')" != "/sbin:/bin:/usr/sbin:/usr/bin:" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Setting System Binaries Path"
+    export PATH=/sbin:/bin:/usr/sbin:/usr/bin:$PATH
+    logger -p 6 -t "$ALIAS" "Debug - PATH: $PATH"
+  fi
+  return
 }
 
 # Cleanup
@@ -180,20 +183,20 @@ menu ()
 	sed -n '3,6p' "${0}"		# Display Banner
      printf "\n"
      printf "  ${BOLD}Information:${NOCOLOR}\n"
-   	printf "  (1)  readme            View Domain VPN Routing Readme\n"
+   	printf "  (1)  readme            View ${FRIENDLYNAME} Readme\n"
      printf "  (2)  showpolicy        View existing policies\n"
      printf "\n"
      printf "  ${BOLD}Installation/Configuration:${NOCOLOR}\n"
-	printf "  (3)  install           Install Domain VPN Routing\n"
-	printf "  (4)  uninstall         Uninstall Domain VPN Routing\n"
+	printf "  (3)  install           Install ${FRIENDLYNAME}\n"
+	printf "  (4)  uninstall         Uninstall ${FRIENDLYNAME}\n"
 	printf "  (5)  config            Global Configuration Settings\n"
-	printf "  (6)  update            Check for updates for Domain VPN Routing\n"
+	printf "  (6)  update            Check for updates for ${FRIENDLYNAME}\n"
      printf "\n"
      printf "  ${BOLD}Operations:${NOCOLOR}\n"
    	printf "  (7)  cron              Schedule Cron Job to automate Query Policy for all policies\n"
      printf "  (8)  querypolicy       Perform a manual query of an existing policy\n"
      printf "  (9)  restorepolicy     Perform a restore of an existing policy\n"
-     printf "  (10) kill              Kill any running instances of Domain VPN Routing\n"
+     printf "  (10) kill              Kill any running instances of ${FRIENDLYNAME}\n"
      printf "\n"
      printf "  ${BOLD}Policy Configuration:${NOCOLOR}\n"
      printf "  (11) createpolicy      Create Policy\n"
@@ -203,7 +206,7 @@ menu ()
 	printf "  (15) deletedomain      Delete Domain from an existing Policy\n"
 	printf "  (16) deleteip          Delete IP from an existing Policy\n"
      printf "\n"
-	printf "  (e)  exit              Exit Domain VPN Routing Menu\n"
+	printf "  (e)  exit              Exit ${FRIENDLYNAME} Menu\n"
 	printf "\nMake a selection: "
         )"
         # Display Menu
@@ -844,6 +847,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC1MASK Default: 0xf000"
     echo -e "OVPNC1MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # OVPNC1DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "OVPNC1DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC1DNSSERVER Default: N/A"
+    echo -e "OVPNC1DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
 
   # OVPNC2FWMARK
   if [[ -z "$(sed -n '/\bOVPNC2FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -855,6 +864,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   if [[ -z "$(sed -n '/\bOVPNC2MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC2MASK Default: 0xf000"
     echo -e "OVPNC2MASK=0xf000" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # OVPNC2DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "OVPNC2DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC2DNSSERVER Default: N/A"
+    echo -e "OVPNC2DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC3FWMARK
@@ -868,6 +883,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC3MASK Default: 0xf000"
     echo -e "OVPNC3MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # OVPNC3DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "OVPNC3DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC3DNSSERVER Default: N/A"
+    echo -e "OVPNC3DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
 
   # OVPNC4FWMARK
   if [[ -z "$(sed -n '/\bOVPNC4FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -879,6 +900,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   if [[ -z "$(sed -n '/\bOVPNC4MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC4MASK Default: 0xf000"
     echo -e "OVPNC4MASK=0xf000" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # OVPNC4DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "OVPNC4DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC4DNSSERVER Default: N/A"
+    echo -e "OVPNC4DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC5FWMARK
@@ -892,6 +919,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating OVPNC5MASK Default: 0xf000"
     echo -e "OVPNC5MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # OVPNC5DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "OVPNC5DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC5DNSSERVER Default: N/A"
+    echo -e "OVPNC5DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
 
   # WGC1FWMARK
   if [[ -z "$(sed -n '/\bWGC1FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -903,6 +936,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   if [[ -z "$(sed -n '/\bWGC1MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC1MASK Default: 0xf000"
     echo -e "WGC1MASK=0xf000" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WGC1DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "WGC1DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC1DNSSERVER Default: N/A"
+    echo -e "WGC1DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC2FWMARK
@@ -916,6 +955,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC2MASK Default: 0xf000"
     echo -e "WGC2MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # WGC2DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "WGC2DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC2DNSSERVER Default: N/A"
+    echo -e "WGC2DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
 
   # WGC3FWMARK
   if [[ -z "$(sed -n '/\bWGC3FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -927,6 +972,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   if [[ -z "$(sed -n '/\bWGC3MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC3MASK Default: 0xf000"
     echo -e "WGC3MASK=0xf000" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WGC3DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "WGC3DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC3DNSSERVER Default: N/A"
+    echo -e "WGC3DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC4FWMARK
@@ -940,6 +991,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC4MASK Default: 0xf000"
     echo -e "WGC4MASK=0xf000" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # WGC4DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "WGC4DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC4DNSSERVER Default: N/A"
+    echo -e "WGC4DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
 
   # WGC5FWMARK
   if [[ -z "$(sed -n '/\bWGC5FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -951,6 +1008,30 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   if [[ -z "$(sed -n '/\bWGC5MASK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating WGC5MASK Default: 0xf000"
     echo -e "WGC5MASK=0xf000" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WGC5DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "WGC5DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC5DNSSERVER Default: N/A"
+    echo -e "WGC5DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WANDNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "WANDNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WANDNSSERVER Default: N/A"
+    echo -e "WANDNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WAN0DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "WAN0DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WAN0DNSSERVER Default: N/A"
+    echo -e "WAN0DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WAN1DNSSERVER
+  if [[ -z "$(awk -F "=" '$1 == "WAN1DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WAN1DNSSERVER Default: N/A"
+    echo -e "WAN1DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
 
   # Reading updated Global Configuration
@@ -1082,6 +1163,89 @@ fi
 return
 }
 
+# Delete IPSets format prior to version 2.1.4
+deleteoldipsetsprev300 ()
+{
+  DELETEOLDIPSETPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+  for DELETEOLDIPSETPOLICY in ${DELETEOLDIPSETPOLICIES};do
+    # Determine Interface and Route Table for IP Routes to delete.
+    INTERFACE="$(awk -F "|" '/^'${DELETEOLDIPSETPOLICY}'/ {print $4}' ${CONFIGFILE})"
+    routingdirector || return
+    # Delete IPv6 IP6Tables OUTPUT Rule
+    if [[ -n "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${DELETEOLDIPSETPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Old IPSets - Deleting IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Old IPSets - Deleted IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 FWMark: ${FWMARK}"
+    fi
+    # Delete IPv6 IP6Tables PREROUTING Rule
+    if [[ -n "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${DELETEOLDIPSETPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Old IPSets - Deleting IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -D PREROUTING -m set --match-set DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Old IPSets - Deleted IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 FWMark: ${FWMARK}"
+    fi
+    # Delete IPv6 IP6Tables POSTROUTING Rule
+    if [[ -n "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "DomainVPNRouting-'${DELETEOLDIPSETPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Old IPSets - Deleting IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+      ip6tables -t mangle -D POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Old IPSets - Deleted IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    fi
+    # Delete IPv6 IPSET
+    if [[ -n "$(ipset list DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Old IPSets - Deleting IPv6 IPSET for ${DELETEOLDIPSETPOLICY}"
+      ipset destroy DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv6 \
+      && logger -p 4 -t "$ALIAS" "Delete Old IPSets - Deleted IPv6 IPSET for ${DELETEOLDIPSETPOLICY}" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete IPv6 IPSET for ${DELETEOLDIPSETPOLICY}"
+    fi
+    # Delete IPv6 IPSET File
+    if [[ -f "${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+      logger -p 5 -st "$ALIAS" "Delete Old IPSets - Deleting ${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv6.ipset"
+      rm -f ${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv6.ipset \
+      && logger -p 4 -st "$ALIAS" "Delete Old IPSets - ${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv6.ipset" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete ${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv6.ipset"
+    fi
+    # Delete IPv4 IPTables OUTPUT Rule
+    if [[ -n "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${DELETEOLDIPSETPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Old IPSets - Deleting IPTables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 FWMark: ${FWMARK}"
+      iptables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Old IPSets - Deleted IPTables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete IPTables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 FWMark: ${FWMARK}"
+    fi
+    # Delete IPv4 IPTables PREROUTING Rule
+    if [[ -n "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${DELETEOLDIPSETPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Old IPSets - Deleting IPTables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 FWMark: ${FWMARK}"
+      iptables -t mangle -D PREROUTING -m set --match-set DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Old IPSets - Deleted IPTables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete IPTables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 FWMark: ${FWMARK}"
+    fi
+    # Delete IPv4 IPTables POSTROUTING Rule
+    if [[ -n "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "DomainVPNRouting-'${DELETEOLDIPSETPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Old IPSets - Deleting IPTables rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+      iptables -t mangle -D POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Old IPSets - Deleted IPTables rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete IPTables rule for IPSET: DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    fi
+    # Delete IPv4 IPSET
+    if [[ -n "$(ipset list DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Old IPSets - Creating IPv4 IPSET for ${DELETEOLDIPSETPOLICY}"
+      ipset destroy DomainVPNRouting-${DELETEOLDIPSETPOLICY}-ipv4 \
+      && logger -p 4 -t "$ALIAS" "Delete Old IPSets - Deleted IPv4 IPSET for ${DELETEOLDIPSETPOLICY}" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete IPv4 IPSET for ${DELETEOLDIPSETPOLICY}"
+    fi
+    # Delete IPv4 IPSET File
+    if [[ -f "${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+      logger -p 5 -st "$ALIAS" "Delete Old IPSets - Deleting ${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv4.ipset"
+      rm -f ${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv4.ipset \
+      && logger -p 4 -st "$ALIAS" "Delete Old IPSets - ${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv4.ipset" \
+      || logger -p 2 -st "$ALIAS" "Delete Old IPSets - ***Error*** Failed to delete ${POLICYDIR}/policy_${DELETEOLDIPSETPOLICY}-ipv4.ipset"
+    fi
+  done
+	
+  return
+}
+
 # Update Configuration from Pre-Version 2.1.2
 updateconfigprev212 ()
 {
@@ -1124,7 +1288,7 @@ config ()
 if [[ -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
   setglobalconfig || return
 else
-  printf "${RED}***Domain VPN Routing is not Installed***${NOCOLOR}\n"
+  printf "${RED}***${FRIENDLYNAME} is not Installed***${NOCOLOR}\n"
   if [[ "$mode" == "menu" ]] &>/dev/null;then
     printf "\n  (r)  return    Return to Main Menu"
     printf "\n  (e)  exit      Exit" 
@@ -1155,7 +1319,7 @@ fi
 
 # Check for configuration and load configuration
 if [[ ! -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
-  echo -e "${RED}Domain VPN Routing currently has no configuration file present${NOCOLOR}"
+  echo -e "${RED}${FRIENDLYNAME} currently has no configuration file present${NOCOLOR}"
 elif [[ -f "$GLOBALCONFIGFILE" ]] &>/dev/null;then
   setglobalconfig || return
 fi
@@ -1181,16 +1345,35 @@ printf "  (13) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGH
 printf "  (14) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
 printf "  (15) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
 printf "  (16) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
-printf "  (17) Wireguard Client 1 FWMark       Wireguard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
-printf "  (18) Wireguard Client 1 Mask         Wireguard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
-printf "  (19) Wireguard Client 2 FWMark       Wireguard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
-printf "  (20) Wireguard Client 2 Mask         Wireguard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
-printf "  (21) Wireguard Client 3 FWMark       Wireguard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
-printf "  (22) Wireguard Client 3 Mask         Wireguard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
-printf "  (23) Wireguard Client 4 FWMark       Wireguard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
-printf "  (24) Wireguard Client 4 Mask         Wireguard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
-printf "  (25) Wireguard Client 5 FWMark       Wireguard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
-printf "  (26) Wireguard Client 5 Mask         Wireguard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
+printf "  (17) WireGuard Client 1 FWMark       WireGuard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
+printf "  (18) WireGuard Client 1 Mask         WireGuard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
+printf "  (19) WireGuard Client 2 FWMark       WireGuard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
+printf "  (20) WireGuard Client 2 Mask         WireGuard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
+printf "  (21) WireGuard Client 3 FWMark       WireGuard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
+printf "  (22) WireGuard Client 3 Mask         WireGuard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
+printf "  (23) WireGuard Client 4 FWMark       WireGuard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
+printf "  (24) WireGuard Client 4 Mask         WireGuard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
+printf "  (25) WireGuard Client 5 FWMark       WireGuard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
+printf "  (26) WireGuard Client 5 Mask         WireGuard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
+
+printf "\n  ${BOLD}DNS Override Settings:${NOCOLOR}\n"
+printf "  (27) OpenVPN Client 1 DNS Server     OpenVPN Client 1 DNS Server:    " && { [[ -z "${OVPNC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (28) OpenVPN Client 2 DNS Server     OpenVPN Client 2 DNS Server:    " && { [[ -z "${OVPNC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (29) OpenVPN Client 3 DNS Server     OpenVPN Client 3 DNS Server:    " && { [[ -z "${OVPNC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (30) OpenVPN Client 4 DNS Server     OpenVPN Client 4 DNS Server:    " && { [[ -z "${OVPNC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (31) OpenVPN Client 5 DNS Server     OpenVPN Client 5 DNS Server:    " && { [[ -z "${OVPNC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (32) WireGuard Client 1 DNS Server   WireGuard Client 1 DNS Server:  " && { [[ -z "${WGC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (33) WireGuard Client 2 DNS Server   WireGuard Client 2 DNS Server:  " && { [[ -z "${WGC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (34) WireGuard Client 3 DNS Server   WireGuard Client 3 DNS Server:  " && { [[ -z "${WGC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (35) WireGuard Client 4 DNS Server   WireGuard Client 4 DNS Server:  " && { [[ -z "${WGC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (36) WireGuard Client 5 DNS Server   WireGuard Client 5 DNS Server:  " && { [[ -z "${WGC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ "$WANSDUALWANENABLE" == "0" ]] &>/dev/null;then
+  printf "  (37) WAN DNS Server                  WAN DNS Server:                 " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
+else
+  printf "  (37) Active WAN DNS Server           Active WAN DNS Server:          " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (38) WAN0 DNS Server                 WAN0 DNS Server:                " && { [[ -z "${WAN0DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN0DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (39) WAN1 DNS Server                 WAN1 DNS Server:                " && { [[ -z "${WAN1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+fi
 
 printf "\n  ${BOLD}System Information:${NOCOLOR}\n"
 printf "   DNS Logging Status                  Status:         " && { [[ "$DNSLOGGINGENABLED" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
@@ -1642,6 +1825,357 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC5MASK=|$SETWGC5MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
+  '27')      # OVPNC1DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure OpenVPN Client 1 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 1 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETOVPNC1DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 1 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETOVPNC1DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 1 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 1 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC1DNSSERVER=|${SETOVPNC1DNSSERVER}"
+  ;;
+  '28')      # OVPNC2DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure OpenVPN Client 2 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 2 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETOVPNC2DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 2 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETOVPNC2DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 2 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 2 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC2DNSSERVER=|${SETOVPNC2DNSSERVER}"
+  ;;
+  '29')      # OVPNC3DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure OpenVPN Client 3 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 3 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETOVPNC3DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 3 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETOVPNC3DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 3 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 3 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC3DNSSERVER=|${SETOVPNC3DNSSERVER}"
+  ;;
+  '30')      # OVPNC4DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure OpenVPN Client 4 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 4 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETOVPNC4DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 4 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETOVPNC4DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 4 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 4 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC4DNSSERVER=|${SETOVPNC4DNSSERVER}"
+  ;;
+  '31')      # OVPNC5DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure OpenVPN Client 5 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 5 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETOVPNC5DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 5 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETOVPNC5DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 5 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - OpenVPN Client 5 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC5DNSSERVER=|${SETOVPNC5DNSSERVER}"
+  ;;
+  '32')      # WGC1DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure WireGuard Client 1 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 1 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETWGC1DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 1 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWGC1DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 1 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 1 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC1DNSSERVER=|${SETWGC1DNSSERVER}"
+  ;;
+  '33')      # WGC2DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure WireGuard Client 2 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 2 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETWGC2DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 2 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWGC2DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 2 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 2 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC2DNSSERVER=|${SETWGC2DNSSERVER}"
+  ;;
+  '34')      # WGC3DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure WireGuard Client 3 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 3 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETWGC3DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 3 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWGC3DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 3 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 3 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC3DNSSERVER=|${SETWGC3DNSSERVER}"
+  ;;
+  '35')      # WGC4DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure WireGuard Client 4 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 4 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETWGC4DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 4 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWGC4DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 4 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 4 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC4DNSSERVER=|${SETWGC4DNSSERVER}"
+  ;;
+  '36')      # WGC5DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure WireGuard Client 5 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 5 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETWGC5DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 5 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWGC5DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 5 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - WireGuard Client 5 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC5DNSSERVER=|${SETWGC5DNSSERVER}"
+  ;;
+  '37')      # WANDNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure WAN DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - WAN DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETWANDNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - WAN DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWANDNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - WAN DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - WAN DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WANDNSSERVER=|${SETWANDNSSERVER}"
+  ;;
+  '38')      # WAN0DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure WAN0 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - WAN0 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETWAN0DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - WAN0 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWAN0DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - WAN0 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - WAN0 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0DNSSERVER=|${SETWAN0DNSSERVER}"
+  ;;
+  '39')      # WAN1DNSSERVER
+  while true &>/dev/null;do
+    read -p "Configure WAN1 DNS Server: " ip
+    ip=${ip//[$'\t\r\n']/}
+    if expr "${ip}" : '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*$' &>/dev/null;then
+      for i in 1 2 3 4;do
+        if [[ $(echo "${ip}" | cut -d. -f${i}) -gt "255" ]] &>/dev/null;then
+          echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+          logger -p 6 -t "${ALIAS}" "Debug - WAN1 DNS Server: ${ip} is an invalid IP Address"
+          break 1
+        else
+          SETWAN1DNSSERVER="${ip}"
+          logger -p 6 -t "${ALIAS}" "Debug - WAN1 DNS Server: ${ip}"
+          break 2
+        fi
+      done
+    elif [[ -z "${ip}" ]] &>/dev/null;then
+      SETWAN1DNSSERVER="${ip}"
+      logger -p 6 -t "${ALIAS}" "Debug - WAN1 DNS Server not set"
+      break 1
+    else  
+      echo -e "${RED}***${ip} is an invalid IP Address***${NOCOLOR}"
+      logger -p 6 -t "${ALIAS}" "Debug - WAN1 DNS Server: ${ip} is an invalid IP Address"
+    fi
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1DNSSERVER=|${SETWAN1DNSSERVER}"
+  ;;
 
   'r'|'R'|'menu'|'return'|'Return' )
   clear
@@ -1726,10 +2260,50 @@ fi
 config
 }
 
+# DNS Director
+dnsdirector ()
+{
+logger -p 6 -t "$ALIAS" "Debug - DNS Director Interface: ${INTERFACE}"
 
+# Set default values to null
+DNSSERVER=""
+
+# Set paramaeters based on interface
+if [[ "${INTERFACE}" == "ovpnc1" ]] &>/dev/null;then
+  DNSSERVER="${OVPNC1DNSSERVER}"
+elif [[ "${INTERFACE}" == "ovpnc2" ]] &>/dev/null;then
+  DNSSERVER="${OVPNC2DNSSERVER}"
+elif [[ "${INTERFACE}" == "ovpnc3" ]] &>/dev/null;then
+  DNSSERVER="${OVPNC3DNSSERVER}"
+elif [[ "${INTERFACE}" == "ovpnc4" ]] &>/dev/null;then
+  DNSSERVER="${OVPNC4DNSSERVER}"
+elif [[ "${INTERFACE}" == "ovpnc5" ]] &>/dev/null;then
+  DNSSERVER="${OVPNC5DNSSERVER}"
+elif [[ "${INTERFACE}" == "wgc1" ]] &>/dev/null;then
+  DNSSERVER="${WGC1DNSSERVER}"
+elif [[ "${INTERFACE}" == "wgc2" ]] &>/dev/null;then
+  DNSSERVER="${WGC2DNSSERVER}"
+elif [[ "${INTERFACE}" == "wgc3" ]] &>/dev/null;then
+  DNSSERVER="${WGC3DNSSERVER}"
+elif [[ "${INTERFACE}" == "wgc4" ]] &>/dev/null;then
+  DNSSERVER="${WGC4DNSSERVER}"
+elif [[ "${INTERFACE}" == "wgc5" ]] &>/dev/null;then
+  DNSSERVER="${WGC5DNSSERVER}"
+elif [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
+  DNSSERVER="${WANDNSSERVER}"
+elif [[ "${INTERFACE}" == "wan0" ]] &>/dev/null;then
+  DNSSERVER="${WAN0DNSSERVER}"
+elif [[ "${INTERFACE}" == "wan1" ]] &>/dev/null;then
+  DNSSERVER="${WAN1DNSSERVER}"
+fi
+
+return
+}
+
+# Routing Director
 routingdirector ()
 {
-logger -p 6 -t "$ALIAS" "Debug - Routing Director Interface: $INTERFACE"
+logger -p 6 -t "$ALIAS" "Debug - Routing Director Interface: ${INTERFACE}"
 
 # Set default values to null
 GATEWAY=""
@@ -1968,7 +2542,13 @@ createpolicy ()
 if [[ "${mode}" == "createpolicy" ]] &>/dev/null;then
   # User Input for Policy Name
   while true;do  
-    read -r -p "Policy Name: " NEWPOLICYNAME
+    read -r -p "Policy Name (Maximum Length: ${POLICYNAMEMAXLENGTH} characters):" NEWPOLICYNAME
+	  # Check Policy Name Length
+      if [[ "${#NEWPOLICYNAME}" -gt "${POLICYNAMEMAXLENGTH}" ]] &>/dev/null;then
+        echo -e "${RED}***Enter a policy name that is less than ${POLICYNAMEMAXLENGTH} characters***${NOCOLOR}"
+        continue
+      fi
+	  # Check Policy Name Characters
       case "$NEWPOLICYNAME" in
          [abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-]* ) CREATEPOLICYNAME=$NEWPOLICYNAME; break;;
         * ) echo -e "${RED}***Enter a valid Policy Name*** Use the following characters: A-Z, a-z, 0-9,-_${NOCOLOR}"
@@ -2063,6 +2643,16 @@ INTERFACES=""
         * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
       esac
   done
+  
+  # Enable Add CNAMES
+  while true;do  
+    read -r -p "Enable adding CNAMES for this policy? ***Enter Y for Yes or N for No*** " yn
+      case $yn in
+        [Yy]* ) SETADDCNAMES="ADDCNAMES=1"; break;;
+        [Nn]* ) SETADDCNAMES="ADDCNAMES=0"; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+      esac
+  done
 
   # Create Policy Files
   if [[ ! -f $POLICYDIR/'policy_'$CREATEPOLICYNAME'_domainlist' ]] &>/dev/null;then
@@ -2082,7 +2672,7 @@ INTERFACES=""
   # Adding Policy to Config File
   if [[ -z "$(awk -F "|" '/^'${CREATEPOLICYNAME}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Create Policy - Adding ${CREATEPOLICYNAME} to ${CONFIGFILE}"
-    echo -e "${CREATEPOLICYNAME}|${POLICYDIR}/policy_${CREATEPOLICYNAME}_domainlist|${POLICYDIR}/policy_${CREATEPOLICYNAME}_domaintoIP|${CREATEPOLICYINTERFACE}|${SETVERBOSELOGGING}|${SETPRIVATEIPS}" >> ${CONFIGFILE} \
+    echo -e "${CREATEPOLICYNAME}|${POLICYDIR}/policy_${CREATEPOLICYNAME}_domainlist|${POLICYDIR}/policy_${CREATEPOLICYNAME}_domaintoIP|${CREATEPOLICYINTERFACE}|${SETVERBOSELOGGING}|${SETPRIVATEIPS}|${SETADDCNAMES}" >> ${CONFIGFILE} \
     && logger -p 4 -st "$ALIAS" "Create Policy - Added ${CREATEPOLICYNAME} to ${CONFIGFILE}" \
     || logger -p 2 -st "$ALIAS" "Create Policy - ***Error*** Failed to add ${CREATEPOLICYNAME} to ${CONFIGFILE}"
   fi
@@ -2256,13 +2846,23 @@ WGFILES='
     && logger -p 4 -t "$ALIAS" "Edit Policy - Set Process Priority to ${PROCESSPRIORITY}" \
     || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to set Process Priority to ${PROCESSPRIORITY}"
   fi
+  
+  # Enable Add CNAMES
+  while true;do  
+    read -r -p "Enable adding CNAMES for this policy? ***Enter Y for Yes or N for No*** " yn
+      case $yn in
+        [Yy]* ) SETADDCNAMES="ADDCNAMES=1"; break;;
+        [Nn]* ) SETADDCNAMES="ADDCNAMES=0"; break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+      esac
+  done
 
   # Editing Policy in Config File
   if [[ -n "$(awk -F "|" '/^'${EDITPOLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Edit Policy - Modifying $EDITPOLICY in $CONFIGFILE"
     OLDINTERFACE="$(awk -F "|" '/^'${EDITPOLICY}'/ {print $4}' ${CONFIGFILE})"
     sed -i "\:"$EDITPOLICY":d" "$CONFIGFILE"
-    echo -e "${EDITPOLICY}|${POLICYDIR}/policy_${EDITPOLICY}_domainlist|${POLICYDIR}/policy_${EDITPOLICY}_domaintoIP|${NEWPOLICYINTERFACE}|${SETVERBOSELOGGING}|${SETPRIVATEIPS}" >> $CONFIGFILE \
+    echo -e "${EDITPOLICY}|${POLICYDIR}/policy_${EDITPOLICY}_domainlist|${POLICYDIR}/policy_${EDITPOLICY}_domaintoIP|${NEWPOLICYINTERFACE}|${SETVERBOSELOGGING}|${SETPRIVATEIPS}|${SETADDCNAMES}" >> $CONFIGFILE \
     && logger -p 4 -st "$ALIAS" "Edit Policy - Modified ${EDITPOLICY} in ${CONFIGFILE}" \
     || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to modify ${EDITPOLICY} in ${CONFIGFILE}"
   else
@@ -2319,16 +2919,16 @@ INTERFACES='
     IPV4S="$(grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" "${POLICYDIR}/policy_${EDITPOLICY}_domaintoIP" | sort -u)"
 
     # Create IPv6 IPSET
-    if [[ -z "$(ipset list DomainVPNRouting-${EDITPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null;then
+    if [[ -z "$(ipset list ${IPSETPREFIX}-${EDITPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Edit Policy - Creating IPv6 IPSET for ${EDITPOLICY}"
-      ipset create DomainVPNRouting-${EDITPOLICY}-ipv6 hash:ip family inet6 comment \
+      ipset create ${IPSETPREFIX}-${EDITPOLICY}-v6 hash:ip family inet6 comment \
       && logger -p 4 -st "$ALIAS" "Edit Policy - Created IPv6 IPSET for ${EDITPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to create IPv6 IPSET for ${EDITPOLICY}"
     fi
     # Create IPv4 IPSET
-    if [[ -z "$(ipset list DomainVPNRouting-${EDITPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null;then
+    if [[ -z "$(ipset list ${IPSETPREFIX}-${EDITPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Edit Policy - Creating IPv4 IPSET for ${EDITPOLICY}"
-      ipset create DomainVPNRouting-${EDITPOLICY}-ipv4 hash:ip family inet comment \
+      ipset create ${IPSETPREFIX}-${EDITPOLICY}-v4 hash:ip family inet comment \
       && logger -p 4 -st "$ALIAS" "Edit Policy - Created IPv4 IPSET for ${EDITPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to create IPv4 IPSET for ${EDITPOLICY}"
     fi
@@ -2348,25 +2948,25 @@ INTERFACES='
         || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
       fi
       # Recreate IPv6 IP6Tables OUTPUT Rule
-      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
-        ip6tables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
-        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}" \
-        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
+      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${NEWFWMARK}"
+        ip6tables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${NEWFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${NEWFWMARK}"
       fi
       # Recreate IPv6 IP6Tables PREROUTING Rule
-      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
-        ip6tables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
-        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}" \
-        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${NEWFWMARK}"
+      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${NEWFWMARK}"
+        ip6tables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${NEWFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${NEWFWMARK}"
       fi
       # Recreate IPv6 IP6Tables POSTROUTING Rule
-      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${NEWIFNAME}'" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
-        ip6tables -t mangle -A POSTROUTING -o ${NEWIFNAME} -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
-        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}" \
-        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
+      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${NEWIFNAME}'" && $10 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
+        ip6tables -t mangle -A POSTROUTING -o ${NEWIFNAME} -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
       fi
       # Delete Old FWMark IPv6 Rule
       if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 rule list from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDIPV6ROUTETABLE} priority ${OLDPRIORITY})" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
@@ -2383,25 +2983,25 @@ INTERFACES='
         || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
       fi
       # Delete Old IPv6 IP6Tables OUTPUT Rule
-      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
-        ip6tables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
-        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}" \
-        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${OLDFWMARK}"
+        ip6tables -t mangle -D OUTPUT -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${OLDFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${OLDFWMARK}"
       fi
       # Delete Old IPv6 IP6Tables PREROUTING Rule
-      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
-        ip6tables -t mangle -D PREROUTING -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
-        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}" \
-        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 FWMark: ${OLDFWMARK}"
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${OLDFWMARK}"
+        ip6tables -t mangle -D PREROUTING -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${OLDFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 FWMark: ${OLDFWMARK}"
       fi
       # Delete Old IPv6 IP6Tables POSTROUTING Rule
-      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${OLDIFNAME}'" && $10 == "DomainVPNRouting-'${EDITPOLICY}'-ipv6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
-        ip6tables -t mangle -D POSTROUTING -o ${OLDIFNAME} -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
-        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}" \
-        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${OLDIFNAME}'" && $10 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v6" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
+        ip6tables -t mangle -D POSTROUTING -o ${OLDIFNAME} -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v6 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+        && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}" \
+        || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
       fi
 
       # Recreate IPv6 Routes
@@ -2451,9 +3051,9 @@ INTERFACES='
       done
 
       # Save IPv6 IPSET if save file does not exist
-      if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+      if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-v6.ipset" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Edit Policy - Saving IPv6 IPSET for ${EDITPOLICY}"
-        ipset save DomainVPNRouting-${EDITPOLICY}-ipv6 -file ${POLICYDIR}/policy_${EDITPOLICY}-ipv6.ipset \
+        ipset save ${IPSETPREFIX}-${EDITPOLICY}-v6 -file ${POLICYDIR}/policy_${EDITPOLICY}-v6.ipset \
         && logger -p 4 -st "$ALIAS" "Edit Policy - Save IPv6 IPSET for ${EDITPOLICY}" \
         || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to save IPv6 IPSET for ${EDITPOLICY}"
       fi
@@ -2473,25 +3073,25 @@ INTERFACES='
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
     fi
     # Recreate IPv4 IPTables OUTPUT Rule
-    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Adding IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${NEWFWMARK}"
-      iptables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${NEWFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${NEWFWMARK}"
+    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Edit Policy - Adding IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${NEWFWMARK}"
+      iptables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${NEWFWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${NEWFWMARK}"
     fi
     # Recreate IPv4 IPTables PREROUTING Rule
-    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Adding IPTables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${NEWFWMARK}"
-      iptables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IPTables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${NEWFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${NEWFWMARK}"
+    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Edit Policy - Adding IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${NEWFWMARK}"
+      iptables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${NEWFWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${NEWFWMARK}"
     fi
     # Recreate IPv4 IPTables POSTROUTING Rule
-    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${NEWIFNAME}'" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Adding IPTables rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
-      iptables -t mangle -A POSTROUTING -o ${NEWIFNAME} -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IPTables rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IPTables rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
+    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${NEWIFNAME}'" && $11 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Edit Policy - Adding IPTables rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
+      iptables -t mangle -A POSTROUTING -o ${NEWIFNAME} -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} \
+      && logger -p 4 -st "$ALIAS" "Edit Policy - Added IPTables rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IPTables rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
     fi
     # Delete Old FWMark IPv4 Rule
     if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip rule list from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDROUTETABLE} priority ${OLDPRIORITY})" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
@@ -2508,25 +3108,25 @@ INTERFACES='
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
     fi
     # Delete Old IPv4 IPTables OUTPUT Rule
-    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${OLDFWMARK}"
-      iptables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv4 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${OLDFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IPTables OUTPUT rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${OLDFWMARK}"
+    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v4" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${OLDFWMARK}"
+      iptables -t mangle -D OUTPUT -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v4 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${OLDFWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${OLDFWMARK}"
     fi
     # Delete Old IPv4 IPTables PREROUTING Rule
-    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IPTables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${OLDFWMARK}"
-      iptables -t mangle -D PREROUTING -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv4 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IPTables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${OLDFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IPTables PREROUTING rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 FWMark: ${OLDFWMARK}"
+    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v4" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${OLDFWMARK}"
+      iptables -t mangle -D PREROUTING -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v4 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${OLDFWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 FWMark: ${OLDFWMARK}"
     fi
     # Delete Old IPv4 IPTables POSTROUTING Rule
-    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${OLDIFNAME}'" && $11 == "DomainVPNRouting-'${EDITPOLICY}'-ipv4" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IPTables rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
-      iptables -t mangle -D POSTROUTING -o ${OLDIFNAME} -m set --match-set DomainVPNRouting-${EDITPOLICY}-ipv4 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
-      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IPTables rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IPTables rule for IPSET: DomainVPNRouting-${EDITPOLICY}-ipv4 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
+    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${OLDIFNAME}'" && $11 == "'${IPSETPREFIX}'-'${EDITPOLICY}'-v4" && ( $NF == "'${OLDFWMARK}'" || $NF == "'${OLDFWMARK}'/'${OLDMASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IPTables rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
+      iptables -t mangle -D POSTROUTING -o ${OLDIFNAME} -m set --match-set ${IPSETPREFIX}-${EDITPOLICY}-v4 dst -j MARK --set-xmark ${OLDFWMARK}/${OLDMASK} \
+      && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IPTables rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IPTables rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 Interface: ${OLDIFNAME} FWMark: ${OLDFWMARK}"
     fi
 
     # Recreate IPv4 Routes and IPv4 Rules
@@ -2570,9 +3170,9 @@ INTERFACES='
       fi
     done
     # Save IPv4 IPSET if save file does not exist
-    if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+    if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-v4.ipset" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Edit Policy - Saving IPv4 IPSET for ${EDITPOLICY}"
-      ipset save DomainVPNRouting-${EDITPOLICY}-ipv4 -file ${POLICYDIR}/policy_${EDITPOLICY}-ipv4.ipset \
+      ipset save ${IPSETPREFIX}-${EDITPOLICY}-v4 -file ${POLICYDIR}/policy_${EDITPOLICY}-v4.ipset \
       && logger -p 4 -st "$ALIAS" "Edit Policy - Save IPv4 IPSET for ${EDITPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to save IPv4 IPSET for ${EDITPOLICY}"
     fi
@@ -2623,37 +3223,37 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" 
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to add Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
     # Delete IPv6 IP6Tables OUTPUT Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${DELETEPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${DELETEPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -D OUTPUT -m set --match-set ${IPSETPREFIX}-${DELETEPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v6 FWMark: ${FWMARK}"
     fi
     # Delete IPv6 IP6Tables PREROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -D PREROUTING -m set --match-set DomainVPNRouting-${DELETEPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${DELETEPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -D PREROUTING -m set --match-set ${IPSETPREFIX}-${DELETEPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v6 FWMark: ${FWMARK}"
     fi
     # Delete IPv6 IP6Tables POSTROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
-      ip6tables -t mangle -D POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${DELETEPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${DELETEPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+      ip6tables -t mangle -D POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${DELETEPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
     fi
     # Delete IPv6 IPSET
-    if [[ -n "$(ipset list DomainVPNRouting-${DELETEPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null;then
+    if [[ -n "$(ipset list ${IPSETPREFIX}-${DELETEPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPv6 IPSET for ${DELETEPOLICY}"
-      ipset destroy DomainVPNRouting-${DELETEPOLICY}-ipv6 \
+      ipset destroy ${IPSETPREFIX}-${DELETEPOLICY}-v6 \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPv6 IPSET for ${DELETEPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPv6 IPSET for ${DELETEPOLICY}"
     fi
     # Delete saved IPv6 IPSET
-    if [[ -f "${POLICYDIR}/policy_${DELETEPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+    if [[ -f "${POLICYDIR}/policy_${DELETEPOLICY}-v6.ipset" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPv6 IPSET saved file for ${DELETEPOLICY}"
-      rm -f ${POLICYDIR}/policy_${DELETEPOLICY}-ipv6.ipset \
+      rm -f ${POLICYDIR}/policy_${DELETEPOLICY}-v6.ipset \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPv6 IPSET saved file for ${DELETEPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPv6 IPSET saved file for ${DELETEPOLICY}"
     fi
@@ -2683,37 +3283,37 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" 
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
     # Delete IPv4 IPTables OUTPUT Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPTables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 FWMark: ${FWMARK}"
-      iptables -t mangle -D OUTPUT -m set --match-set DomainVPNRouting-${DELETEPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPTables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPTables OUTPUT rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${DELETEPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v4 FWMark: ${FWMARK}"
+      iptables -t mangle -D OUTPUT -m set --match-set ${IPSETPREFIX}-${DELETEPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v4 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v4 FWMark: ${FWMARK}"
     fi
     # Delete IPv4 IPTables PREROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPTables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 FWMark: ${FWMARK}"
-      iptables -t mangle -D PREROUTING -m set --match-set DomainVPNRouting-${DELETEPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPTables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPTables PREROUTING rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${DELETEPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v4 FWMark: ${FWMARK}"
+      iptables -t mangle -D PREROUTING -m set --match-set ${IPSETPREFIX}-${DELETEPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v4 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v4 FWMark: ${FWMARK}"
     fi
     # Delete IPv4 IPTables POSTROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "DomainVPNRouting-'${DELETEPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPTables rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
-      iptables -t mangle -D POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${DELETEPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPTables rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPTables rule for IPSET: DomainVPNRouting-${DELETEPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${DELETEPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPTables rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+      iptables -t mangle -D POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${DELETEPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPTables rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPTables rule for IPSET: ${IPSETPREFIX}-${DELETEPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
     fi
     # Delete IPv4 IPSET
-    if [[ -n "$(ipset list DomainVPNRouting-${DELETEPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null;then
+    if [[ -n "$(ipset list ${IPSETPREFIX}-${DELETEPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Policy - Creating IPv4 IPSET for ${DELETEPOLICY}"
-      ipset destroy DomainVPNRouting-${DELETEPOLICY}-ipv4 \
+      ipset destroy ${IPSETPREFIX}-${DELETEPOLICY}-v4 \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPv4 IPSET for ${DELETEPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPv4 IPSET for ${DELETEPOLICY}"
     fi
     # Delete saved IPv4 IPSET
-    if [[ -f "${POLICYDIR}/policy_${DELETEPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+    if [[ -f "${POLICYDIR}/policy_${DELETEPOLICY}-v4.ipset" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IPv4 IPSET saved file for ${DELETEPOLICY}"
-      rm -f ${POLICYDIR}/policy_${DELETEPOLICY}-ipv4.ipset \
+      rm -f ${POLICYDIR}/policy_${DELETEPOLICY}-v4.ipset \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPv4 IPSET saved file for ${DELETEPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPv4 IPSET saved file for ${DELETEPOLICY}"
     fi
@@ -2868,19 +3468,19 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
     for IPV6 in ${IPV6S};do
 
       # Delete from IPv6 IPSET with prefix fixed
-      if [[ -n "$(ipset list DomainVPNRouting-${POLICY}-ipv6 | grep -wo "${IPV6}::" 2>/dev/null)" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6"
-        ipset del DomainVPNRouting-${POLICY}-ipv6 ${IPV6}:: \
-        || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6" \
-        && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleting ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6" ;} ;}
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${POLICY}-v6 | grep -wo "${IPV6}::" 2>/dev/null)" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting ${IPV6}:: to IPSET: ${IPSETPREFIX}-${POLICY}-v6"
+        ipset del ${IPSETPREFIX}-${POLICY}-v6 ${IPV6}:: \
+        || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete ${IPV6}:: to IPSET: ${IPSETPREFIX}-${POLICY}-v6" \
+        && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleting ${IPV6}:: to IPSET: ${IPSETPREFIX}-${POLICY}-v6" ;} ;}
       fi
 
       # Delete from IPv6 IPSET
-      if [[ -n "$(ipset list DomainVPNRouting-${POLICY}-ipv6 | grep -wo "${IPV6}" 2>/dev/null)" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6"
-        ipset del DomainVPNRouting-${POLICY}-ipv6 ${IPV6} \
-        || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6" \
-        && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleting ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6" ;} ;}
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${POLICY}-v6 | grep -wo "${IPV6}" 2>/dev/null)" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting ${IPV6} to IPSET: ${IPSETPREFIX}-${POLICY}-v6"
+        ipset del ${IPSETPREFIX}-${POLICY}-v6 ${IPV6} \
+        || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete ${IPV6} to IPSET: ${IPSETPREFIX}-${POLICY}-v6" \
+        && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleting ${IPV6} to IPSET: ${IPSETPREFIX}-${POLICY}-v6" ;} ;}
       fi
 
       # Delete IPv6 Route with prefix fixed
@@ -2902,9 +3502,9 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
 
     # Save IPv6 IPSET if modified or does not exist
     [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-ipv6.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-v6.ipset" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Domain - Saving IPv6 IPSET for ${POLICY}"
-      ipset save DomainVPNRouting-${POLICY}-ipv6 -file ${POLICYDIR}/policy_${POLICY}-ipv6.ipset \
+      ipset save ${IPSETPREFIX}-${POLICY}-v6 -file ${POLICYDIR}/policy_${POLICY}-v6.ipset \
       && logger -p 4 -t "$ALIAS" "Delete Domain - Saved IPv6 IPSET for ${POLICY}" \
       || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to save IPv6 IPSET for ${POLICY}"
     fi
@@ -2915,11 +3515,11 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
     for IPV4 in ${IPV4S};do
 
       # Delete from IPv4 IPSET
-      if [[ -n "$(ipset list DomainVPNRouting-${POLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting ${IPV4} to IPSET: DomainVPNRouting-${POLICY}-ipv4"
-        ipset del DomainVPNRouting-${POLICY}-ipv4 ${IPV4} \
-        || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete ${IPV4} to IPSET: DomainVPNRouting-${POLICY}-ipv4" \
-        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleted ${IPV4} to IPSET: DomainVPNRouting-${POLICY}-ipv4" ;} ;}
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${POLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting ${IPV4} to IPSET: ${IPSETPREFIX}-${POLICY}-v4"
+        ipset del ${IPSETPREFIX}-${POLICY}-v4 ${IPV4} \
+        || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete ${IPV4} to IPSET: ${IPSETPREFIX}-${POLICY}-v4" \
+        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleted ${IPV4} to IPSET: ${IPSETPREFIX}-${POLICY}-v4" ;} ;}
       fi
 
       # Delete IPv4 IP Rule
@@ -2941,9 +3541,9 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
 
     # Save IPv4 IPSET if modified or does not exist
     [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-    if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-ipv4.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-v4.ipset" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Domain - Saving IPv4 IPSET for ${POLICY}"
-      ipset save DomainVPNRouting-${POLICY}-ipv4 -file ${POLICYDIR}/policy_${POLICY}-ipv4.ipset \
+      ipset save ${IPSETPREFIX}-${POLICY}-v4 -file ${POLICYDIR}/policy_${POLICY}-v4.ipset \
       && logger -p 4 -t "$ALIAS" "Delete Domain - Saved IPv4 IPSET for ${POLICY}" \
       || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to save IPv4 IPSET for ${POLICY}"
     fi
@@ -3043,19 +3643,19 @@ if [[ -n "$IP" ]] &>/dev/null;then
     for IPV6 in ${IPV6S};do
 
       # Delete from IPv6 IPSET with prefix fixed
-      if [[ -n "$(ipset list DomainVPNRouting-${POLICY}-ipv6 | grep -wo "${IPV6}::" 2>/dev/null)" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6"
-        ipset del DomainVPNRouting-${POLICY}-ipv6 ${IPV6}:: \
-        || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6" \
-        && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Deleting ${IPV6}:: to IPSET: DomainVPNRouting-${POLICY}-ipv6" ;} ;}
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${POLICY}-v6 | grep -wo "${IPV6}::" 2>/dev/null)" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting ${IPV6}:: to IPSET: ${IPSETPREFIX}-${POLICY}-v6"
+        ipset del ${IPSETPREFIX}-${POLICY}-v6 ${IPV6}:: \
+        || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete ${IPV6}:: to IPSET: ${IPSETPREFIX}-${POLICY}-v6" \
+        && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Deleting ${IPV6}:: to IPSET: ${IPSETPREFIX}-${POLICY}-v6" ;} ;}
       fi
 
       # Delete from IPv6 IPSET
-      if [[ -n "$(ipset list DomainVPNRouting-${POLICY}-ipv6 | grep -wo "${IPV6}" 2>/dev/null)" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6"
-        ipset del DomainVPNRouting-${POLICY}-ipv6 ${IPV6} \
-        || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6" \
-        && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Deleting ${IPV6} to IPSET: DomainVPNRouting-${POLICY}-ipv6" ;} ;}
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${POLICY}-v6 | grep -wo "${IPV6}" 2>/dev/null)" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting ${IPV6} to IPSET: ${IPSETPREFIX}-${POLICY}-v6"
+        ipset del ${IPSETPREFIX}-${POLICY}-v6 ${IPV6} \
+        || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete ${IPV6} to IPSET: ${IPSETPREFIX}-${POLICY}-v6" \
+        && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Deleting ${IPV6} to IPSET: ${IPSETPREFIX}-${POLICY}-v6" ;} ;}
       fi
 
       # Delete IPv6 Route with prefix fixed
@@ -3078,9 +3678,9 @@ if [[ -n "$IP" ]] &>/dev/null;then
 
     # Save IPv6 IPSET if modified or does not exist
     [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-ipv6.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-v6.ipset" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete IP - Saving IPv6 IPSET for ${POLICY}"
-      ipset save DomainVPNRouting-${POLICY}-ipv6 -file ${POLICYDIR}/policy_${POLICY}-ipv6.ipset \
+      ipset save ${IPSETPREFIX}-${POLICY}-v6 -file ${POLICYDIR}/policy_${POLICY}-v6.ipset \
       && logger -p 4 -t "$ALIAS" "Delete IP - Saved IPv6 IPSET for ${POLICY}" \
       || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to save IPv6 IPSET for ${POLICY}"
     fi
@@ -3091,11 +3691,11 @@ if [[ -n "$IP" ]] &>/dev/null;then
     for IPV4 in ${IPV4S};do
 
       # Delete from IPv4 IPSET
-      if [[ -n "$(ipset list DomainVPNRouting-${POLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting ${IPV4} to IPSET: DomainVPNRouting-${POLICY}-ipv4"
-        ipset del DomainVPNRouting-${POLICY}-ipv4 ${IPV4} \
-        || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete ${IPV4} to IPSET: DomainVPNRouting-${POLICY}-ipv4" \
-        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Deleted ${IPV4} to IPSET: DomainVPNRouting-${POLICY}-ipv4" ;} ;}
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${POLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting ${IPV4} to IPSET: ${IPSETPREFIX}-${POLICY}-v4"
+        ipset del ${IPSETPREFIX}-${POLICY}-v4 ${IPV4} \
+        || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete ${IPV4} to IPSET: ${IPSETPREFIX}-${POLICY}-v4" \
+        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Deleted ${IPV4} to IPSET: ${IPSETPREFIX}-${POLICY}-v4" ;} ;}
       fi
 
       # Delete IPv4 IPv4 Rule
@@ -3117,9 +3717,9 @@ if [[ -n "$IP" ]] &>/dev/null;then
 
     # Save IPv4 IPSET if modified or does not exist
     [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-    if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-ipv4.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-v4.ipset" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete IP - Saving IPv4 IPSET for ${POLICY}"
-      ipset save DomainVPNRouting-${POLICY}-ipv4 -file ${POLICYDIR}/policy_${POLICY}-ipv4.ipset \
+      ipset save ${IPSETPREFIX}-${POLICY}-v4 -file ${POLICYDIR}/policy_${POLICY}-v4.ipset \
       && logger -p 4 -t "$ALIAS" "Delete IP - Saved IPv4 IPSET for ${POLICY}" \
       || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to save IPv4 IPSET for ${POLICY}"
     fi
@@ -3175,6 +3775,14 @@ if [[ -n "${PROCESSPRIORITY+x}" ]] &>/dev/null;then
   || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to set Process Priority to ${PROCESSPRIORITY}"
 fi
 
+# Check if dig is installed use dig if installed, this will cause nslookup to be bypassed
+diginstalled="0"
+if [[ -f "/opt/bin/dig" ]] &>/dev/null;then
+  diginstalled="1"
+else
+  diginstalled="0"
+fi
+
 # Query Policies
 if [[ "${POLICY}" == "all" ]] &>/dev/null;then
   QUERYPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
@@ -3193,6 +3801,10 @@ fi
 restorepolicy
 
 for QUERYPOLICY in ${QUERYPOLICIES};do
+  # Check for DNS Override Configuration
+  INTERFACE="$(grep -w "$QUERYPOLICY" "$CONFIGFILE" | awk -F"|" '{print $4}')"
+  dnsdirector || return
+
   # Check if IPv6 IP Addresses are in policy file if IPv6 is Disabled and delete them
   if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null && [[ -n "$(grep -m1 -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" "${POLICYDIR}/policy_${QUERYPOLICY}_domaintoIP")" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Query Policy - Removing IPv6 IP Addresses from Policy: ${QUERYPOLICY}***"
@@ -3228,24 +3840,75 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=1" ]] &>/dev/null;then
     PRIVATEIPS="1"
   fi
+  
+  # Check if ADDCNAMES are Enabled
+  if [[ -z "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $7}' ${CONFIGFILE})" ]] &>/dev/null;then
+    ADDCNAMES="0"
+  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $7}' ${CONFIGFILE})" == "ADDCNAMES=0" ]] &>/dev/null;then
+    ADDCNAMES="0"
+  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $7}' ${CONFIGFILE})" == "ADDCNAMES=1" ]] &>/dev/null;then
+    ADDCNAMES="1"
+  fi
 
   # Display Query Policy
   if tty >/dev/null 2>&1;then
     printf '\033[K%b\r' "${BOLD}${UNDERLINE}Query Policy: ${QUERYPOLICY}${NOCOLOR}\n"
   fi
 
-  # Query Domains for IP Addresses
+  # Read Domain List File
   DOMAINS="$(cat ${POLICYDIR}/policy_${QUERYPOLICY}_domainlist)"
+  
+  # Configure DNSSERVER for dig
+  digdnsserver=""
+  if [[ -n "${DNSSERVER}" ]] &>/dev/null;then
+    digdnsserver="@${DNSSERVER}"
+  else
+    digdnsserver=""
+  fi
+  
+  # Add CNAME records to Domains if enabled and dig is installed
+  if [[ "${diginstalled}" ]] &>/dev/null && [[ "${ADDCNAMES}" == "1" ]] &>/dev/null;then
+    for DOMAIN in ${DOMAINS};do
+      for domaincname in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} CNAME +noall +answer | awk '{print substr($NF, 1, length ($NF)-1)}');do
+        logger -p 5 -t "$ALIAS" "Query Policy - Adding CNAME: ${domaincname} to ${QUERYPOLICY}"
+        echo -e "${domaincname}" >> "${POLICYDIR}/policy_${POLICY}_domainlist" \
+        && logger -p 4 -t "$ALIAS" "Query Policy - Added CNAME: ${domaincname} to ${QUERYPOLICY}" \
+        || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add CNAME: ${domaincname} to ${QUERYPOLICY}"
+      done
+    done
+	
+    # Read Domain list file after CNAME query
+    DOMAINS="$(cat ${POLICYDIR}/policy_${QUERYPOLICY}_domainlist)"
+  fi
+
+  # Query Domains for IP Addresses
   for DOMAIN in ${DOMAINS};do
     [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -st "$ALIAS" "Query Policy - Policy: ${QUERYPOLICY} Querying ${DOMAIN}"
+    [[ -n "$(echo ${DOMAIN} | grep '^[*].')" ]] &>/dev/null && domainwildcard="${DOMAIN:2}" || unset domainwildcard
     if tty >/dev/null 2>&1;then
       printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN}...${NOCOLOR}"
     fi
     # Determine to query for IPv6 and IPv4 IP Addresses or only IPv4 Addresses
     if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null;then
-      # Query dnsmasq log if enabled for IPv4
-      if [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
-        for IP in $(awk '($5 == "reply" || $5 == "cached") && ($6 ~ /.'${DOMAIN}'/ || $6 == "'${DOMAIN}'") && $8 ~ /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0"); do
+      # Query dnsmasq log if enabled for IPv4 and check if domain is wildcard
+      if [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+        for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 ~ /.*.'${domainwildcard}'/ && $8 ~ /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0"); do
+          if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
+            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+          elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+            if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+              [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+              if tty >/dev/null 2>&1;then
+                printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+              fi
+            fi
+          fi
+        done
+      # Query dnsmasq log if enabled for IPv4 for non wildcard
+      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+        for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 == "'${DOMAIN}'" && $8 ~ /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
@@ -3260,9 +3923,25 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
         done
       fi
+      # Perform dig lookup if installed for IPv4
+      if [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${diginstalled}" == "1" ]] &>/dev/null;then
+        for IP in $(dig ${digdnsserver} ${DOMAIN} A +noall +answer | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+          if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
+            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+          elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+            if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+              [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 3 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+              if tty >/dev/null 2>&1;then
+                printf '\033[K%b\r' "${RED}Query Policy: Domain: $DOMAIN queried $IP ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+              fi
+            fi
+          fi
+        done
       # Perform nslookup if nslookup is installed for IPv4
-      if [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
-        for IP in $(/usr/bin/nslookup ${DOMAIN} 2>/dev/null | awk '(NR>2)' | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0"); do
+      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
+        for IP in $(/usr/bin/nslookup ${DOMAIN} ${DNSSERVER} 2>/dev/null | awk '(NR>2)' | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
@@ -3278,9 +3957,25 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         done
       fi
     else
-      # Query dnsmasq log if enabled for IPv6 and IPv4
-      if [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
-        for IP in $(awk '($5 == "reply" || $5 == "cached") && ($6 ~ /.'${DOMAIN}'/ || $6 == "'${DOMAIN}'") && $8 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0\|::"); do
+      # Query dnsmasq log if enabled for IPv6 and IPv4 and check if domain is wildcard
+      if [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+        for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 ~ /.*.'${domainwildcard}'/ && $8 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0\|::"); do
+          if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
+            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+          elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+            if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+              [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 3 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+              if tty >/dev/null 2>&1;then
+                printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried $IP ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+              fi
+            fi
+          fi
+        done
+      # Query dnsmasq log if enabled for IPv6 and IPv4 for non wildcard
+      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+        for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 == "'${DOMAIN}'" && $8 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
@@ -3295,9 +3990,30 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
         done
       fi
+      # Perform dig lookup if installed for IPv6 and IPv4
+      if [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${diginstalled}" == "1" ]] &>/dev/null;then
+        # Capture IPv6 Records
+        for IP in $(dig ${digdnsserver} ${DOMAIN} AAAA +noall +answer | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+          echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+        done
+        # Capture IPv4 Records
+        for IP in $(dig ${digdnsserver} ${DOMAIN} A +noall +answer | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+          if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
+            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+          elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+            if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+              [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 3 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+              if tty >/dev/null 2>&1;then
+                printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+              fi
+            fi
+          fi
+        done
       # Perform nslookup if nslookup is installed for IPv6 and IPv4
-      if [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
-        for IP in $(/usr/bin/nslookup ${DOMAIN} 2>/dev/null | awk '(NR>2)' | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::"); do
+      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
+        for IP in $(/usr/bin/nslookup ${DOMAIN} ${DNSSERVER} 2>/dev/null | awk '(NR>2)' | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
@@ -3316,6 +4032,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     if tty >/dev/null 2>&1;then
       printf '\033[K'
     fi
+    unset domainwildcard
   done
 
   # Remove duplicates from Temporary File
@@ -3348,41 +4065,41 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 
   # Create IPv6 IPSET
   # Check for saved IPSET
-  if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Restoring IPv6 IPSET for ${QUERYPOLICY}"
-    ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" \
+    ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" \
     && logger -p 4 -t "$ALIAS" "Query Policy - Restored IPv6 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to restore IPv6 IPSET for ${QUERYPOLICY}"
   # Create saved IPv6 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Saving IPv6 IPSET for ${QUERYPOLICY}"
-    ipset save DomainVPNRouting-${QUERYPOLICY}-ipv6 -file ${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset \
+    ipset save ${IPSETPREFIX}-${QUERYPOLICY}-v6 -file ${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset \
     && logger -p 4 -t "$ALIAS" "Query Policy - Saved IPv6 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to save IPv6 IPSET for ${QUERYPOLICY}"
   # Create new IPv6 IPSET if it does not exist
-  elif [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null;then
+  elif [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Creating IPv6 IPSET for ${QUERYPOLICY}"
-    ipset create DomainVPNRouting-${QUERYPOLICY}-ipv6 hash:ip family inet6 comment \
+    ipset create ${IPSETPREFIX}-${QUERYPOLICY}-v6 hash:ip family inet6 comment \
     && { saveipv6ipset="1" && logger -p 4 -t "$ALIAS" "Query Policy - Created IPv6 IPSET for ${QUERYPOLICY}" ;} \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to create IPv6 IPSET for ${QUERYPOLICY}"
   fi
   # Create IPv4 IPSET
   # Check for saved IPv4 IPSET
-  if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Restoring IPv4 IPSET for ${QUERYPOLICY}"
-    ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" \
+    ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" \
     && logger -p 4 -t "$ALIAS" "Query Policy - Restored IPv4 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to restore IPv4 IPSET for ${QUERYPOLICY}"
   # Create saved IPv4 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Saving IPv4 IPSET for ${QUERYPOLICY}"
-    ipset save DomainVPNRouting-${QUERYPOLICY}-ipv4 -file ${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset \
+    ipset save ${IPSETPREFIX}-${QUERYPOLICY}-v4 -file ${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset \
     && logger -p 4 -t "$ALIAS" "Query Policy - Saved IPv4 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to save IPv4 IPSET for ${QUERYPOLICY}"
   # Create new IPv4 IPSET if it does not exist
-  elif [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null;then
+  elif [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Creating IPv4 IPSET for ${QUERYPOLICY}"
-    ipset create DomainVPNRouting-${QUERYPOLICY}-ipv4 hash:ip family inet comment \
+    ipset create ${IPSETPREFIX}-${QUERYPOLICY}-v4 hash:ip family inet comment \
     && { saveipv4ipset="1" && logger -p 4 -t "$ALIAS" "Query Policy - Created IPv4 IPSET for ${QUERYPOLICY}" ;} \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to create IPv4 IPSET for ${QUERYPOLICY}"
   fi
@@ -3420,27 +4137,27 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     fi
 
     # Create IPv6 IP6Tables OUTPUT Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Query Policy - Adding IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${QUERYPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Query Policy - Added IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Query Policy - Adding IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Query Policy - Added IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}"
     fi
 
     # Create IPv6 IP6Tables PREROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Query Policy - Adding IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${QUERYPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Query Policy - Added IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Query Policy - Adding IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Query Policy - Added IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}"
     fi
 
     # Create IPv6 IP6Tables POSTROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Query Policy - Adding IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
-      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${QUERYPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Query Policy - Added IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Query Policy - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Query Policy - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
     fi
 
     # Add IPv6s to IPSET or create IPv6 Routes
@@ -3449,12 +4166,12 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         # Check IPv6 for prefix error
         if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
-          if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
+          if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6}:: to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6"
-            ipset add DomainVPNRouting-${QUERYPOLICY}-ipv6 ${IPV6}:: comment "${comment}" \
-            || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6" \
-            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV6}:: to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6" ;} ;}
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
+            ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6}:: comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" ;} ;}
             unset comment
           fi
           # Remove IPv6 Route
@@ -3483,12 +4200,12 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
         else
           # Add to IPv6 IPSET
-          if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
-            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6"
+          if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-            ipset add DomainVPNRouting-${QUERYPOLICY}-ipv6 ${IPV6} comment "${comment}" \
-            || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV6} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6" \
-            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV6} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6" ;} ;}
+            ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6} comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" ;} ;}
             unset comment
           fi
           # Remove IPv6 Route
@@ -3522,12 +4239,12 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         # Check IPv6 for prefix error
         if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
-          if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
-            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6}:: to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6"
+          if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-            ipset add DomainVPNRouting-${QUERYPOLICY}-ipv6 ${IPV6}:: comment "${comment}" \
-            || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6" \
-            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV6}:: to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6" ;} ;}
+            ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6}:: comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" ;} ;}
             unset comment
           fi
           # Add IPv6 Route
@@ -3547,12 +4264,12 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
         else
           # Add to IPv6 IPSET
-          if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
-            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6"
+          if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-            ipset add DomainVPNRouting-${QUERYPOLICY}-ipv6 ${IPV6} comment "${comment}" \
-            || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV6} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6" \
-            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV6} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv6" ;} ;}
+            ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6} comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" ;} ;}
           fi
           # Add IPv6 Route
           if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
@@ -3575,9 +4292,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 
     # Save IPv6 IPSET if modified or does not exist
     [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Query Policy - Saving IPv6 IPSET for ${QUERYPOLICY}"
-      ipset save DomainVPNRouting-${QUERYPOLICY}-ipv6 -file ${POLICYDIR}/policy_${QUERYPOLICY}-ipv6.ipset \
+      ipset save ${IPSETPREFIX}-${QUERYPOLICY}-v6 -file ${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset \
       && logger -p 4 -t "$ALIAS" "Query Policy - Save IPv6 IPSET for ${QUERYPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to save IPv6 IPSET for ${QUERYPOLICY}"
     fi
@@ -3607,39 +4324,39 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
 
   # Create IPv4 IPTables OUTPUT Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Query Policy - Adding IPTables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 FWMark: ${FWMARK}"
-    iptables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${QUERYPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-    && logger -p 4 -t "$ALIAS" "Query Policy - Added IPTables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 FWMark: ${FWMARK}" \
-    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 FWMark: ${FWMARK}"
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Query Policy - Adding IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}"
+    iptables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Query Policy - Added IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}"
   fi
 
   # Create IPv4 IPTables PREROUTING Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Query Policy - Adding IPTables PREROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 FWMark: ${FWMARK}"
-    iptables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${QUERYPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-    && logger -p 4 -t "$ALIAS" "Query Policy - Added IPTables PREROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 FWMark: ${FWMARK}" \
-    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 FWMark: ${FWMARK}"
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Query Policy - Adding IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}"
+    iptables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Query Policy - Added IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}"
   fi
 
   # Create IPv4 IPTables POSTROUTING Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "DomainVPNRouting-'${QUERYPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Query Policy - Adding IPTables rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
-    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${QUERYPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-    && logger -p 4 -t "$ALIAS" "Query Policy - Added IPTables rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
-    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IPTables rule for IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Query Policy - Adding IPTables rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Query Policy - Added IPTables rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IPTables rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
   fi
 
   # Add IPv4s to IPSET or create IPv4 Routes or rules and remove old IPv4 Routes or Rules
   if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "$(ip rule list from all fwmark ${FWMARK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null || [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
-      if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV4} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4"
+      if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-        ipset add DomainVPNRouting-${QUERYPOLICY}-ipv4 ${IPV4} comment "${comment}" \
-        || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV4} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4" \
-        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV4} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4" ;} ;}
+        ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v4 ${IPV4} comment "${comment}" \
+        || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4" \
+        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4" ;} ;}
         unset comment
       fi
       # Remove IPv4 Routes
@@ -3671,12 +4388,12 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   elif [[ -z "${FWMARK}" ]] &>/dev/null || [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
-      if [[ -z "$(ipset list DomainVPNRouting-${QUERYPOLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV4} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4"
+      if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-        ipset add DomainVPNRouting-${QUERYPOLICY}-ipv4 ${IPV4} comment "${comment}" \
-        || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV4} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4" \
-        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV4} to IPSET: DomainVPNRouting-${QUERYPOLICY}-ipv4" ;} ;}
+        ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v4 ${IPV4} comment "${comment}" \
+        || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4" \
+        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4" ;} ;}
         unset comment
       fi
       # Create IPv4 Routes
@@ -3709,9 +4426,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 
   # Save IPv4 IPSET if modified or does not exist
   [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-  if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+  if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Saving IPv4 IPSET for ${QUERYPOLICY}"
-    ipset save DomainVPNRouting-${QUERYPOLICY}-ipv4 -file ${POLICYDIR}/policy_${QUERYPOLICY}-ipv4.ipset \
+    ipset save ${IPSETPREFIX}-${QUERYPOLICY}-v4 -file ${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset \
     && logger -p 4 -t "$ALIAS" "Query Policy - Save IPv4 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to save IPv4 IPSET for ${QUERYPOLICY}"
   fi
@@ -3719,7 +4436,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 
 done
 # Clear Parameters
-unset VERBOSELOGGING PRIVATEIPS INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE DOMAIN IP FWMARK MASK IPV6ROUTETABLE OLDIPV6ROUTETABLE
+unset VERBOSELOGGING PRIVATEIPS INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE DOMAIN IP FWMARK MASK IPV6ROUTETABLE OLDIPV6ROUTETABLE domainwildcard
 
 if tty >/dev/null 2>&1;then
   printf '\033[K'
@@ -3786,54 +4503,54 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
 
   # Create IPv6 IPSET
   # Check for saved IPSET
-  if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Restoring IPv6 IPSET for ${RESTOREPOLICY}"
-    ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" \
+    ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Restored IPv6 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to restore IPv6 IPSET for ${RESTOREPOLICY}"
 	[[ "${restoreipv6mode}" == "0" ]] &>/dev/null && restoreipv6mode="1"
   # Create saved IPv6 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv6 IPSET for ${RESTOREPOLICY}"
-    ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv6 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset \
+    ipset save ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Saved IPv6 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv6 IPSET for ${RESTOREPOLICY}"
 	[[ "${restoreipv6mode}" == "0" ]] &>/dev/null && restoreipv6mode="1"
   # Create new IPv6 IPSET if it does not exist
-  elif [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null;then
+  elif [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Creating IPv6 IPSET for ${RESTOREPOLICY}"
-    ipset create DomainVPNRouting-${RESTOREPOLICY}-ipv6 hash:ip family inet6 comment \
+    ipset create ${IPSETPREFIX}-${RESTOREPOLICY}-v6 hash:ip family inet6 comment \
     && { saveipv6ipset="1" && logger -p 4 -t "$ALIAS" "Restore Policy - Created IPv6 IPSET for ${RESTOREPOLICY}" ;} \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to create IPv6 IPSET for ${RESTOREPOLICY}"
 	[[ "${restoreipv6mode}" == "0" ]] &>/dev/null && restoreipv6mode="2"
   # Set IPSet restore flag if both IPSET and file exist
-  elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null;then
 	[[ "${restoreipv6mode}" == "0" ]] &>/dev/null && restoreipv6mode="1"
   fi
   # Create IPv4 IPSET
   # Check for saved IPv4 IPSET
-  if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Restoring IPv4 IPSET for ${RESTOREPOLICY}"
-    ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" \
+    ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Restored IPv4 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to restore IPv4 IPSET for ${RESTOREPOLICY}"
 	[[ "${restoreipv4mode}" == "0" ]] &>/dev/null && restoreipv4mode="1"
   # Create saved IPv4 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv4 IPSET for ${RESTOREPOLICY}"
-    ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv4 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset \
+    ipset save ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Saved IPv4 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv4 IPSET for ${RESTOREPOLICY}"
 	[[ "${restoreipv4mode}" == "0" ]] &>/dev/null && restoreipv4mode="1"
   # Create new IPv4 IPSET if it does not exist
-  elif [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null;then
+  elif [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Creating IPv4 IPSET for ${RESTOREPOLICY}"
-    ipset create DomainVPNRouting-${RESTOREPOLICY}-ipv4 hash:ip family inet comment \
+    ipset create ${IPSETPREFIX}-${RESTOREPOLICY}-v4 hash:ip family inet comment \
     && { saveipv4ipset="1" && logger -p 4 -t "$ALIAS" "Restore Policy - Created IPv4 IPSET for ${RESTOREPOLICY}" ;} \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to create IPv4 IPSET for ${RESTOREPOLICY}"
 	[[ "${restoreipv4mode}" == "0" ]] &>/dev/null && restoreipv4mode="2"
   # Set IPSet restore flag if both IPSET and file exist
-  elif [[ -n "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null;then
 	[[ "${restoreipv4mode}" == "0" ]] &>/dev/null && restoreipv4mode="1"
   fi
 
@@ -3870,27 +4587,27 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     fi
 
     # Create IPv6 IP6Tables OUTPUT Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}"
     fi
 
     # Create IPv6 IP6Tables PREROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}"
     fi
 
     # Create IPv6 IP6Tables POSTROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
-      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
-      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
     fi
 
     # Add IPv6s to IPSET or create IPv6 Routes
@@ -3899,12 +4616,12 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
         # Check IPv6 for prefix error
         if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
-          if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
+          if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6"
-            ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv6 ${IPV6}:: comment "${comment}" \
-            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" \
-            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" ;} ;}
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
+            ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6}:: comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" ;} ;}
             unset comment
           fi
           # Remove IPv6 Route
@@ -3933,12 +4650,12 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           fi
         else
           # Add to IPv6 IPSET
-          if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
-            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6"
+          if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-            ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv6 ${IPV6} comment "${comment}" \
-            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" \
-            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" ;} ;}
+            ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6} comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" ;} ;}
             unset comment
           fi
           # Remove IPv6 Route
@@ -3972,12 +4689,12 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
         # Check IPv6 for prefix error
         if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
-          if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
-            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6"
+          if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-            ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv6 ${IPV6}:: comment "${comment}" \
-            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" \
-            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6}:: to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" ;} ;}
+            ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6}:: comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" ;} ;}
             unset comment
           fi
           # Add IPv6 Route
@@ -3997,12 +4714,12 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           fi
         else
           # Add to IPv6 IPSET
-          if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
-            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6"
+          if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+            [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-            ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv6 ${IPV6} comment "${comment}" \
-            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" \
-            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv6" ;} ;}
+            ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6} comment "${comment}" \
+            || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" \
+            && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" ;} ;}
           fi
           # Add IPv6 Route
           if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
@@ -4025,9 +4742,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
 
     # Save IPv6 IPSET if modified or does not exist
     [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv6 IPSET for ${RESTOREPOLICY}"
-      ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv6 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv6.ipset \
+      ipset save ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset \
       && logger -p 4 -t "$ALIAS" "Restore Policy - Save IPv6 IPSET for ${RESTOREPOLICY}" \
       || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv6 IPSET for ${RESTOREPOLICY}"
     fi
@@ -4057,39 +4774,39 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   fi
 
   # Create IPv4 IPTables OUTPUT Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Restore Policy - Adding IPTables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}"
-    iptables -t mangle -A OUTPUT -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPTables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}" \
-    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}"
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Adding IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}"
+    iptables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}"
   fi
 
   # Create IPv4 IPTables PREROUTING Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Restore Policy - Adding IPTables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}"
-    iptables -t mangle -A PREROUTING -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPTables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}" \
-    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 FWMark: ${FWMARK}"
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Adding IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}"
+    iptables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}"
   fi
 
   # Create IPv4 IPTables POSTROUTING Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "DomainVPNRouting-'${RESTOREPOLICY}'-ipv4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
-    logger -p 5 -t "$ALIAS" "Restore Policy - Adding IPTables rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
-    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set DomainVPNRouting-${RESTOREPOLICY}-ipv4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
-    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPTables rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
-    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPTables rule for IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "$ALIAS" "Restore Policy - Adding IPTables rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPTables rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+    || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPTables rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
   fi
 
   # Add IPv4s to IPSET or create IPv4 Routes or rules and remove old IPv4 Routes or Rules
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && { [[ -n "$(ip rule list from all fwmark ${FWMARK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null || [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
-      if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4"
+      if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-        ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv4 ${IPV4} comment "${comment}" \
-        || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4" \
-        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4" ;} ;}
+        ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v4 ${IPV4} comment "${comment}" \
+        || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4" \
+        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4" ;} ;}
         unset comment
       fi
       # Remove IPv4 Routes
@@ -4121,12 +4838,12 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   elif [[ -z "${FWMARK}" ]] &>/dev/null || { [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
-      if [[ -z "$(ipset list DomainVPNRouting-${RESTOREPOLICY}-ipv4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
-        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4"
+      if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+        [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
-        ipset add DomainVPNRouting-${RESTOREPOLICY}-ipv4 ${IPV4} comment "${comment}" \
-        || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4" \
-        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV4} to IPSET: DomainVPNRouting-${RESTOREPOLICY}-ipv4" ;} ;}
+        ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v4 ${IPV4} comment "${comment}" \
+        || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4" \
+        && { saveipv4ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4" ;} ;}
         unset comment
       fi
       # Create IPv4 Routes
@@ -4159,9 +4876,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
 
   # Save IPv4 IPSET if modified or does not exist
   [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-  if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset" ]] &>/dev/null;then
+  if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Saving IPv4 IPSET for ${RESTOREPOLICY}"
-    ipset save DomainVPNRouting-${RESTOREPOLICY}-ipv4 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-ipv4.ipset \
+    ipset save ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Save IPv4 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to save IPv4 IPSET for ${RESTOREPOLICY}"
   fi
@@ -4171,12 +4888,19 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   unset restoreipv6mode restoreipv4mode
 
 done
+
 # Clear Parameters
 unset INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE DOMAIN IP FWMARK MASK IPV6ROUTETABLE OLDIPV6ROUTETABLE
 
 if tty >/dev/null 2>&1;then
   printf '\033[K'
 fi
+
+# Delete old IPSets Pre-version 2.1.4
+if [[ -n "$(ipset list -name | grep -e "DomainVPNRouting-")" ]] &>/dev/null;then
+  deleteoldipsetsprev300
+fi
+
 return
 }
 
@@ -4235,7 +4959,7 @@ killscript ()
 {
 # Prompt for Confirmation
 while [[ "${mode}" == "kill" ]] &>/dev/null;do
-  read -p "Are you sure you want to kill Domain VPN Routing? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
+  read -p "Are you sure you want to kill ${FRIENDLYNAME}? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
   case $yn in
     [Yy]* ) break;;
     [Nn]* ) return;;
@@ -4400,6 +5124,27 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
   else
     sleep 1
   fi
+  
+  # PRODUCTID
+  if [[ -z "${PRODUCTID+x}" ]] &>/dev/null;then
+    PRODUCTID="$(nvram get productid & nvramcheck)"
+    [[ -n "${PRODUCTID}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set PRODUCTID" && unset PRODUCTID && continue ;}
+  fi
+  
+  # Set number of OVPN Client Slots
+  if [[ "${PRODUCTID}" == "RT-AC68U" ]] &>/dev/null || [[ "${PRODUCTID}" == "DSL-AC68U" ]] &>/dev/null;then
+	ovpncslots="2"
+    wgcslots="0"
+  else
+    ovpncslots="5"
+    wgcslots="0"
+  fi
+  
+  # IPVERSION
+  if [[ -z "${IPVERSION+x}" ]] &>/dev/null;then
+    IPVERSION="$(ip -V | awk -F "-" '/iproute2/ {print $2}')"
+    [[ -n "${IPVERSION}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set IPVERSION" && unset IPVERSION && continue ;}
+  fi
 
   # WANSDUALWANENABLE
   if [[ -z "${WANSDUALWANENABLE+x}" ]] &>/dev/null;then
@@ -4507,139 +5252,149 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
     WAN1MASK="0xf000"
   fi
 
-  # OVPNC1STATE
-  if [[ -z "${OVPNC1STATE+x}" ]] &>/dev/null;then
-    OVPNC1STATE="$(nvram get vpn_client1_state & nvramcheck)"
-    { [[ -n "$OVPNC1STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client1" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC1STATE" && unset OVPNC1STATE && continue ;}
+  if [[ "${ovpncslots}" -ge "1" ]] &>/dev/null;then
+    # OVPNC1STATE
+    if [[ -z "${OVPNC1STATE+x}" ]] &>/dev/null;then
+      OVPNC1STATE="$(nvram get vpn_client1_state & nvramcheck)"
+      { [[ -n "$OVPNC1STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client1" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC1STATE" && unset OVPNC1STATE && continue ;}
+    fi
+
+    # OVPNC1IFNAME
+    if [[ -z "${OVPNC1IFNAME+x}" ]] &>/dev/null;then
+      OVPNC1IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
+    fi
+
+    # OVPNC1IPV6ADDR
+    if [[ -z "${OVPNC1IPV6ADDR+x}" ]] &>/dev/null;then
+      OVPNC1IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client1/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
+
+    # OVPNC1RGW
+    if [[ -z "${OVPNC1RGW+x}" ]] &>/dev/null;then
+      OVPNC1RGW="$(nvram get vpn_client1_rgw & nvramcheck)"
+      [[ -n "$OVPNC1RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC1RGW" && unset OVPNC1RGW && continue ;}
+    fi
+
+    # OVPNC1IPV6VPNGW
+    if [[ -z "${OVPNC1IPV6VPNGW+x}" ]] &>/dev/null;then
+      OVPNC1IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
+    fi
   fi
 
-  # OVPNC1IFNAME
-  if [[ -z "${OVPNC1IFNAME+x}" ]] &>/dev/null;then
-    OVPNC1IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
-  fi
+  if [[ "${ovpncslots}" -ge "2" ]] &>/dev/null;then
+    # OVPNC2STATE
+    if [[ -z "${OVPNC2STATE+x}" ]] &>/dev/null;then
+      OVPNC2STATE="$(nvram get vpn_client2_state & nvramcheck)"
+      { [[ -n "$OVPNC2STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client2" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC2STATE" && unset OVPNC2STATE && continue ;}
+    fi
 
-  # OVPNC1IPV6ADDR
-  if [[ -z "${OVPNC1IPV6ADDR+x}" ]] &>/dev/null;then
-    OVPNC1IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client1/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
-  fi
+    # OVPNC2IFNAME
+    if [[ -z "${OVPNC2IFNAME+x}" ]] &>/dev/null;then
+      OVPNC2IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
+    fi
 
-  # OVPNC1RGW
-  if [[ -z "${OVPNC1RGW+x}" ]] &>/dev/null;then
-    OVPNC1RGW="$(nvram get vpn_client1_rgw & nvramcheck)"
-    [[ -n "$OVPNC1RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC1RGW" && unset OVPNC1RGW && continue ;}
-  fi
+    # OVPNC2IPV6ADDR
+    if [[ -z "${OVPNC2IPV6ADDR+x}" ]] &>/dev/null;then
+      OVPNC2IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
 
-  # OVPNC1IPV6VPNGW
-  if [[ -z "${OVPNC1IPV6VPNGW+x}" ]] &>/dev/null;then
-    OVPNC1IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
-  fi
+    # OVPNC2RGW
+    if [[ -z "${OVPNC2RGW+x}" ]] &>/dev/null;then
+      OVPNC2RGW="$(nvram get vpn_client2_rgw & nvramcheck)"
+      [[ -n "$OVPNC2RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC2RGW" && unset OVPNC2RGW && continue ;}
+    fi
 
-  # OVPNC2STATE
-  if [[ -z "${OVPNC2STATE+x}" ]] &>/dev/null;then
-    OVPNC2STATE="$(nvram get vpn_client2_state & nvramcheck)"
-    { [[ -n "$OVPNC2STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client2" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC2STATE" && unset OVPNC2STATE && continue ;}
+    # OVPNC2IPV6VPNGW
+    if [[ -z "${OVPNC2IPV6VPNGW+x}" ]] &>/dev/null;then
+      OVPNC2IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
+    fi
   fi
+  
+  if [[ "${ovpncslots}" -ge "3" ]] &>/dev/null;then
+    # OVPNC3STATE
+    if [[ -z "${OVPNC3STATE+x}" ]] &>/dev/null;then
+      OVPNC3STATE="$(nvram get vpn_client3_state & nvramcheck)"
+      { [[ -n "$OVPNC3STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client3" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC3STATE" && unset OVPNC3STATE && continue ;}
+    fi
 
-  # OVPNC2IFNAME
-  if [[ -z "${OVPNC2IFNAME+x}" ]] &>/dev/null;then
-    OVPNC2IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
+    # OVPNC3IFNAME
+    if [[ -z "${OVPNC3IFNAME+x}" ]] &>/dev/null;then
+      OVPNC3IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
+    fi
+
+    # OVPNC3IPV6ADDR
+    if [[ -z "${OVPNC3IPV6ADDR+x}" ]] &>/dev/null;then
+      OVPNC3IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
+
+    # OVPNC3RGW
+    if [[ -z "${OVPNC3RGW+x}" ]] &>/dev/null;then
+      OVPNC3RGW="$(nvram get vpn_client3_rgw & nvramcheck)"
+      [[ -n "$OVPNC3RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC3RGW" && unset OVPNC3RGW && continue ;}
+    fi
+
+    # OVPNC3IPV6VPNGW
+    if [[ -z "${OVPNC3IPV6VPNGW+x}" ]] &>/dev/null;then
+      OVPNC3IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
+    fi
   fi
+	
+  if [[ "${ovpncslots}" -ge "4" ]] &>/dev/null;then
+    # OVPNC4STATE
+    if [[ -z "${OVPNC4STATE+x}" ]] &>/dev/null;then
+      OVPNC4STATE="$(nvram get vpn_client4_state & nvramcheck)"
+      { [[ -n "$OVPNC4STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client4" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC4STATE" && unset OVPNC4STATE && continue ;}
+    fi
 
-  # OVPNC2IPV6ADDR
-  if [[ -z "${OVPNC2IPV6ADDR+x}" ]] &>/dev/null;then
-    OVPNC2IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    # OVPNC4IFNAME
+    if [[ -z "${OVPNC4IFNAME+x}" ]] &>/dev/null;then
+      OVPNC4IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
+    fi
+
+    # OVPNC4IPV6ADDR
+    if [[ -z "${OVPNC4IPV6ADDR+x}" ]] &>/dev/null;then
+      OVPNC4IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
+
+    # OVPNC4RGW
+    if [[ -z "${OVPNC4RGW+x}" ]] &>/dev/null;then
+      OVPNC4RGW="$(nvram get vpn_client4_rgw & nvramcheck)"
+      [[ -n "$OVPNC4RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC4RGW" && unset OVPNC4RGW && continue ;}
+    fi
+
+    # OVPNC4IPV6VPNGW
+    if [[ -z "${OVPNC4IPV6VPNGW+x}" ]] &>/dev/null;then
+      OVPNC4IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
+    fi
   fi
+  
+  if [[ "${ovpncslots}" -ge "5" ]] &>/dev/null;then
+    # OVPNC5STATE
+    if [[ -z "${OVPNC5STATE+x}" ]] &>/dev/null;then
+      OVPNC5STATE="$(nvram get vpn_client5_state & nvramcheck)"
+      { [[ -n "$OVPNC5STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client5" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC5STATE" && unset OVPNC5STATE && continue ;}
+    fi
 
-  # OVPNC2RGW
-  if [[ -z "${OVPNC2RGW+x}" ]] &>/dev/null;then
-    OVPNC2RGW="$(nvram get vpn_client2_rgw & nvramcheck)"
-    [[ -n "$OVPNC2RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC2RGW" && unset OVPNC2RGW && continue ;}
-  fi
+    # OVPNC5IFNAME
+    if [[ -z "${OVPNC5IFNAME+x}" ]] &>/dev/null;then
+      OVPNC5IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
+    fi
 
-  # OVPNC2IPV6VPNGW
-  if [[ -z "${OVPNC2IPV6VPNGW+x}" ]] &>/dev/null;then
-    OVPNC2IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
-  fi
+    # OVPNC5IPV6ADDR
+    if [[ -z "${OVPNC5IPV6ADDR+x}" ]] &>/dev/null;then
+      OVPNC5IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
 
-  # OVPNC3STATE
-  if [[ -z "${OVPNC3STATE+x}" ]] &>/dev/null;then
-    OVPNC3STATE="$(nvram get vpn_client3_state & nvramcheck)"
-    { [[ -n "$OVPNC3STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client3" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC3STATE" && unset OVPNC3STATE && continue ;}
-  fi
+    # OVPNC5RGW
+    if [[ -z "${OVPNC5RGW+x}" ]] &>/dev/null;then
+      OVPNC5RGW="$(nvram get vpn_client5_rgw & nvramcheck)"
+      [[ -n "$OVPNC5RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC5RGW" && unset OVPNC5RGW && continue ;}
+    fi
 
-  # OVPNC3IFNAME
-  if [[ -z "${OVPNC3IFNAME+x}" ]] &>/dev/null;then
-    OVPNC3IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
-  fi
-
-  # OVPNC3IPV6ADDR
-  if [[ -z "${OVPNC3IPV6ADDR+x}" ]] &>/dev/null;then
-    OVPNC3IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
-  fi
-
-  # OVPNC3RGW
-  if [[ -z "${OVPNC3RGW+x}" ]] &>/dev/null;then
-    OVPNC3RGW="$(nvram get vpn_client3_rgw & nvramcheck)"
-    [[ -n "$OVPNC3RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC3RGW" && unset OVPNC3RGW && continue ;}
-  fi
-
-  # OVPNC3IPV6VPNGW
-  if [[ -z "${OVPNC3IPV6VPNGW+x}" ]] &>/dev/null;then
-    OVPNC3IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
-  fi
-
-  # OVPNC4STATE
-  if [[ -z "${OVPNC4STATE+x}" ]] &>/dev/null;then
-    OVPNC4STATE="$(nvram get vpn_client4_state & nvramcheck)"
-    { [[ -n "$OVPNC4STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client4" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC4STATE" && unset OVPNC4STATE && continue ;}
-  fi
-
-  # OVPNC4IFNAME
-  if [[ -z "${OVPNC4IFNAME+x}" ]] &>/dev/null;then
-    OVPNC4IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
-  fi
-
-  # OVPNC4IPV6ADDR
-  if [[ -z "${OVPNC4IPV6ADDR+x}" ]] &>/dev/null;then
-    OVPNC4IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
-  fi
-
-  # OVPNC4RGW
-  if [[ -z "${OVPNC4RGW+x}" ]] &>/dev/null;then
-    OVPNC4RGW="$(nvram get vpn_client4_rgw & nvramcheck)"
-    [[ -n "$OVPNC4RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC4RGW" && unset OVPNC4RGW && continue ;}
-  fi
-
-  # OVPNC4IPV6VPNGW
-  if [[ -z "${OVPNC4IPV6VPNGW+x}" ]] &>/dev/null;then
-    OVPNC4IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
-  fi
-
-  # OVPNC5STATE
-  if [[ -z "${OVPNC5STATE+x}" ]] &>/dev/null;then
-    OVPNC5STATE="$(nvram get vpn_client5_state & nvramcheck)"
-    { [[ -n "$OVPNC5STATE" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client5" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC5STATE" && unset OVPNC5STATE && continue ;}
-  fi
-
-  # OVPNC5IFNAME
-  if [[ -z "${OVPNC5IFNAME+x}" ]] &>/dev/null;then
-    OVPNC5IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
-  fi
-
-  # OVPNC5IPV6ADDR
-  if [[ -z "${OVPNC5IPV6ADDR+x}" ]] &>/dev/null;then
-    OVPNC5IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
-  fi
-
-  # OVPNC5RGW
-  if [[ -z "${OVPNC5RGW+x}" ]] &>/dev/null;then
-    OVPNC5RGW="$(nvram get vpn_client5_rgw & nvramcheck)"
-    [[ -n "$OVPNC5RGW" ]] &>/dev/null || { logger -p 6 -t "$ALIAS" "Debug - failed to set OVPNC5RGW" && unset OVPNC5RGW && continue ;}
-  fi
-
-  # OVPNC5IPV6VPNGW
-  if [[ -z "${OVPNC5IPV6VPNGW+x}" ]] &>/dev/null;then
-    OVPNC5IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
+    # OVPNC5IPV6VPNGW
+    if [[ -z "${OVPNC5IPV6VPNGW+x}" ]] &>/dev/null;then
+      OVPNC5IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
+    fi
   fi
 
   # OVPNS1IFNAME
@@ -4652,89 +5407,99 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
     OVPNS2IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/server2/config.ovpn 2>/dev/null)"
   fi
 
-  # WGC1STATE
-  if [[ -z "${WGC1STATE+x}" ]] &>/dev/null;then
-    WGC1STATE="$(nvram get wgc1_enable & nvramcheck)"
-    { [[ -n "$WGC1STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc1_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC1STATE" && unset WGC1STATE && continue ;}
+  if [[ "${wgcslots}" -ge "1" ]] &>/dev/null;then
+    # WGC1STATE
+    if [[ -z "${WGC1STATE+x}" ]] &>/dev/null;then
+      WGC1STATE="$(nvram get wgc1_enable & nvramcheck)"
+      { [[ -n "$WGC1STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc1_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC1STATE" && unset WGC1STATE && continue ;}
+    fi
+  
+    # WGC1IPADDR
+    if [[ -z "${WGC1IPADDR+x}" ]] &>/dev/null;then
+      WGC1IPADDR="$(nvram get wgc1_addr & nvramcheck)"
+      { [[ -n "$WGC1IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc1_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC1IPADDR" && unset WGC1IPADDR && continue ;}
+    fi
+
+    # WGC1IPV6ADDR
+    if [[ -z "${WGC1IPV6ADDR+x}" ]] &>/dev/null;then
+      WGC1IPV6ADDR="$(ifconfig wgc1 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
   fi
 
-  # WGC1IPADDR
-  if [[ -z "${WGC1IPADDR+x}" ]] &>/dev/null;then
-    WGC1IPADDR="$(nvram get wgc1_addr & nvramcheck)"
-    { [[ -n "$WGC1IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc1_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC1IPADDR" && unset WGC1IPADDR && continue ;}
+  if [[ "${wgcslots}" -ge "2" ]] &>/dev/null;then
+    # WGC2STATE
+    if [[ -z "${WGC2STATE+x}" ]] &>/dev/null;then
+      WGC2STATE="$(nvram get wgc2_enable & nvramcheck)"
+      { [[ -n "$WGC2STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc2_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC2STATE" && unset WGC2STATE && continue ;}
+    fi
+
+    # WGC2IPADDR
+    if [[ -z "${WGC2IPADDR+x}" ]] &>/dev/null;then
+      WGC2IPADDR="$(nvram get wgc2_addr & nvramcheck)"
+      { [[ -n "$WGC2IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc2_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC2IPADDR" && unset WGC2IPADDR && continue ;}
+    fi
+
+    # WGC2IPV6ADDR
+    if [[ -z "${WGC2IPV6ADDR+x}" ]] &>/dev/null;then
+      WGC2IPV6ADDR="$(ifconfig wgc2 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
   fi
 
-  # WGC1IPV6ADDR
-  if [[ -z "${WGC1IPV6ADDR+x}" ]] &>/dev/null;then
-    WGC1IPV6ADDR="$(ifconfig wgc1 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+  if [[ "${wgcslots}" -ge "3" ]] &>/dev/null;then
+    # WGC3STATE
+    if [[ -z "${WGC3STATE+x}" ]] &>/dev/null;then
+      WGC3STATE="$(nvram get wgc3_enable & nvramcheck)"
+      { [[ -n "$WGC3STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc3_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC3STATE" && unset WGC3STATE && continue ;}
+    fi
+
+    # WGC3IPADDR
+    if [[ -z "${WGC3IPADDR+x}" ]] &>/dev/null;then
+      WGC3IPADDR="$(nvram get wgc3_addr & nvramcheck)"
+      { [[ -n "$WGC3IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc3_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC3IPADDR" && unset WGC3IPADDR && continue ;}
+    fi
+
+    # WGC3IPV6ADDR
+    if [[ -z "${WGC3IPV6ADDR+x}" ]] &>/dev/null;then
+      WGC3IPV6ADDR="$(ifconfig wgc3 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
   fi
 
-  # WGC2STATE
-  if [[ -z "${WGC2STATE+x}" ]] &>/dev/null;then
-    WGC2STATE="$(nvram get wgc2_enable & nvramcheck)"
-    { [[ -n "$WGC2STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc2_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC2STATE" && unset WGC2STATE && continue ;}
+  if [[ "${wgcslots}" -ge "4" ]] &>/dev/null;then
+    # WGC4STATE
+    if [[ -z "${WGC4STATE+x}" ]] &>/dev/null;then
+      WGC4STATE="$(nvram get wgc4_enable & nvramcheck)"
+      { [[ -n "$WGC4STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc4_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC4STATE" && unset WGC4STATE && continue ;}
+    fi
+
+    # WGC4IPADDR
+    if [[ -z "${WGC4IPADDR+x}" ]] &>/dev/null;then
+      WGC4IPADDR="$(nvram get wgc4_addr & nvramcheck)"
+      { [[ -n "$WGC4IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc4_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC4IPADDR" && unset WGC4IPADDR && continue ;}
+    fi
+
+    # WGC4IPV6ADDR
+    if [[ -z "${WGC4IPV6ADDR+x}" ]] &>/dev/null;then
+      WGC4IPV6ADDR="$(ifconfig wgc4 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
   fi
 
-  # WGC2IPADDR
-  if [[ -z "${WGC2IPADDR+x}" ]] &>/dev/null;then
-    WGC2IPADDR="$(nvram get wgc2_addr & nvramcheck)"
-    { [[ -n "$WGC2IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc2_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC2IPADDR" && unset WGC2IPADDR && continue ;}
-  fi
+  if [[ "${wgcslots}" -ge "5" ]] &>/dev/null;then
+    # WGC5STATE
+    if [[ -z "${WGC5STATE+x}" ]] &>/dev/null;then
+      WGC5STATE="$(nvram get wgc5_enable & nvramcheck)"
+      { [[ -n "$WGC5STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc5_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC5STATE" && unset WGC5STATE && continue ;}
+    fi
 
-  # WGC2IPV6ADDR
-  if [[ -z "${WGC2IPV6ADDR+x}" ]] &>/dev/null;then
-    WGC2IPV6ADDR="$(ifconfig wgc2 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
-  fi
+    # WGC5IPADDR
+    if [[ -z "${WGC5IPADDR+x}" ]] &>/dev/null;then
+      WGC5IPADDR="$(nvram get wgc5_addr & nvramcheck)"
+      { [[ -n "$WGC5IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc5_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC5IPADDR" && unset WGC5IPADDR && continue ;}
+    fi
 
-  # WGC3STATE
-  if [[ -z "${WGC3STATE+x}" ]] &>/dev/null;then
-    WGC3STATE="$(nvram get wgc3_enable & nvramcheck)"
-    { [[ -n "$WGC3STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc3_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC3STATE" && unset WGC3STATE && continue ;}
-  fi
-
-  # WGC3IPADDR
-  if [[ -z "${WGC3IPADDR+x}" ]] &>/dev/null;then
-    WGC3IPADDR="$(nvram get wgc3_addr & nvramcheck)"
-    { [[ -n "$WGC3IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc3_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC3IPADDR" && unset WGC3IPADDR && continue ;}
-  fi
-
-  # WGC3IPV6ADDR
-  if [[ -z "${WGC3IPV6ADDR+x}" ]] &>/dev/null;then
-    WGC3IPV6ADDR="$(ifconfig wgc3 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
-  fi
-
-  # WGC4STATE
-  if [[ -z "${WGC4STATE+x}" ]] &>/dev/null;then
-    WGC4STATE="$(nvram get wgc4_enable & nvramcheck)"
-    { [[ -n "$WGC4STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc4_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC4STATE" && unset WGC4STATE && continue ;}
-  fi
-
-  # WGC4IPADDR
-  if [[ -z "${WGC4IPADDR+x}" ]] &>/dev/null;then
-    WGC4IPADDR="$(nvram get wgc4_addr & nvramcheck)"
-    { [[ -n "$WGC4IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc4_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC4IPADDR" && unset WGC4IPADDR && continue ;}
-  fi
-
-  # WGC4IPV6ADDR
-  if [[ -z "${WGC4IPV6ADDR+x}" ]] &>/dev/null;then
-    WGC4IPV6ADDR="$(ifconfig wgc4 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
-  fi
-
-  # WGC5STATE
-  if [[ -z "${WGC5STATE+x}" ]] &>/dev/null;then
-    WGC5STATE="$(nvram get wgc5_enable & nvramcheck)"
-    { [[ -n "$WGC5STATE" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc5_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC5STATE" && unset WGC5STATE && continue ;}
-  fi
-
-  # WGC5IPADDR
-  if [[ -z "${WGC5IPADDR+x}" ]] &>/dev/null;then
-    WGC5IPADDR="$(nvram get wgc5_addr & nvramcheck)"
-    { [[ -n "$WGC5IPADDR" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc5_status" ]] &>/dev/null ;} || { logger -p 6 -t "$ALIAS" "Debug - failed to set WGC5IPADDR" && unset WGC5IPADDR && continue ;}
-  fi
-
-  # WGC5IPV6ADDR
-  if [[ -z "${WGC5IPV6ADDR+x}" ]] &>/dev/null;then
-    WGC5IPV6ADDR="$(ifconfig wgc5 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    # WGC5IPV6ADDR
+    if [[ -z "${WGC5IPV6ADDR+x}" ]] &>/dev/null;then
+      WGC5IPV6ADDR="$(ifconfig wgc5 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+    fi
   fi
 
   # DNSLOGGINGENABLED
@@ -4757,6 +5522,17 @@ done
 unset systemparameterssync
 
 return
+}
+
+# Test if IP binary version is suitable for use of Domain VPN Routing
+testipversion ()
+{
+  logger -p 5 -t "$ALIAS" "Test IP Version - Testing IP Version: ${IPVERSION}"
+  ip rule list all &>/dev/null \
+  && logger -p 4 -t "$ALIAS" "Test IP Version - IP Version: ${IPVERSION} passed" \
+  || { echo -e "${BOLD}${RED}***${FRIENDLYNAME} does not support IP Version: ${IPVERSION}***${NOCOLOR}" ; { logger -p 1 -t "$ALIAS" "Test IP Version - IP Version: ${IPVERSION} failed" && return 1 ;} ;}
+
+  return
 }
 
 # Check if NVRAM Background Process is Stuck if CHECKNVRAM is Enabled
@@ -4787,6 +5563,8 @@ return
 systembinaries || return
 # Get System Parameters
 getsystemparameters || return
+# Test IP Binary Version
+testipversion || return 1
 # Perform PreV2 Config Update
 if [[ "${mode}" != "install" ]] &>/dev/null && [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
   updateconfigprev2 || return

@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 02/26/2024
-# Version: v2.1.3
+# Date: 09/30/2024
+# Version: v3.0.0-beta1
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -68,6 +68,19 @@ Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
 - WGC4MASK: This defines the Mask value for WireGuard Client 4. Default: 0xf000
 - WGC5FWMARK: This defines the FWMark value for WireGuard Client 5. Default: 0xe000
 - WGC5MASK: This defines the Mask value for WireGuard Client 5. Default: 0xf000
+- OVPNC1DNSSERVER: This defines the DNS server override for OpenVPN Client 1.  Default: N/A
+- OVPNC2DNSSERVER: This defines the DNS server override for OpenVPN Client 2.  Default: N/A
+- OVPNC3DNSSERVER: This defines the DNS server override for OpenVPN Client 3.  Default: N/A
+- OVPNC4DNSSERVER: This defines the DNS server override for OpenVPN Client 4.  Default: N/A
+- OVPNC5DNSSERVER: This defines the DNS server override for OpenVPN Client 5.  Default: N/A
+- WGC1DNSSERVER: This defines the DNS server override for WireGuard Client 1.  Default: N/A
+- WGC2DNSSERVER: This defines the DNS server override for WireGuard Client 2.  Default: N/A
+- WGC3DNSSERVER: This defines the DNS server override for WireGuard Client 3.  Default: N/A
+- WGC4DNSSERVER: This defines the DNS server override for WireGuard Client 4.  Default: N/A
+- WGC5DNSSERVER: This defines the DNS server override for WireGuard Client 5.  Default: N/A
+- WANDNSSERVER: This defines the DNS server override for WAN (Active WAN in Dual WAN Mode).  Default: N/A
+- WAN0DNSSERVER: This defines the DNS server override for WAN0 (Dual WAN Mode).  Default: N/A
+- WAN1DNSSERVER: This defines the DNS server override for WAN1 (Dual WAN Mode).  Default: N/A
 
 Creating a Policy:
 Step 1: Create a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh createpolicy
@@ -81,7 +94,9 @@ Step 4: Select to enable or disable Verbose Logging for the Policy
 
 Step 5: Select to enable or disable Private IP Addresses (This will allow or disallow Private IP Addresses from being added to the policy rules when queried).
 
-Step 6: Policy is created, proceed to Section: Adding a Domain.
+Step 6. Select to enable to add CNAMES (This will allow CNAMES to be added to the policy domain list automatically during query execution).
+
+Step 7: Policy is created, proceed to Section: Adding a Domain.
 
 Adding a Domain:
 Step 1: Add a domain to an existing policy by running the following command: /jffs/scripts/domain_vpn_routing.sh adddomain <Insert Domain>
@@ -90,6 +105,13 @@ Step 1: Add a domain to an existing policy by running the following command: /jf
 Step 2: Select a policy from the list provided by typing the name of the Policy (Case Sensitive).
 
 Step 3: Domain is added to Policy, proceed to Section: Querying a Policy.
+
+Bulk add Domains:
+Step 1: Locate the policy domain list file under /jffs/configs/domain_vpn_routing/.  (Example: /jffs/config/domain_vpn_routing/policy_Example_domainlist)
+
+Step 2: Add new domains (one per line) to the file.  ***Make sure to leave a blank line at the end of the file***
+
+Step 3: Save the file.
 
 Querying a Policy:
 - Query a Policy or All Policies by using the following command: /jffs/scripts/domain_vpn_routing.sh querypolicy <Insert Policy/all>
@@ -112,7 +134,9 @@ Step 3: Select whether to enable Verbose Logging for the Policy.
 
 Step 4: Select to enable or disable Private IP Addresses (This will allow or disallow Private IP Addresses from being added to the policy rules when queried).
 
-Step 5: Allow the routes for the Policy to be recreated.
+Step 5. Select to enable to add CNAMES (This will allow CNAMES to be added to the policy domain list automatically during query execution).
+
+Step 6: Allow the routes for the Policy to be recreated.
 
 Deleting a Policy:
 - Delete a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh deletepolicy <Insert Name/all>
@@ -134,6 +158,18 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
+v3.0.0-beta1 - 09/29/2024
+Enhancements:
+- Added functionality to support wildcards for subdomains.  Example: *.example.com ***Requires DNS Logging to be enabled***
+- Added DNS Overrides for VPN Client interfaces, when a policy is configured with a specific interface it will use the system default DNS Server unless a DNS override is configured for that specific interface in the configuration menu.
+- Domain queries will now utilize dig if it is installed and will bypass use of nslookup.
+- If dig is installed, a policy can be configured to allow CNAMES of domains to be added to the policy domain list automatically during query execution.  This is disabled by default for existing policies and can be enabled using the editpolicy function.
+
+Fixes:
+- Reduced names of IPSets to allow policy names to have a max length of 24 characters.
+- Fixed issue that caused RT-AC68U and DSL-AC68U to lock up on execution due to limitation of 2 OpenVPN Client slots.
+- Domain VPN Routing will now check the IP version and test it for compability.
+
 v2.1.3 - 02/26/2024
 Enhancements:
 - Added restore policy mode that will recreate objects for policies to function without performing an active query.  This will increase the time of restoration of policies during reboot or WAN failover events, restore policy mode is also called at the beginning of query policy mode.
