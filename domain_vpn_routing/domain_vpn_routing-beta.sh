@@ -5137,7 +5137,7 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
     wgcslots="0"
   else
     ovpncslots="5"
-    wgcslots="0"
+    wgcslots="5"
   fi
   
   # IPVERSION
