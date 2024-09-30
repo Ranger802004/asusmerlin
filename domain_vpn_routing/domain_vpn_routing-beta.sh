@@ -3867,13 +3867,17 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
   
   # Add CNAME records to Domains if enabled and dig is installed
-  if [[ "${diginstalled}" ]] &>/dev/null && [[ "${ADDCNAMES}" == "1" ]] &>/dev/null;then
+  if [[ "${diginstalled}" ]] &>/dev/null && [[ "${ADDCNAMES}" == "1" ]] &>/dev/null && [[ "${QUERYPOLICY}" != "all" ]] &>/dev/null;then
     for DOMAIN in ${DOMAINS};do
       for domaincname in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} CNAME +noall +answer | awk '{print substr($NF, 1, length ($NF)-1)}');do
-        logger -p 5 -t "$ALIAS" "Query Policy - Adding CNAME: ${domaincname} to ${QUERYPOLICY}"
-        echo -e "${domaincname}" >> "${POLICYDIR}/policy_${POLICY}_domainlist" \
-        && logger -p 4 -t "$ALIAS" "Query Policy - Added CNAME: ${domaincname} to ${QUERYPOLICY}" \
-        || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add CNAME: ${domaincname} to ${QUERYPOLICY}"
+        if [[ -z "$(awk '$0 == "'${domaincname}'" {print}' "${POLICYDIR}/policy_${QUERYPOLICY}_domainlist")" ]] &>/dev/null;then
+          logger -p 5 -t "$ALIAS" "Query Policy - Adding CNAME: ${domaincname} to ${QUERYPOLICY}"
+          echo -e "${domaincname}" >> "${POLICYDIR}/policy_${POLICY}_domainlist" \
+          && logger -p 4 -t "$ALIAS" "Query Policy - Added CNAME: ${domaincname} to ${QUERYPOLICY}" \
+          || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add CNAME: ${domaincname} to ${QUERYPOLICY}"
+        else
+          logger -p 6 -t "$ALIAS" "Debug - CNAME: ${domaincname} is already added to ${QUERYPOLICY}"
+        fi
       done
     done
 	
