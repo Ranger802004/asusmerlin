@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 09/30/2024
-# Version: v3.0.0-beta1
+# Date: 10/04/2024
+# Version: v3.0.0-beta2
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -158,7 +158,7 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
-v3.0.0-beta1 - 09/29/2024
+v3.0.0-beta2 - 09/29/2024
 Enhancements:
 - Added functionality to support wildcards for subdomains.  Example: *.example.com ***Requires DNS Logging to be enabled***
 - Added DNS Overrides for VPN Client interfaces, when a policy is configured with a specific interface it will use the system default DNS Server unless a DNS override is configured for that specific interface in the configuration menu.
@@ -169,6 +169,7 @@ Fixes:
 - Reduced names of IPSets to allow policy names to have a max length of 24 characters.
 - Fixed issue that caused RT-AC68U and DSL-AC68U to lock up on execution due to limitation of 2 OpenVPN Client slots.
 - Domain VPN Routing will now check the IP version and test it for compability.
+- Fixed an issue with beta update channel.
 
 v2.1.3 - 02/26/2024
 Enhancements:
