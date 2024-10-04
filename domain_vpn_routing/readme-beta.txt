@@ -158,7 +158,7 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
-v3.0.0-beta2 - 09/29/2024
+v3.0.0-beta2 - 10/04/2024
 Enhancements:
 - Added functionality to support wildcards for subdomains.  Example: *.example.com ***Requires DNS Logging to be enabled***
 - Added DNS Overrides for VPN Client interfaces, when a policy is configured with a specific interface it will use the system default DNS Server unless a DNS override is configured for that specific interface in the configuration menu.
