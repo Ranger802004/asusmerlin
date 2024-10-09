@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/04/2024
-# Version: v3.0.0-beta2
+# Date: 10/9/2024
+# Version: v3.0.0-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.0.0-beta2"
+VERSION="v3.0.0-beta3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -20,6 +20,7 @@ POLICYDIR="/jffs/configs/domain_vpn_routing"
 SYSTEMLOG="/tmp/syslog.log"
 LOCKFILE="/var/lock/domain_vpn_routing.lock"
 DNSMASQCONFIGFILE="/etc/dnsmasq.conf"
+RTTABLESFILE="/etc/iproute2/rt_tables"
 IPSETPREFIX="DVR"
 POLICYNAMEMAXLENGTH="24"
 
@@ -1392,6 +1393,7 @@ else
   printf "   WAN FWMark                          WAN FWMark:     ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
   printf "   WAN Mask                            WAN Mask:       ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
   printf "   WAN Reverse Path Filter             WAN RP Filter:  " && { { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
+  printf "   IP Version                          IP Version:     ${LIGHTBLUE}${IPVERSION}${NOCOLOR} ${RED}${ipversionwarning}${NOCOLOR}\n"
 fi
 
 
@@ -2325,8 +2327,13 @@ if [[ "${INTERFACE}" == "ovpnc1" ]] &>/dev/null;then
   IPV6ADDR="${OVPNC1IPV6ADDR}"
   IPV6VPNGW="${OVPNC1IPV6VPNGW}"
   RGW="${OVPNC1RGW}"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="1000"
   FWMARK="${OVPNC1FWMARK}"
   MASK="${OVPNC1MASK}"
@@ -2336,8 +2343,13 @@ elif [[ "${INTERFACE}" == "ovpnc2" ]] &>/dev/null;then
   IPV6ADDR="${OVPNC2IPV6ADDR}"
   IPV6VPNGW="${OVPNC2IPV6VPNGW}"
   RGW="${OVPNC2RGW}"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="2000"
   FWMARK="${OVPNC2FWMARK}"
   MASK="${OVPNC2MASK}"
@@ -2347,8 +2359,13 @@ elif [[ "${INTERFACE}" == "ovpnc3" ]] &>/dev/null;then
   IPV6ADDR="${OVPNC3IPV6ADDR}"
   IPV6VPNGW="${OVPNC3IPV6VPNGW}"
   RGW="${OVPNC3RGW}"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="3000"
   FWMARK="${OVPNC3FWMARK}"
   MASK="${OVPNC3MASK}"
@@ -2358,8 +2375,13 @@ elif [[ "${INTERFACE}" == "ovpnc4" ]] &>/dev/null;then
   IPV6ADDR="${OVPNC4IPV6ADDR}"
   IPV6VPNGW="${OVPNC4IPV6VPNGW}"
   RGW="${OVPNC4RGW}"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="4000"
   FWMARK="${OVPNC4FWMARK}"
   MASK="${OVPNC4MASK}"
@@ -2369,8 +2391,13 @@ elif [[ "${INTERFACE}" == "ovpnc5" ]] &>/dev/null;then
   IPV6ADDR="${OVPNC5IPV6ADDR}"
   IPV6VPNGW="${OVPNC5IPV6VPNGW}"
   RGW="${OVPNC5RGW}"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="5000"
   FWMARK="${OVPNC5FWMARK}"
   MASK="${OVPNC5MASK}"
@@ -2391,8 +2418,13 @@ elif [[ "${INTERFACE}" == "wgc1" ]] &>/dev/null;then
   IFNAME="${INTERFACE}"
   IPV6ADDR="${WGC1IPV6ADDR}"
   RGW="2"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="6000"
   FWMARK="${WGC1FWMARK}"
   MASK="${WGC1MASK}"
@@ -2401,8 +2433,13 @@ elif [[ "${INTERFACE}" == "wgc2" ]] &>/dev/null;then
   IFNAME="${INTERFACE}"
   IPV6ADDR="${WGC2IPV6ADDR}"
   RGW="2"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="7000"
   FWMARK="${WGC2FWMARK}"
   MASK="${WGC2MASK}"
@@ -2411,8 +2448,13 @@ elif [[ "${INTERFACE}" == "wgc3" ]] &>/dev/null;then
   IFNAME="${INTERFACE}"
   IPV6ADDR="${WGC3IPV6ADDR}"
   RGW="2"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="8000"
   FWMARK="${WGC3FWMARK}"
   MASK="${WGC3MASK}"
@@ -2421,8 +2463,13 @@ elif [[ "${INTERFACE}" == "wgc4" ]] &>/dev/null;then
   IFNAME="${INTERFACE}"
   IPV6ADDR="${WGC4IPV6ADDR}"
   RGW="2"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="9000"
   FWMARK="${WGC4FWMARK}"
   MASK="${WGC4MASK}"
@@ -2431,8 +2478,13 @@ elif [[ "${INTERFACE}" == "wgc5" ]] &>/dev/null;then
   IFNAME="${INTERFACE}"
   IPV6ADDR="${WGC5IPV6ADDR}"
   RGW="2"
-  ROUTETABLE="${INTERFACE}"
-  IPV6ROUTETABLE="${INTERFACE}"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+    IPV6ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+    IPV6ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   PRIORITY="10000"
   FWMARK="${WGC5FWMARK}"
   MASK="${WGC5MASK}"
@@ -2471,7 +2523,11 @@ elif [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
   PRIORITY="150"
 elif [[ "${INTERFACE}" == "wan0" ]] &>/dev/null;then
   STATE="${WAN0STATE}"
-  ROUTETABLE="wan0"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   IPV6ROUTETABLE="main"
   RGW="2"
   PRIORITY="150"
@@ -2483,7 +2539,11 @@ elif [[ "${INTERFACE}" == "wan0" ]] &>/dev/null;then
   PRIMARY="${WAN0PRIMARY}"
 elif [[ "${INTERFACE}" == "wan1" ]] &>/dev/null;then
   STATE="${WAN1STATE}"
-  ROUTETABLE="wan1"
+  if [[ "${ipcompmode}" == "1" ]] &>/dev/null;then
+    ROUTETABLE="${INTERFACE}"
+  elif [[ "${ipcompmode}" == "2" ]] &>/dev/null;then
+    ROUTETABLE="$(awk '($2 == "'${INTERFACE}'") {print $1}' ${RTTABLESFILE})"
+  fi
   IPV6ROUTETABLE="main"
   RGW="2"
   PRIORITY="150"
@@ -2514,9 +2574,9 @@ fi
 # Create Default Route for WAN Interface Routing Tables
 if [[ -n "${GATEWAY}" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Checking ${INTERFACE} for Default Route in Routing Table ${ROUTETABLE}"
-  if [[ -z "$(ip route list default table $ROUTETABLE | grep -w "${IFNAME}")" ]] &>/dev/null;then
+  if [[ -z "$(${ipbinpath}ip route list default table $ROUTETABLE | grep -w "${IFNAME}")" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Routing Director - Adding default route for ${INTERFACE} Routing Table via ${GATEWAY} dev ${IFNAME}"
-    ip route add default via ${GATEWAY} dev ${IFNAME} table ${ROUTETABLE} \
+    ${ipbinpath}ip route add default via ${GATEWAY} dev ${IFNAME} table ${ROUTETABLE} \
     && logger -p 4 -t "$ALIAS" "Routing Director - Added default route for ${INTERFACE} Routing Table via ${GATEWAY} dev ${IFNAME}" \
     || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to add default route for ${INTERFACE} Routing Table via ${GATEWAY} dev ${IFNAME}"
   fi
@@ -2525,9 +2585,9 @@ fi
 # Create IPv6 Default Route for VPN Client Interface Routing Tables
 if [[ -n "${IPV6VPNGW}" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Checking ${INTERFACE} for Default IPv6 Route in Routing Table ${ROUTETABLE}"
-  if [[ -z "$(ip -6 route list default table ${ROUTETABLE})" ]] &>/dev/null;then
+  if [[ -z "$(${ipbinpath}ip -6 route list default table ${ROUTETABLE})" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Routing Director - Adding default IPv6 route for ${INTERFACE} IPv6 Routing Table via ${IPV6VPNGW} dev ${IFNAME} table ${ROUTETABLE}"
-    ip -6 route add default via ${IPV6VPNGW} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
+    ${ipbinpath}ip -6 route add default via ${IPV6VPNGW} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
     && logger -p 4 -t "$ALIAS" "Routing Director - Added default route for ${INTERFACE} IPv6 Routing Table via ${IPV6VPNGW} dev ${IFNAME} table ${ROUTETABLE}" \
     || logger -p 2 -st "$ALIAS" "Routing Director - ***Error*** Failed to add default route for ${INTERFACE} IPv6 Routing Table via ${IPV6VPNGW} dev ${IFNAME} table ${ROUTETABLE}"
   fi
@@ -2936,14 +2996,14 @@ INTERFACES='
     # Recreate IPv6
     if [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
       # Recreate FWMark IPv6 Rule
-      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && { [[ -n "${NEWIPV6ADDR}" ]] &>/dev/null || [[ -n "$(ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWIPV6ROUTETABLE} priority ${NEWPRIORITY})" ]] &>/dev/null;then
+      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && { [[ -n "${NEWIPV6ADDR}" ]] &>/dev/null || [[ -n "$(${ipbinpath}ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(${ipbinpath}ip -6 rule list from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWIPV6ROUTETABLE} priority ${NEWPRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${NEWPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${NEWFWMARK}'/'${NEWMASK}'" && $NF == "'${NEWIPV6ROUTETABLE}'") {print}')" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Edit Policy - Checking for IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-        ip -6 rule add from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWIPV6ROUTETABLE} priority ${NEWPRIORITY} \
+        ${ipbinpath}ip -6 rule add from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWIPV6ROUTETABLE} priority ${NEWPRIORITY} \
         && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}" \
         || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-      elif [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && { { [[ -z "${NEWIPV6ADDR}" ]] &>/dev/null && [[ -z "$(ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null ;} || [[ "$PRIMARY" == "0" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+      elif [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && { { [[ -z "${NEWIPV6ADDR}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null ;} || [[ "$PRIMARY" == "0" ]] &>/dev/null ;} && [[ -z "$(${ipbinpath}ip -6 rule list from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip -6 rule list | awk '($1 == "'${NEWPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${NEWFWMARK}'/'${NEWMASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Edit Policy - Checking for Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-        ip -6 rule add unreachable from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} \
+        ${ipbinpath}ip -6 rule add unreachable from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} \
         && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}" \
         || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
       fi
@@ -2969,16 +3029,16 @@ INTERFACES='
         || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v6 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
       fi
       # Delete Old FWMark IPv6 Rule
-      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 rule list from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDIPV6ROUTETABLE} priority ${OLDPRIORITY})" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDIPV6ROUTETABLE} priority ${OLDPRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${OLDPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${OLDFWMARK}'/'${OLDMASK}'" && $NF == "'${OLDIPV6ROUTETABLE}'") {print}')" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Edit Policy - Checking for IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
-        ip -6 rule del from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDIPV6ROUTETABLE} priority ${OLDPRIORITY} \
+        ${ipbinpath}ip -6 rule del from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDIPV6ROUTETABLE} priority ${OLDPRIORITY} \
         && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}" \
         || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
       fi
       # Delete Old FWMark IPv6 Unreachable Rule
-      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 rule list from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} | grep -w "unreachable")" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
+      if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip -6 rule list | awk '($1 == "'${OLDPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${OLDFWMARK}'/'${OLDMASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Edit Policy - Checking for Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
-        ip -6 rule del unreachable from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} \
+        ${ipbinpath}ip -6 rule del unreachable from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} \
         && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}" \
         || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
       fi
@@ -3007,19 +3067,19 @@ INTERFACES='
       # Recreate IPv6 Routes
       for IPV6 in ${IPV6S}; do
         # Delete old IPv6 Route
-        if [[ -n "$(ip -6 route list ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
           logger -p 5 -t "$ALIAS" "Edit Policy - Deleting route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
-          ip -6 route del ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
+          ${ipbinpath}ip -6 route del ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
           && logger -p 4 -st "$ALIAS" "Edit Policy - Route deleted for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" \
           || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
         fi
         # Create IPv6 Routes if necessary due to lack of FWMark Rules
-        if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -z "${NEWFWMARK}" ]] &>/dev/null && { [[ -z "${IPV6ADDR}" ]] &>/dev/null && [[ -z "$(ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null ;};then
+        if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -z "${NEWFWMARK}" ]] &>/dev/null && { [[ -z "${IPV6ADDR}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip -6 route show default dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null ;};then
           # Check for IPv6 prefix error and create new IPv6 routes
-          if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -w "Error: inet6 prefix is expected rather than \"${IPV6}\".")" ]] &>/dev/null;then
-            if [[ -z "$(ip -6 route list ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} 2>&1 | grep -w "Error: inet6 prefix is expected rather than \"${IPV6}\".")" ]] &>/dev/null;then
+            if [[ -z "$(${ipbinpath}ip -6 route list ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
               logger -p 5 -t "$ALIAS" "Edit Policy - Adding route for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
-              ip -6 route add ${IPV6}:: dev ${IFNAME} table ${NEWIPV6ROUTETABLE} &>/dev/null \
+              ${ipbinpath}ip -6 route add ${IPV6}:: dev ${IFNAME} table ${NEWIPV6ROUTETABLE} &>/dev/null \
               || rc="$?" \
               && { rc="$?" && logger -p 4 -t "$ALIAS" "Edit Policy - Route added for ${IPV6}:: dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}" ;}
               # Generate Error Log
@@ -3032,9 +3092,9 @@ INTERFACES='
               fi
             fi
           else
-            if [[ -z "$(ip -6 route list ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
+            if [[ -z "$(${ipbinpath}ip -6 route list ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE})" ]] &>/dev/null;then
               logger -p 5 -t "$ALIAS" "Edit Policy - Adding route for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}"
-              ip -6 route add ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE} &>/dev/null \
+              ${ipbinpath}ip -6 route add ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE} &>/dev/null \
               || rc="$?" \
               && { rc="$?" && logger -p 4 -t "$ALIAS" "Edit Policy - Route added for ${IPV6} dev ${NEWIFNAME} table ${NEWIPV6ROUTETABLE}" ;}
               # Generate Error Log
@@ -3061,14 +3121,14 @@ INTERFACES='
 
     # Recreate IPv4
     # Recreate FWMark IPv4 Rule
-    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -n "$(ip route show default table ${NEWROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWROUTETABLE} priority ${NEWPRIORITY})" ]] &>/dev/null;then
+    if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip route show default table ${NEWROUTETABLE})" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWROUTETABLE} priority ${NEWPRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${NEWPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${NEWFWMARK}'/'${NEWMASK}'" && $NF == "'${NEWROUTETABLE}'") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Edit Policy - Checking for IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-      ip rule add from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWROUTETABLE} priority ${NEWPRIORITY} \
+      ${ipbinpath}ip rule add from all fwmark ${NEWFWMARK}/${NEWMASK} table ${NEWROUTETABLE} priority ${NEWPRIORITY} \
       && logger -p 4 -st "$ALIAS" "Edit Policy - Added IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-    elif [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip route show default table ${NEWROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+    elif [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip route show default table ${NEWROUTETABLE})" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${NEWPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${NEWFWMARK}'/'${NEWMASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Edit Policy - Checking for Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
-      ip rule add unreachable from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} \
+      ${ipbinpath}ip rule add unreachable from all fwmark ${NEWFWMARK}/${NEWMASK} priority ${NEWPRIORITY} \
       && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${NEWPOLICYINTERFACE} using FWMark: ${NEWFWMARK}/${NEWMASK}"
     fi
@@ -3094,16 +3154,16 @@ INTERFACES='
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IPTables rule for IPSET: ${IPSETPREFIX}-${EDITPOLICY}-v4 Interface: ${NEWIFNAME} FWMark: ${NEWFWMARK}"
     fi
     # Delete Old FWMark IPv4 Rule
-    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip rule list from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDROUTETABLE} priority ${OLDPRIORITY})" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
+    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip rule list from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDROUTETABLE} priority ${OLDPRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${OLDPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${OLDFWMARK}'/'${OLDMASK}'" && $NF == "'${OLDROUTETABLE}'") {print}')" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Edit Policy - Checking for IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
-      ip rule del from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDROUTETABLE} priority ${OLDPRIORITY} \
+      ${ipbinpath}ip rule del from all fwmark ${OLDFWMARK}/${OLDMASK} table ${OLDROUTETABLE} priority ${OLDPRIORITY} \
       && logger -p 4 -st "$ALIAS" "Edit Policy - Deleted IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
     fi
     # Delete Old FWMark IPv4 Unreachable Rule
-    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(ip rule list from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} | grep -w "unreachable")" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
+    if [[ -n "${OLDFWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip rule list from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${OLDPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${OLDFWMARK}'/'${OLDMASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null && [[ "$ifnotinuse" == "1" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Edit Policy - Checking for Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
-      ip rule del unreachable from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} \
+      ${ipbinpath}ip rule del unreachable from all fwmark ${OLDFWMARK}/${OLDMASK} priority ${OLDPRIORITY} \
       && logger -p 4 -st "$ALIAS" "Edit Policy - Added Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}" \
       || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${OLDINTERFACE} using FWMark: ${OLDFWMARK}/${OLDMASK}"
     fi
@@ -3133,36 +3193,36 @@ INTERFACES='
     for IPV4 in ${IPV4S}; do
       if [[ "${OLDRGW}" == "0" ]] &>/dev/null;then
         # Delete old IPv4 routes
-        if [[ -n "$(ip route list $IPV4 dev ${OLDIFNAME} table ${OLDROUTETABLE})" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip route list $IPV4 dev ${OLDIFNAME} table ${OLDROUTETABLE})" ]] &>/dev/null;then
           logger -p 5 -t "$ALIAS" "Edit Policy - Deleting route for $IPV4 dev ${OLDIFNAME} table ${OLDROUTETABLE}"
-          ip route del ${IPV4} dev ${OLDIFNAME} table ${OLDROUTETABLE} &>/dev/null \
+          ${ipbinpath}ip route del ${IPV4} dev ${OLDIFNAME} table ${OLDROUTETABLE} &>/dev/null \
           && logger -p 4 -t "$ALIAS" "Edit Policy - Route deleted for ${IPV4} dev ${OLDIFNAME} table ${OLDROUTETABLE}" \
           || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete route for ${IPV4} dev ${OLDIFNAME} table ${OLDROUTETABLE}"
         fi
       # Delete old IPv4 rules
       elif [[ "${OLDRGW}" != "0" ]] &>/dev/null;then
-        if [[ -n "$(ip rule list from all to ${IPV4} lookup ${OLDROUTETABLE} priority ${OLDPRIORITY})" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip rule list from all to ${IPV4} lookup ${OLDROUTETABLE} priority ${OLDPRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${OLDPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "to" && $5 == "'${IPV4}'" && $NF == "'${OLDROUTETABLE}'") {print}')" ]] &>/dev/null;then
           logger -p 5 -t "$ALIAS" "Edit Policy - Deleting IP Rule for ${IPV4} table ${OLDROUTETABLE} priority ${OLDPRIORITY}"
-          ip rule del from all to ${IPV4} table ${OLDROUTETABLE} priority ${OLDPRIORITY} &>/dev/null \
+          ${ipbinpath}ip rule del from all to ${IPV4} table ${OLDROUTETABLE} priority ${OLDPRIORITY} &>/dev/null \
           && logger -p 4 -t "$ALIAS" "Edit Policy - Deleted IP Rule for ${IPV4} table ${OLDROUTETABLE} priority ${OLDPRIORITY}" \
           || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to delete IP Rule for ${IPV4} table $OLDROUTETABLE priority ${OLDPRIORITY}"
         fi
       fi
       # Create new IPv4 routes and IPv4 rules if necessary
-      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -z "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip route show default table ${NEWROUTETABLE})" ]] &>/dev/null;then
+      if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -z "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip route show default table ${NEWROUTETABLE})" ]] &>/dev/null;then
         # Create new IPv4 routes
         if [[ "${NEWRGW}" == "0" ]] &>/dev/null;then
-          if [[ -z "$(ip route list ${IPV4} dev ${NEWIFNAME} table ${NEWROUTETABLE})" ]] &>/dev/null;then
+          if [[ -z "$(${ipbinpath}ip route list ${IPV4} dev ${NEWIFNAME} table ${NEWROUTETABLE})" ]] &>/dev/null;then
             logger -p 5 -t "$ALIAS" "Edit Policy - Adding route for ${IPV4} dev ${NEWIFNAME} table ${NEWROUTETABLE}"
-            ip route add ${IPV4} dev ${NEWIFNAME} table ${NEWROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip route add ${IPV4} dev ${NEWIFNAME} table ${NEWROUTETABLE} &>/dev/null \
             && logger -p 4 -t "$ALIAS" "Edit Policy - Route added for ${IPV4} dev ${NEWIFNAME} table ${NEWROUTETABLE}" \
             || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add route for ${IPV4} dev ${NEWIFNAME} table ${NEWROUTETABLE}"
           fi
         # Create new IPv4 rules
         elif [[ "${NEWRGW}" != "0" ]] &>/dev/null;then
-          if [[ -z "$(ip rule list from all to ${IPV4} lookup ${NEWROUTETABLE} priority ${NEWPRIORITY})" ]] &>/dev/null;then
+          if [[ -z "$(${ipbinpath}ip rule list from all to ${IPV4} lookup ${NEWROUTETABLE} priority ${NEWPRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${NEWPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "to" && $5 == "'${IPV4}'" && $NF == "'${NEWROUTETABLE}'") {print}')" ]] &>/dev/null;then
             logger -p 5 -t "$ALIAS" "Edit Policy - Adding IP Rule for ${IPV4} table ${NEWROUTETABLE} priority ${NEWPRIORITY}"
-            ip rule add from all to ${IPV4} table ${NEWROUTETABLE} priority ${NEWPRIORITY} &>/dev/null \
+            ${ipbinpath}ip rule add from all to ${IPV4} table ${NEWROUTETABLE} priority ${NEWPRIORITY} &>/dev/null \
             && logger -p 4 -t "$ALIAS" "Edit Policy - Added IP Rule for ${IPV4} table ${NEWROUTETABLE} priority ${NEWPRIORITY}" \
             || logger -p 2 -st "$ALIAS" "Edit Policy - ***Error*** Failed to add IP Rule for ${IPV4} table ${NEWROUTETABLE} priority ${NEWPRIORITY}"
           fi
@@ -3209,16 +3269,16 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" 
 
     # Delete IPv6
     # Delete FWMark IPv6 Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${IPV6ROUTETABLE}'") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Policy - Checking for IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip -6 rule del from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
+      ${ipbinpath}ip -6 rule del from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
     # Delete Old FWMark IPv6 Unreachable Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Policy - Checking for Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+      ${ipbinpath}ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Added Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to add Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
@@ -3259,9 +3319,9 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" 
     fi
     # Delete IPv6 Routes
     for IPV6 in ${IPV6S};do
-      if [[ -n "$(ip -6 route list ${IPV6} dev $IFNAME table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} dev $IFNAME table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Delete Policy - Deleting route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
-        ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} \
+        ${ipbinpath}ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} \
         && logger -p 4 -t "$ALIAS" "Delete Policy - Route deleted for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" \
         || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
       fi
@@ -3269,16 +3329,16 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" 
 
     # Delete IPv4
     # Delete FWMark IPv4 Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Policy - Checking for IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip rule del from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
+      ${ipbinpath}ip rule del from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
     # Delete Old FWMark IPv4 Unreachable Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Delete Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+      ${ipbinpath}ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Delete Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
@@ -3321,16 +3381,16 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" 
     # Delete IPv4 routes and IP rules
     for IPV4 in ${IPV4S};do
       if [[ "$RGW" == "0" ]] &>/dev/null;then
-        if [[ -n "$(ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
           logger -p 5 -t "$ALIAS" "Delete Policy - Deleting route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
-          ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} \
+          ${ipbinpath}ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} \
           && logger -p 4 -t "$ALIAS" "Delete Policy - Route deleted for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" \
           || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
         fi
       elif [[ "$RGW" != "0" ]] &>/dev/null;then
-        if [[ -n "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "to" && $5 == "'${IPV4}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
           logger -p 5 -t "$ALIAS" "Delete Policy - Deleting IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
-          ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
+          ${ipbinpath}ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
           && logger -p 4 -t "$ALIAS" "Delete Policy - Deleted IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" \
           || logger -p 2 -st "$ALIAS" "Delete Policy - ***Error*** Failed to delete IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
         fi
@@ -3484,17 +3544,17 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
       fi
 
       # Delete IPv6 Route with prefix fixed
-      if [[ -n "$(ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} 2>/dev/null)" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} 2>/dev/null)" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
-        ip -6 route del ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} \
+        ${ipbinpath}ip -6 route del ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} \
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Route deleted for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}" ;} \
         || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
       fi
 
       # Delete IPv6 Route
-      if [[ -n "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} 2>/dev/null)" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} 2>/dev/null)" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
-        ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} \
+        ${ipbinpath}ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} \
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Route deleted for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" ;} \
         || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** ***Error*** Failed to delete route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
       fi
@@ -3523,17 +3583,17 @@ if [[ -n "$DOMAIN" ]] &>/dev/null;then
       fi
 
       # Delete IPv4 IP Rule
-      if [[ -n "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "to" && $5 == "'${IPV4}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
-        ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
+        ${ipbinpath}ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Deleted IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" ;} \
         || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
       fi
 
       # Delete IPv4 Route
-      if [[ -n "$(ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete Domain - Deleting route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
-        ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} \
+        ${ipbinpath}ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} \
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete Domain - Route deleted for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" ;} \
         || logger -p 2 -st "$ALIAS" "Delete Domain - ***Error*** Failed to delete Route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
       fi
@@ -3659,17 +3719,17 @@ if [[ -n "$IP" ]] &>/dev/null;then
       fi
 
       # Delete IPv6 Route with prefix fixed
-      if [[ -n "$(ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} 2>/dev/null)" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} 2>/dev/null)" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
-        ip -6 route del ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} \
+        ${ipbinpath}ip -6 route del ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} \
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Route deleted for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}" ;} \
         || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete Route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
       fi
 
       # Delete IPv6 Route
-      if [[ -n "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} 2>/dev/null)" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} 2>/dev/null)" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
-        ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} \
+        ${ipbinpath}ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} \
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Route deleted for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" ;} \
         || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete Route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
       fi
@@ -3699,17 +3759,17 @@ if [[ -n "$IP" ]] &>/dev/null;then
       fi
 
       # Delete IPv4 IPv4 Rule
-      if [[ -n "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "to" && $5 == "'${IPV4}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
-        ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
+        ${ipbinpath}ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} \
         && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Deleted IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" \
         || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
       fi
 
       # Delete IPv4 Route
-      if [[ -n "$(ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Delete IP - Deleting route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
-        ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} \
+        ${ipbinpath}ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} \
         && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Delete IP - Route deleted for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" ;} \
         || logger -p 2 -st "$ALIAS" "Delete IP - ***Error*** Failed to delete Route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
       fi
@@ -4120,24 +4180,31 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # IPv6
   if [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
     # Create FWMark IPv6 Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "${IPV6ADDR}" ]] &>/dev/null || [[ -n "$(ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+    if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "${IPV6ADDR}" ]] &>/dev/null || [[ -n "$(${ipbinpath}ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${IPV6ROUTETABLE}'") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Query Policy - Checking for IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip -6 rule add from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
+      ${ipbinpath}ip -6 rule add from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Query Policy - Added IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Query Policy - Failed to add IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
       # Remove FWMark Unreachable IPv6 Rule if it exists
-      if [[ -n "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
-        logger -p 5 -t "$ALIAS" "Query Policy - Checking for Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-        ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
-        && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
-        || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      if [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Query Policy - Deleting Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+        ${ipbinpath}ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+        && logger -p 4 -t "$ALIAS" "Query Policy - Deleted Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+        || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to delete Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
       fi
     # Create FWMark Unreachable IPv6 Rule
-    elif [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -z "${IPV6ADDR}" ]] &>/dev/null && [[ -z "$(ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+    elif [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -z "${IPV6ADDR}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Query Policy - Checking for Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip -6 rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+      ${ipbinpath}ip -6 rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      # Delete FWMark IPv6 Rule if it exists
+      if [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${IPV6ROUTETABLE}'") {print}')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Query Policy - Deleting IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+        ${ipbinpath}ip -6 rule del from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
+        && logger -p 4 -t "$ALIAS" "Query Policy - Deleted IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+        || logger -p 2 -st "$ALIAS" "Query Policy - Failed to delete IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      fi
     fi
 
     # Create IPv6 IP6Tables OUTPUT Rule
@@ -4168,7 +4235,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     if [[ -n "${FWMARK}" ]] &>/dev/null;then
       for IPV6 in ${IPV6S};do
         # Check IPv6 for prefix error
-        if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
           if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
@@ -4179,9 +4246,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             unset comment
           fi
           # Remove IPv6 Route
-          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Removing route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
-            ip -6 route del ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip -6 route del ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
             || rc="$?" \
             && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route removed for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
             # Generate Error Log
@@ -4195,9 +4262,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
           # Remove IPv6 Route for WAN Failover
           if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ -n "${OLDIPV6ROUTETABLE+x}" ]] &>/dev/null && [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
-            if [[ -n "$(ip route list ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
+            if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Deleting route for ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
-              ip route del ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
+              ${ipbinpath}ip -6 route del ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
               || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to delete route for ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" \
               && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route deleted for ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" ;}
             fi
@@ -4213,9 +4280,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             unset comment
           fi
           # Remove IPv6 Route
-          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Removing route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
-            ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
             || rc="$?" \
             && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route removed for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
             # Generate Error Log
@@ -4229,9 +4296,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
           # Remove IPv6 Route for WAN Failover
           if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ -n "${OLDIPV6ROUTETABLE+x}" ]] &>/dev/null && [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
-            if [[ -n "$(ip route list ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
+            if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Deleting route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
-              ip route del ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
+              ${ipbinpath}ip -6 route del ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
               || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to delete route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" \
               && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route deleted for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" ;}
             fi
@@ -4241,7 +4308,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     elif [[ -z "${FWMARK}" ]] &>/dev/null;then
       for IPV6 in ${IPV6S};do
         # Check IPv6 for prefix error
-        if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
           if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
@@ -4252,9 +4319,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             unset comment
           fi
           # Add IPv6 Route
-          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
-            ip -6 route add ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip -6 route add ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
             || rc="$?" \
             && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route added for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
             # Generate Error Log
@@ -4276,9 +4343,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" ;} ;}
           fi
           # Add IPv6 Route
-          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
-            ip -6 route add ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip -6 route add ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
             || rc="$?" \
             && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route added for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
             # Generate Error Log
@@ -4307,24 +4374,31 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 
   # IPv4
   # Create FWMark IPv4 Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Checking for IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-    ip rule add from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
+    ${ipbinpath}ip rule add from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
     && logger -p 4 -t "$ALIAS" "Query Policy - Added IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     # Remove FWMark Unreachable IPv4 Rule if it exists
-    if [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
-      logger -p 5 -t "$ALIAS" "Query Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
-      && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
-      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    if [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Query Policy - Deleting Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      ${ipbinpath}ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+      && logger -p 4 -t "$ALIAS" "Query Policy - Deleted Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to delete Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
   # Create FWMark Unreachable IPv4 Rule
-  elif [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+  elif [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Query Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-    ip rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+    ${ipbinpath}ip rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
     && logger -p 4 -t "$ALIAS" "Query Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
     || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    # Remove FWMark IPv4 Rule if it exists
+    if [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Query Policy - Deleting IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      ${ipbinpath}ip rule del from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
+      && logger -p 4 -t "$ALIAS" "Query Policy - Deleted IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+      || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to delete IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    fi
   fi
 
   # Create IPv4 IPTables OUTPUT Rule
@@ -4352,7 +4426,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
 
   # Add IPv4s to IPSET or create IPv4 Routes or rules and remove old IPv4 Routes or Rules
-  if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "$(ip rule list from all fwmark ${FWMARK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null || [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
+  if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null || [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
       if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
@@ -4365,31 +4439,31 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       fi
       # Remove IPv4 Routes
       if [[ "${RGW}" == "0" ]] &>/dev/null;then
-        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Removing route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
-          ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
+          ${ipbinpath}ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
           || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to remove route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" \
           && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route removed for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" ;}
         fi
         if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
-          if [[ -n "$(ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "$(${ipbinpath}ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Deleting route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}"
-            ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
             || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to delete route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" \
             && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route deleted for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" ;}
           fi
         fi
       elif [[ "${RGW}" != "0" ]] &>/dev/null;then
         # Remove IPv4 Rules
-        if [[ -n "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "to" && $5 == "'${IPV4}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Removing IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
-          ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
+          ${ipbinpath}ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
           || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to remove IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" \
           && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Removed IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" ;}
         fi
       fi
     done
-  elif [[ -z "${FWMARK}" ]] &>/dev/null || [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+  elif [[ -z "${FWMARK}" ]] &>/dev/null || [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
       if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
@@ -4402,25 +4476,25 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       fi
       # Create IPv4 Routes
       if [[ "${RGW}" == "0" ]] &>/dev/null;then
-        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
-          ip route add ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
+          ${ipbinpath}ip route add ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
           || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" \
           && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route added for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" ;}
         fi
         if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
-          if [[ -n "$(ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "$(${ipbinpath}ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Deleting route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}"
-            ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
             || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to delete route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" \
             && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Route deleted for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" ;}
           fi
         fi
       elif [[ "${RGW}" != "0" ]] &>/dev/null;then
         # Create IPv4 Rules
-        if [[ -z "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+        if [[ -z "$(${ipbinpath}ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "to" && $5 == "'${IPV4}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
-          ip rule add from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
+          ${ipbinpath}ip rule add from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
           || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" \
           && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Query Policy - Added IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" ;}
         fi
@@ -4570,24 +4644,31 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   # IPv6
   if [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
     # Create FWMark IPv6 Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "${IPV6ADDR}" ]] &>/dev/null || [[ -n "$(ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+    if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "${IPV6ADDR}" ]] &>/dev/null || [[ -n "$(${ipbinpath}ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${IPV6ROUTETABLE}'") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Restore Policy - Checking for IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip -6 rule add from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
+      ${ipbinpath}ip -6 rule add from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Restore Policy - Failed to add IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
       # Remove FWMark Unreachable IPv6 Rule if it exists
-      if [[ -n "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+      if [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Restore Policy - Checking for Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-        ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+        ${ipbinpath}ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
         && logger -p 4 -t "$ALIAS" "Restore Policy - Added Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
         || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
       fi
     # Create FWMark Unreachable IPv6 Rule
-    elif [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -z "${IPV6ADDR}" ]] &>/dev/null && [[ -z "$(ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+    elif [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -z "${IPV6ADDR}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Restore Policy - Checking for Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip -6 rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+      ${ipbinpath}ip -6 rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Restore Policy - Added Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add Unreachable IP Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      # Delete FWMark IPv6 Rule if it exists
+      if [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${IPV6ROUTETABLE}'") {print}')" ]] &>/dev/null;then
+        logger -p 5 -t "$ALIAS" "Restore Policy - Deleting IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+        ${ipbinpath}ip -6 rule del from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} \
+        && logger -p 4 -t "$ALIAS" "Restore Policy - Deleted IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+        || logger -p 2 -st "$ALIAS" "Restore Policy - Failed to delete IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      fi
     fi
 
     # Create IPv6 IP6Tables OUTPUT Rule
@@ -4618,7 +4699,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${restoreipv6mode}" == "2" ]] &>/dev/null;then
       for IPV6 in ${IPV6S};do
         # Check IPv6 for prefix error
-        if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
           if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
@@ -4629,9 +4710,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
             unset comment
           fi
           # Remove IPv6 Route
-          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Removing route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
-            ip -6 route del ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip -6 route del ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
             || rc="$?" \
             && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route removed for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
             # Generate Error Log
@@ -4645,9 +4726,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           fi
           # Remove IPv6 Route for WAN Failover
           if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ -n "${OLDIPV6ROUTETABLE+x}" ]] &>/dev/null && [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
-            if [[ -n "$(ip route list ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
+            if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Deleting route for ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
-              ip route del ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
+              ${ipbinpath}ip -6 route del ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
               || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to delete route for ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" \
               && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route deleted for ${IPV6}:: dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" ;}
             fi
@@ -4663,9 +4744,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
             unset comment
           fi
           # Remove IPv6 Route
-          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Removing route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
-            ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip -6 route del ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
             || rc="$?" \
             && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route removed for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
             # Generate Error Log
@@ -4679,9 +4760,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           fi
           # Remove IPv6 Route for WAN Failover
           if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ -n "${OLDIPV6ROUTETABLE+x}" ]] &>/dev/null && [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
-            if [[ -n "$(ip route list ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
+            if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE})" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Deleting route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}"
-              ip route del ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
+              ${ipbinpath}ip -6 route del ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE} &>/dev/null \
               || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to delete route for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" \
               && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route deleted for ${IPV6} dev ${OLDIFNAME} table ${OLDIPV6ROUTETABLE}" ;}
             fi
@@ -4691,7 +4772,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     elif [[ -z "${FWMARK}" ]] &>/dev/null;then
       for IPV6 in ${IPV6S};do
         # Check IPv6 for prefix error
-        if [[ -n "$(ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
           if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
@@ -4702,9 +4783,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
             unset comment
           fi
           # Add IPv6 Route
-          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip -6 route list ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding route for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}"
-            ip -6 route add ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip -6 route add ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
             || rc="$?" \
             && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route added for ${IPV6}:: dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
             # Generate Error Log
@@ -4726,9 +4807,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
             && { saveipv6ipset="1" && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" ;} ;}
           fi
           # Add IPv6 Route
-          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip -6 route list ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding route for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}"
-            ip -6 route add ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip -6 route add ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE} &>/dev/null \
             || rc="$?" \
             && { rc="$?" && [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route added for ${IPV6} dev ${IFNAME} table ${IPV6ROUTETABLE}" ;}
             # Generate Error Log
@@ -4757,24 +4838,31 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
 
   # IPv4
   # Create FWMark IPv4 Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Checking for IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-    ip rule add from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
+    ${ipbinpath}ip rule add from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Added IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     # Remove FWMark Unreachable IPv4 Rule if it exists
-    if [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+    if [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Restore Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-      ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+      ${ipbinpath}ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
       && logger -p 4 -t "$ALIAS" "Restore Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
       || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
   # Create FWMark Unreachable IPv4 Rule
-  elif [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null;then
+  elif [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip route show default table ${ROUTETABLE})" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
     logger -p 5 -t "$ALIAS" "Restore Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
-    ip rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
+    ${ipbinpath}ip rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
     && logger -p 4 -t "$ALIAS" "Restore Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
     || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    # Remove FWMark IPv4 Rule if it exists
+    if [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
+      logger -p 5 -t "$ALIAS" "Restore Policy - Deleting IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+      ${ipbinpath}ip rule del from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} \
+      && logger -p 4 -t "$ALIAS" "Restore Policy - Deleted IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
+      || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to delete IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
+    fi
   fi
 
   # Create IPv4 IPTables OUTPUT Rule
@@ -4802,7 +4890,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   fi
 
   # Add IPv4s to IPSET or create IPv4 Routes or rules and remove old IPv4 Routes or Rules
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && { [[ -n "$(ip rule list from all fwmark ${FWMARK} table ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null || [[ -n "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && { [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null || [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
       if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
@@ -4815,31 +4903,31 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
       fi
       # Remove IPv4 Routes
       if [[ "${RGW}" == "0" ]] &>/dev/null;then
-        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Removing route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
-          ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
+          ${ipbinpath}ip route del ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
           || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to remove route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" \
           && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route removed for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" ;}
         fi
         if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ "$INTERFACE" == "wan" ]] &>/dev/null;then
-          if [[ -n "$(ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "$(${ipbinpath}ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Deleting route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}"
-            ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
             || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to delete route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" \
             && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route deleted for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" ;}
           fi
         fi
       elif [[ "${RGW}" != "0" ]] &>/dev/null;then
         # Remove IPv4 Rules
-        if [[ -n "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+        if [[ -n "$(${ipbinpath}ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "to" && $5 == "'${IPV4}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Removing IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
-          ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
+          ${ipbinpath}ip rule del from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
           || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to remove IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" \
           && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Removed IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" ;}
         fi
       fi
     done
-  elif [[ -z "${FWMARK}" ]] &>/dev/null || { [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && [[ -z "$(ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} | grep -w "unreachable")" ]] &>/dev/null ;};then
+  elif [[ -z "${FWMARK}" ]] &>/dev/null || { [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
       if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
@@ -4852,25 +4940,25 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
       fi
       # Create IPv4 Routes
       if [[ "${RGW}" == "0" ]] &>/dev/null;then
-        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+        if [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip route list ${IPV4} dev ${IFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}"
-          ip route add ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
+          ${ipbinpath}ip route add ${IPV4} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
           || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add route for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" \
           && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route added for ${IPV4} dev ${IFNAME} table ${ROUTETABLE}" ;}
         fi
         if [[ -n "${OLDIFNAME+x}" ]] &>/dev/null && [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
-          if [[ -n "$(ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
+          if [[ -n "$(${ipbinpath}ip route list ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE})" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Deleting route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}"
-            ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
+            ${ipbinpath}ip route del ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE} &>/dev/null \
             || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to delete route for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" \
             && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Route deleted for ${IPV4} dev ${OLDIFNAME} table ${ROUTETABLE}" ;}
           fi
         fi
       elif [[ "${RGW}" != "0" ]] &>/dev/null;then
         # Create IPv4 Rules
-        if [[ -z "$(ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY})" ]] &>/dev/null;then
+        if [[ -z "$(${ipbinpath}ip rule list from all to ${IPV4} lookup ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "to" && $5 == "'${IPV4}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
           [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}"
-          ip rule add from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
+          ${ipbinpath}ip rule add from all to ${IPV4} table ${ROUTETABLE} priority ${PRIORITY} &>/dev/null \
           || logger -p 2 -st "$ALIAS" "Restore Policy - ***Error*** Failed to add IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" \
           && { [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -t "$ALIAS" "Restore Policy - Added IP Rule for ${IPV4} table ${ROUTETABLE} priority ${PRIORITY}" ;}
         fi
@@ -5144,10 +5232,24 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
     wgcslots="5"
   fi
   
-  # IPVERSION
-  if [[ -z "${IPVERSION+x}" ]] &>/dev/null;then
-    IPVERSION="$(ip -V | awk -F "-" '/iproute2/ {print $2}')"
-    [[ -n "${IPVERSION}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set IPVERSION" && unset IPVERSION && continue ;}
+  # IPSYSVERSION
+  if [[ -z "${IPSYSVERSION+x}" ]] &>/dev/null;then
+    IPSYSVERSION="$(/usr/sbin/ip -V | awk -F "-" '/iproute2/ {print $2}')"
+    [[ -n "${IPSYSVERSION}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set IPSYSVERSION" && unset IPSYSVERSION && continue ;}
+	if [[ "${IPSYSVERSION}" == "ss150210" ]] &>/dev/null;then
+	  IPSYSVERSION="3.19.0"
+    fi
+  fi
+  
+  # IPOPTVERSION
+  if [[ -z "${IPOPTVERSION+x}" ]] &>/dev/null && [[ -f "/opt/sbin/ip" ]] &>/dev/null;then
+    IPOPTVERSION="$(/opt/sbin/ip -V | awk -F "-" '/iproute2/ {print $2}')"
+    [[ -n "${IPOPTVERSION}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set IPOPTVERSION" && unset IPOPTVERSION && continue ;}
+	if [[ "${IPOPTVERSION}" == "ss4.4.0" ]] &>/dev/null;then
+	  IPOPTVERSION="4.4.0"
+    fi
+  elif [[ -z "${IPOPTVERSION+x}" ]] &>/dev/null && [[ ! -f "/opt/sbin/ip" ]] &>/dev/null;then
+    IPOPTVERSION=""
   fi
 
   # WANSDUALWANENABLE
@@ -5528,13 +5630,28 @@ unset systemparameterssync
 return
 }
 
-# Test if IP binary version is suitable for use of Domain VPN Routing
+# Test IP binary version
 testipversion ()
 {
+  # CHECK IPVERSION and IPOPTVERSION are set
+  if [[ -z "${IPSYSVERSION+x}" ]] &>/dev/null || [[ -z "${IPOPTVERSION+x}" ]] &>/dev/null;then
+    getsystemparameters || return
+  fi
+  
+  # Check if IPOPTVERSION is newer than IPVERSION
+  highestipversion="$(printf "${IPSYSVERSION}\n${IPOPTVERSION}\n" | sort -r | head -n1)"
+  if [[ "${IPSYSVERSION}" == "${highestipversion}" ]] &>/dev/null || [[ -z "${IPOPTVERSION}" ]] &>/dev/null;then
+    ipbinpath="/usr/sbin/"
+    IPVERSION="${IPSYSVERSION}"
+  elif [[ "${IPOPTVERSION}" == "${highestipversion}" ]] &>/dev/null;then
+    ipbinpath="/opt/sbin/"
+    IPVERSION="${IPOPTVERSION}"
+  fi
+  
   logger -p 5 -t "$ALIAS" "Test IP Version - Testing IP Version: ${IPVERSION}"
-  ip rule list all &>/dev/null \
-  && logger -p 4 -t "$ALIAS" "Test IP Version - IP Version: ${IPVERSION} passed" \
-  || { echo -e "${BOLD}${RED}***${FRIENDLYNAME} does not support IP Version: ${IPVERSION}***${NOCOLOR}" ; { logger -p 1 -t "$ALIAS" "Test IP Version - IP Version: ${IPVERSION} failed" && return 1 ;} ;}
+  ${ipbinpath}ip rule list all &>/dev/null \
+  && { ipcompmode="1" ; ipversionwarning="" ; logger -p 4 -t "$ALIAS" "Test IP Version - IP Version: ${IPVERSION} passed" ;} \
+  || { ipcompmode="2" ; ipversionwarning="***This version may have compatibility issues***" ; logger -p 1 -t "$ALIAS" "Test IP Version - ${FRIENDLYNAME} may have compatibility issues with IP Version: ${IPVERSION}" ;}
 
   return
 }
@@ -5554,7 +5671,7 @@ else
     return
   # Kill PID if stuck process
   elif [[ -n "$(ps | awk '$1 == "'${lastpid}'" {print}')" ]] &>/dev/null;then
-    kill -9 $lastpid &>/dev/null \
+    kill -9 ${lastpid} &>/dev/null \
     && logger -p 2 -t "$ALIAS" "NVRAM Check - ***NVRAM Check Failure Detected***"
     unset lastpid
     return
@@ -5568,7 +5685,7 @@ systembinaries || return
 # Get System Parameters
 getsystemparameters || return
 # Test IP Binary Version
-testipversion || return 1
+testipversion || return
 # Perform PreV2 Config Update
 if [[ "${mode}" != "install" ]] &>/dev/null && [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
   updateconfigprev2 || return

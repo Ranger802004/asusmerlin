@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/04/2024
-# Version: v3.0.0-beta2
+# Date: 10/09/2024
+# Version: v3.0.0-beta3
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -158,18 +158,21 @@ Considerations:
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
 
 Release Notes:
-v3.0.0-beta2 - 10/04/2024
+v3.0.0-beta3 - 10/09/2024
 Enhancements:
 - Added functionality to support wildcards for subdomains.  Example: *.example.com ***Requires DNS Logging to be enabled***
 - Added DNS Overrides for VPN Client interfaces, when a policy is configured with a specific interface it will use the system default DNS Server unless a DNS override is configured for that specific interface in the configuration menu.
 - Domain queries will now utilize dig if it is installed and will bypass use of nslookup.
 - If dig is installed, a policy can be configured to allow CNAMES of domains to be added to the policy domain list automatically during query execution.  This is disabled by default for existing policies and can be enabled using the editpolicy function.
+- IP Version will now be displayed under System Information located in the Configuration menu.
 
 Fixes:
 - Reduced names of IPSets to allow policy names to have a max length of 24 characters.
 - Fixed issue that caused RT-AC68U and DSL-AC68U to lock up on execution due to limitation of 2 OpenVPN Client slots.
-- Domain VPN Routing will now check the IP version and test it for compability.
+- Domain VPN Routing will now check the IP version and operate in a compability mode for older versions.  If an optional binary is installed Domain VPN Routing will test and use the newer version of the ip binary between the system and optional binary.
 - Fixed an issue with beta update channel.
+- Fixed an issue where ip rules were not being deleted when an unreachable rule was being created to block traffic for a VPN interface being down.
+- Fixed minor issues with IPv6 routing rules.
 
 v2.1.3 - 02/26/2024
 Enhancements:
