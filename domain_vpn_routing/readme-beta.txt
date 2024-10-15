@@ -194,7 +194,7 @@ Considerations:
 - To bulk add domains, you can manually add them to the Policy domainlist File under /jffs/configs/domain_vpn_routing/
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
   
-- To enhance performance of querying domains, installed dig package from Entware.
+- To enhance performance of querying domains, install dig package from Entware.
 
 - To use ASN related functions, install jq package from Entware.  
 
