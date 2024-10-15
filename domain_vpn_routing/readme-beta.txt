@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/14/2024
-# Version: v3.0.0
+# Date: 10/15/2024
+# Version: v3.0.1-beta1
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -26,15 +26,20 @@ Run Modes:
 - Menu Mode: SSH User Interface for Domain VPN Routing, access by executing script without any arguments.
 - install: Install Domain VPN Routing and the configuration files necessary for it to run.
 - createpolicy: Create a new policy.
+- addasn: Add a new ASN.
 - showpolicy: Show the policy specified or all policies. Use all as 2nd argument for All Policies.
+- showasn: Show a specified ASN or all ASNs. Use all as 2nd argument for All ASNs.
 - querypolicy: Query domains from a policy or all policies and create IP Routes necessary. Use all as 2nd argument for All Policies.
+- queryasn: Query a specified ASN or all ASNs and create IP Routes necessary. Use all as 2nd argument for All ASNs.
 - restorepolicy: Perform a restore of an existing policy. Use all as 2nd argument for All Policies.
 - adddomain: Add a domain to the policy specified.
 - editpolicy: Modify an existing policy.
+- editasn: Modify an existing ASN.
 - update: Download and update to the latest version.
 - cron: Create the Cron Jobs to automate Query Policy functionality.
 - deletedomain: Delete a specified domain from a selected policy.
 - deletepolicy: Delete a specified policy or all policies. Use all as 2nd argument for All Policies.
+- deleteasn: Delete a specified ASN or all ASNs. Use all as 2nd argument for All ASNs.
 - deleteip: Delete a queried IP from a policy.
 - kill: Kill any instances of the script.
 - uninstall: Uninstall the configuration files necessary to stop the script from running.
@@ -88,7 +93,7 @@ Step 1: Create a policy by running the following command: /jffs/scripts/domain_v
 Step 2: Select a name for the Policy (Case Sensitive).
 	Example: Google
 
-Step 3: Select an existing OpenVPN Interface.  Type the name of the interface as displayed.
+Step 3: Select an existing Interface.  Type the name of the interface as displayed.
 
 Step 4: Select to enable or disable Verbose Logging for the Policy
 
@@ -113,17 +118,37 @@ Step 2: Add new domains (one per line) to the file.  ***Make sure to leave a bla
 
 Step 3: Save the file.
 
+Adding an ASN:
+Step 1: Add a domain to an existing policy by running the following command: /jffs/scripts/domain_vpn_routing.sh addasn <Insert ASN>
+	Example: /jffs/scripts/domain_vpn_routing.sh addasn AS15169
+
+Step 2: Select an existing Interface.  Type the name of the interface as displayed.
+
+Step 3: ASN has been added and will start synchronizing IP Subnets belonging to the ASN.
+
 Querying a Policy:
 - Query a Policy or All Policies by using the following command: /jffs/scripts/domain_vpn_routing.sh querypolicy <Insert Policy/all>
 	Example: /jffs/scripts/domain_vpn_routing.sh querypolicy all
-	Note: Cron Job is created to query all policies every 5 minutes.
+	Note: Cron Job is created to query all policies every 5 minutes (Adjustable in Configuration).
 
-Step 2: Querying Policy will add the IP Addresses associated with the domains in the Policy and create routes to the assigned Route Table for the OpenVPN Interface.
+Step 2: Querying a Policy will add the IP Addresses associated with the domains in the Policy and create routes to the assigned Route Table for the Interface.
+
+Querying an ASN:
+- Query an ASN or All ASNs by using the following command: /jffs/scripts/domain_vpn_routing.sh queryasn <Insert ASN/all>
+	Example: /jffs/scripts/domain_vpn_routing.sh queryasn all
+	Note: Cron Job is created to query all policies every 5 minutes (Adjustable in Configuration).
+
+Step 2: Querying an ASN will add the IP Addresses associated with the ASN and create routes to the assigned Route Table for the Interface.
 
 Show Policies:
 - To show a Policy or All Policies (Name Only), type the following command: /jffs/scripts/domain_vpn_routing.sh showpolicy <Insert Policy/all>
 	Example: /jffs/scripts/domain_vpn_routing.sh showpolicy all
 	Note: When querying all policies, only the policy names will be displayed.  When selecting a specific policy, the Policy Name, Interface, and Domains added to the Policy will be displayed.
+	
+Show ASNs:
+- To show an ASN or All ASNs (Name Only), type the following command: /jffs/scripts/domain_vpn_routing.sh showasn <Insert Policy/all>
+	Example: /jffs/scripts/domain_vpn_routing.sh showasn all
+	Note: When querying all ASNs, only the ASN names will be displayed.  When selecting a specific ASN, the ASN Name, Interface, and Status will be displayed.
 
 Editing a Policy:
 Step 1: Edit a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh editpolicy <Insert Name>
@@ -138,10 +163,22 @@ Step 5. Select to enable to add CNAMES (This will allow CNAMES to be added to th
 
 Step 6: Allow the routes for the Policy to be recreated.
 
+Editing an ASN:
+Step 1: Edit an ASN by running the following command: /jffs/scripts/domain_vpn_routing.sh editasn <Insert Name>
+
+Step 2: Select the existing or new interface
+
+Step 3: Allow the routes for the Policy to be recreated.
+
 Deleting a Policy:
 - Delete a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh deletepolicy <Insert Name/all>
 	Example: /jffs/scripts/domain_vpn_routing.sh deletepolicy all
 	Note: When selecting all policies, all policies will be deleted as well as domains and routes that are created.
+	
+Deleting an ASN:
+- Delete a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh deleteasn <Insert Name/all>
+	Example: /jffs/scripts/domain_vpn_routing.sh deleteasn all
+	Note: When selecting all ASNs, all ASNs will be deleted as well as routes that are created.
 
 Deleting a Domain:
 Step 1: Delete a domain from a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh deletedomain <Insert Domain>
@@ -154,10 +191,27 @@ Considerations:
 - If a domain is accesssed while the IP has not yet been added to the policy will not take effect until it is added and a route is created.  
   ***WARNING*** Proper syntax must be used or script will break.  The IP can be manually added by opening the Policy domaintoIP File under /jffs/configs/domain_vpn_routing/.  Add using the following syntax Domain>>IP
   
- - To bulk add domains, you can manually add them to the Policy domainlist File under /jffs/configs/domain_vpn_routing/
+- To bulk add domains, you can manually add them to the Policy domainlist File under /jffs/configs/domain_vpn_routing/
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
+  
+- To enhance performance of querying domains, installed dig package from Entware.
+
+- To use ASN related functions, install jq package from Entware.  
 
 Release Notes:
+v3.0.1-beta1 - 10/15/2024
+Enhancements
+- Added functionality to add ASNs to be routed over an interface.
+- Added ADDCNAMES to Show Policy menu when viewing a policy.
+- Optimized functionality to generate interface list when creating or editing a policy or ASN.
+- Optimized functionality for boot delay timer and setting process priority.
+- System Information under Configuration menu now shows status of dig and jq being installed.
+
+Fixes:
+- Fixed an issue where IP FWMark rules were erroneously being deleted when editing or deleting a policy.
+- Fixed an issue with executing the kill function to kill Domain VPN Routing processes, this was also happeneing in update mode.
+- Various minor fixes
+
 v3.0.0 - 10/14/2024
 Enhancements:
 - Added functionality to support wildcards for subdomains.  Example: *.example.com ***Requires DNS Logging to be enabled***
