@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/15/2024
-# Version: v3.0.1-beta1
+# Date: 10/22/2024
+# Version: v3.0.1-beta2
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -199,17 +199,22 @@ Considerations:
 - To use ASN related functions, install jq package from Entware.  
 
 Release Notes:
-v3.0.1-beta1 - 10/15/2024
+v3.0.1-beta2 - 10/22/2024
 Enhancements
 - Added functionality to add ASNs to be routed over an interface.
 - Added ADDCNAMES to Show Policy menu when viewing a policy.
 - Optimized functionality to generate interface list when creating or editing a policy or ASN.
 - Optimized functionality for boot delay timer and setting process priority.
 - System Information under Configuration menu now shows status of dig and jq being installed.
+- Domain VPN Routing will now check for WAN being connected and will error out when executing querypolicy, queryasn, or update if WAN is not connected.
+- Minor optimizations
 
 Fixes:
 - Fixed an issue where IP FWMark rules were erroneously being deleted when editing or deleting a policy.
 - Fixed an issue with executing the kill function to kill Domain VPN Routing processes, this was also happeneing in update mode.
+- Fixed grammatical error on Main Menu for queryasn.
+- Fixed error when editing a policy and getting an error for no NEWASININTERFACE variable.
+- Fixed an erroroneous file being created under /jffs/configs/domain_vpn_routing/policy_all_domainlist ***It is safe to delete this file***
 - Various minor fixes
 
 v3.0.0 - 10/14/2024

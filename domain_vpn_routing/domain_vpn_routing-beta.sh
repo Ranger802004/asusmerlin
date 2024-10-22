@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/15/2024
-# Version: v3.0.1-beta1
+# Date: 10/22/2024
+# Version: v3.0.1-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,8 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.0.1-beta1"
+VERSION="v3.0.1-beta2"
+MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -221,7 +222,7 @@ menu ()
      printf "  ${BOLD}Operations:${NOCOLOR}\n"
    	printf "  (8)  cron              Schedule Cron Job to automate Query Policy for all policies\n"
      printf "  (9)  querypolicy       Perform a manual query of an existing policy\n"
-     printf "  (10) queryasn          Perform a manual query of a configured ASNs\n"
+     printf "  (10) queryasn          Perform a manual query of an existing configured ASN\n"
      printf "  (11) restorepolicy     Perform a restore of an existing policy\n"
      printf "  (12) kill              Kill any running instances of ${FRIENDLYNAME}\n"
      printf "\n"
@@ -3273,6 +3274,9 @@ bootdelaytimer
 # Set Process Priority
 setprocesspriority
 
+# Check WAN Status
+checkwanstatus || return 1
+
 # Generate Query ASN List
 if [[ ! -f "${ASNFILE}" ]] &>/dev/null;then
   logger -p 3 -st "$ALIAS" "Query ASN - ***No ASNs Detected***"
@@ -3307,7 +3311,11 @@ for QUERYASN in ${QUERYASNS};do
   routingdirector || return
   
   # Query ASN for IP Subnets
-  logger -p 5 -st "$ALIAS" "Query ASN - Querying ${QUERYASN}"
+  if tty >/dev/null 2>&1;then
+    printf '\033[K%b\r' "${UNDERLINE}Query ASN: ${QUERYASN}...${NOCOLOR}\n"
+  fi
+
+  logger -p 5 -t "$ALIAS" "Query ASN - Querying ASN: ${QUERYASN}"
   /usr/sbin/curl --connect-timeout 30 --max-time 30 --url "https://api.bgpview.io/asn/${QUERYASN}/prefixes" --ssl-reqd 2>/dev/null | /opt/bin/jq > /tmp/${QUERYASN}_query.tmp \
   || { logger -p 2 -st "$ALIAS" "Query ASN - ***Error*** Failed to query ASN: ${QUERYASN}" && continue ;}
   
@@ -3351,12 +3359,17 @@ for QUERYASN in ${QUERYASNS};do
 	
     # Add ASN IPv6 Subnets to IPSET
     for ASNIPV6 in ${ASNIPV6S};do
+      if tty >/dev/null 2>&1;then
+        printf '\033[K%b\r' "${LIGHTCYAN}Processing IPv6 Subnet: ${ASNIPV6}...${NOCOLOR}"
+      fi
       # Add to IPv6 IPSET
-      if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 | grep -wo "${ASNIPV6}")" ]] &>/dev/null;then
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 | grep -wo "${ASNIPV6}")" ]] &>/dev/null;then
         logger -p 5 -t "$ALIAS" "Query ASN - Adding ${ASNIPV6} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v6"
         ipset add ${IPSETPREFIX}-${QUERYASN}-v6 ${ASNIPV6} \
         || logger -p 2 -st "$ALIAS" "Query ASN - ***Error*** Failed to add ${ASNIPV6} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v6" \
         && logger -p 4 -t "$ALIAS" "Query ASN - Added ${ASNIPV6} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v6"
+      elif [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
+        break
       fi
     done
   fi
@@ -3398,11 +3411,16 @@ for QUERYASN in ${QUERYASNS};do
   
   # Add ASN IPv4 Subnets to IPSET
   for ASNIPV4 in ${ASNIPV4S};do
-    if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 | grep -wo "${ASNIPV4}")" ]] &>/dev/null;then
+    if tty >/dev/null 2>&1;then
+      printf '\033[K%b\r' "${LIGHTCYAN}Processing IPv4 Subnet: ${ASNIPV4}...${NOCOLOR}"
+    fi
+    if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 | grep -wo "${ASNIPV4}")" ]] &>/dev/null;then
       logger -p 5 -t "$ALIAS" "Query ASN - Adding ${ASNIPV4} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v4"
       ipset add ${IPSETPREFIX}-${QUERYASN}-v4 ${ASNIPV4} \
       || logger -p 2 -st "$ALIAS" "Query ASN - ***Error*** Failed to add ${ASNIPV4} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v4" \
       && logger -p 4 -t "$ALIAS" "Query ASN - Added ${ASNIPV4} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v4"
+    elif [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
+      break
     fi
   done
   
@@ -3415,6 +3433,11 @@ for QUERYASN in ${QUERYASNS};do
   fi
   
 done
+
+# Parse new line
+if tty >/dev/null 2>&1;then
+  printf '\033[K'
+fi
 
 # Unset Variables
 unset ASNIPV4S ASNIPV6S
@@ -3600,7 +3623,7 @@ if [[ "${mode}" == "editpolicy" ]] &>/dev/null;then
         fi
 
         continue
-      elif [[ "${INTERFACE}" == "${NEWASNINTERFACE}" ]] &>/dev/null;then
+      elif [[ "${INTERFACE}" == "${NEWPOLICYINTERFACE}" ]] &>/dev/null;then
         # Create IP FWMark Rules
         createipmarkrules
 
@@ -4518,6 +4541,9 @@ bootdelaytimer
 # Set Process Priority
 setprocesspriority
 
+# Check WAN Status
+checkwanstatus || return 1
+
 # Query Policies
 if [[ "${POLICY}" == "all" ]] &>/dev/null;then
   QUERYPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
@@ -4608,7 +4634,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       for domaincname in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} CNAME +noall +answer | awk '{print substr($NF, 1, length ($NF)-1)}');do
         if [[ -z "$(awk '$0 == "'${domaincname}'" {print}' "${POLICYDIR}/policy_${QUERYPOLICY}_domainlist")" ]] &>/dev/null;then
           logger -p 5 -t "$ALIAS" "Query Policy - Adding CNAME: ${domaincname} to ${QUERYPOLICY}"
-          echo -e "${domaincname}" >> "${POLICYDIR}/policy_${POLICY}_domainlist" \
+          echo -e "${domaincname}" >> "${POLICYDIR}/policy_${QUERYPOLICY}_domainlist" \
           && logger -p 4 -t "$ALIAS" "Query Policy - Added CNAME: ${domaincname} to ${QUERYPOLICY}" \
           || logger -p 2 -st "$ALIAS" "Query Policy - ***Error*** Failed to add CNAME: ${domaincname} to ${QUERYPOLICY}"
         else
@@ -4888,7 +4914,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         # Check IPv6 for prefix error
         if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
-          if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
+          if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6}:: comment "${comment}" \
@@ -4922,7 +4948,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
         else
           # Add to IPv6 IPSET
-          if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+          if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
             ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6} comment "${comment}" \
@@ -4961,7 +4987,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         # Check IPv6 for prefix error
         if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
-          if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
+          if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
             ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6}:: comment "${comment}" \
@@ -4986,7 +5012,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
         else
           # Add to IPv6 IPSET
-          if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+          if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
             ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6} comment "${comment}" \
@@ -5052,7 +5078,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   if [[ -n "${FWMARK}" ]] &>/dev/null && { [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null || [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
-      if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
         ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v4 ${IPV4} comment "${comment}" \
@@ -5089,7 +5115,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   elif [[ -z "${FWMARK}" ]] &>/dev/null || [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
-      if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Query Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
         ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v4 ${IPV4} comment "${comment}" \
@@ -5328,7 +5354,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
         # Check IPv6 for prefix error
         if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
-          if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
+          if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6}:: comment "${comment}" \
@@ -5362,7 +5388,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           fi
         else
           # Add to IPv6 IPSET
-          if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+          if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
             ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6} comment "${comment}" \
@@ -5401,7 +5427,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
         # Check IPv6 for prefix error
         if [[ -n "$(${ipbinpath}ip -6 route list ${IPV6} 2>&1 | grep -e "Error: inet6 prefix is expected rather than")" ]] &>/dev/null;then
           # Add to IPv6 IPSET with prefix fixed
-          if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
+          if [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
             ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6}:: comment "${comment}" \
@@ -5426,7 +5452,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           fi
         else
           # Add to IPv6 IPSET
-          if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
+          if [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
             [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
             ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6} comment "${comment}" \
@@ -5520,7 +5546,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && { [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null || [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
-      if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
         ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v4 ${IPV4} comment "${comment}" \
@@ -5557,7 +5583,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   elif [[ -z "${FWMARK}" ]] &>/dev/null || { [[ "${restoreipv4mode}" == "2" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null ;};then
     for IPV4 in ${IPV4S};do
       # Add to IPv4 IPSET
-      if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
+      if [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
         [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 5 -t "$ALIAS" "Restore Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
         ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v4 ${IPV4} comment "${comment}" \
@@ -5728,6 +5754,8 @@ return
 # Update Script
 update ()
 {
+# Check WAN Status
+checkwanstatus || return 1
 
 # Read Global Config File
 if [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
@@ -6308,6 +6336,42 @@ fi
 return
 }
 
+# Check WAN Status
+checkwanstatus ()
+{
+# Check if Dual WAN Mode
+if [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
+  if [[ ${WAN0PRIMARY} == "1" ]] &>/dev/null;then
+    if [[ "${WAN0STATE}" == "2" ]] &>/dev/null;then
+	  return
+	else
+      echo -e "${RED}***WAN0 is not connected***${NOCOLOR}"
+      logger -p 2 -t "$ALIAS" "Check WAN Status - ***Error*** WAN0 is not connected"
+      return 1
+	fi
+  elif [ ${WAN1PRIMARY} == "1" ]] &>/dev/null;then
+    if [[ "${WAN1STATE}" == "2" ]] &>/dev/null;then
+	  return
+	else
+      echo -e "${RED}***WAN1 is not connected***${NOCOLOR}"
+      logger -p 2 -t "$ALIAS" "Check WAN Status - ***Error*** WAN1 is not connected"
+      return 1
+	fi
+  fi
+# Check if Single WAN Mode
+elif [[ "$WANSDUALWANENABLE" == "0" ]] &>/dev/null;then
+  if [[ "${WAN0STATE}" == "2" ]] &>/dev/null;then
+    return
+  else
+    echo -e "${RED}***WAN is not connected***${NOCOLOR}"
+    logger -p 2 -t "$ALIAS" "Check WAN Status - ***Error*** WAN is not connected"
+    return 1
+  fi
+fi
+
+return
+}
+
 # Check if NVRAM Background Process is Stuck if CHECKNVRAM is Enabled
 nvramcheck ()
 {
@@ -6339,13 +6403,15 @@ getsystemparameters || return
 # Test IP Binary Version
 testipversion || return
 # Perform PreV2 Config Update
-if [[ "${mode}" != "install" ]] &>/dev/null && [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
+if [[ "${MAJORVERSION}" -lt "3" ]] &>/dev/null && [[ "${mode}" != "install" ]] &>/dev/null && [[ ! -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
   updateconfigprev2 || return
 # Get Global Configuration
 elif [[ "${mode}" != "install" ]] &>/dev/null && [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
   setglobalconfig || return
   setfirewallrestore || return
-  updateconfigprev212 || return
+  if [[ "${MAJORVERSION}" -lt "3" ]] &>/dev/null;then
+    updateconfigprev212 || return
+  fi
 fi
 # Check Alias
 if [[ -d "${POLICYDIR}" ]] &>/dev/null && { [[ "${mode}" != "uninstall" ]] &>/dev/null || [[ "${mode}" != "install" ]] &>/dev/null ;};then
