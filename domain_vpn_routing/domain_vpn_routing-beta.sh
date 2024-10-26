@@ -3,7 +3,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 10/26/2024
-# Version: v3.0.1
+# Version: v3.0.2-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,13 +12,15 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.0.1"
+VERSION="v3.0.2-beta1"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
 ASNFILE="/jffs/configs/domain_vpn_routing/asn.conf"
+ADGUARDHOMELOGFILE="/opt/etc/AdGuardHome/data/querylog.json"
 POLICYDIR="/jffs/configs/domain_vpn_routing"
+BACKUPPATH="/jffs/configs/domain_vpn_routing.tar.gz"
 SYSTEMLOG="/tmp/syslog.log"
 LOCKFILE="/var/lock/domain_vpn_routing.lock"
 DNSMASQCONFIGFILE="/etc/dnsmasq.conf"
@@ -656,6 +658,27 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
     mode="menu"
     menu
   fi
+  
+  # Check if Backup exists
+  if [[ -f "${BACKUPPATH}" ]] &>/dev/null;then
+    # Prompt for restore of configuration
+    while true &>/dev/null;do
+      read -p "Do you want to restore configuration of ${FRIENDLYNAME}? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
+      case $yn in
+        [Yy]* ) restoreconfig="1";break;;
+        [Nn]* ) restoreconfig="0";return;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+      esac
+    done
+  fi
+  
+  # Restore Configuration from Backup
+  if [[ "${restoreconfig}" == "1" ]] &>/dev/null;then
+    logger -p 5 -st "$ALIAS" "Install - Restoring configuration from ${BACKUPPATH}"
+    /bin/tar zxf ${BACKUPPATH} -C / \
+    && logger -p 4 -st "$ALIAS" "Install - Restored configuration from ${BACKUPPATH}" \
+    || logger -p 2 -st "$ALIAS" "Install - ***Error*** Failed to restore configuration from ${BACKUPPATH}"
+  fi
 
   # Create Policy Directory
   if [[ ! -d "${POLICYDIR}" ]] &>/dev/null;then
@@ -685,7 +708,7 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
   fi
   
   # Create ASN File
-  if [[ ! -f ${ASNFILE} ]] &>/dev/null;then
+  if [[ ! -f "${ASNFILE}" ]] &>/dev/null;then
     logger -p 5 -st "$ALIAS" "Install - Creating ${ASNFILE}"
     touch -a ${ASNFILE} \
     && chmod 666 ${ASNFILE} \
@@ -795,10 +818,29 @@ if [[ "${mode}" == "uninstall" ]] &>/dev/null;then
       * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
     esac
   done
+  
+  # Prompt for backup of configuration
+  while true &>/dev/null;do
+    read -p "Do you want to backup configuration of ${FRIENDLYNAME}? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
+    case $yn in
+      [Yy]* ) backupconfig="1";break;;
+      [Nn]* ) backupconfig="0";return;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
 
+  # Check if POLICYDIR exists
   if [[ ! -d "${POLICYDIR}" ]] &>/dev/null;then
     echo -e "${RED}${ALIAS} - Uninstall: ${ALIAS} not installed...${NOCOLOR}"
     return
+  fi
+  
+  # Perform Backup
+  if [[ "${backupconfig}" == "1" ]] &>/dev/null;then
+    logger -p 5 -st "$ALIAS" "Uninstall - Backing up configuration of ${FRIENDLYNAME} to ${BACKUPPATH}"
+    /bin/tar czf ${BACKUPPATH} ${POLICYDIR} \
+    && logger -p 4 -st "$ALIAS" "Uninstall - Backed up configuration of ${FRIENDLYNAME} to ${BACKUPPATH}" \
+    || logger -p 2 -st "$ALIAS" "Uninstall - ***Error*** Failed to backup configuration of ${FRIENDLYNAME} to ${BACKUPPATH}"
   fi
 
   # Remove Cron Job
@@ -940,6 +982,12 @@ elif [[ -z "${globalconfigsync+x}" ]] &>/dev/null;then
 fi
 if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   logger -p 6 -t "$ALIAS" "Debug - Checking for missing global configuration options"
+  
+  # ENABLE
+  if [[ -z "$(sed -n '/\bENABLE=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating ENABLE Default: Enabled"
+    echo -e "ENABLE=1" >> ${GLOBALCONFIGFILE}
+  fi
 
   # DEVMODE
   if [[ -z "$(sed -n '/\bDEVMODE=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -1468,6 +1516,7 @@ fi
 # Load Config Menu
 clear
 printf "\n  ${BOLD}Global Settings:${NOCOLOR}\n"
+printf "  (0)  Enable Domain VPN Routing       Status:   " && { [[ "${ENABLE}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 printf "  (1)  Configure Dev Mode              Dev Mode: " && { [[ "${DEVMODE}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 printf "  (2)  Configure NVRAM Checks          NVRAM Checks: " && { [[ "${CHECKNVRAM}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 printf "  (3)  Configure Process Priority      Process Priority: " && { { [[ "${PROCESSPRIORITY}" == "0" ]] &>/dev/null && printf "${LIGHTBLUE}Normal${NOCOLOR}" ;} || { [[ "${PROCESSPRIORITY}" == "-20" ]] &>/dev/null && printf "${LIGHTCYAN}Real Time${NOCOLOR}" ;} || { [[ "${PROCESSPRIORITY}" == "-10" ]] &>/dev/null && printf "${LIGHTMAGENTA}High${NOCOLOR}" ;} || { [[ "${PROCESSPRIORITY}" == "10" ]] &>/dev/null && printf "${LIGHTYELLOW}Low${NOCOLOR}" ;} || { [[ "${PROCESSPRIORITY}" == "20" ]] &>/dev/null && printf "${LIGHTRED}Lowest${NOCOLOR}" ;} || printf "${LIGHTGRAY}${PROCESSPRIORITY}${NOCOLOR}" ;} && printf "\n"
@@ -1517,26 +1566,28 @@ else
 fi
 
 printf "\n  ${BOLD}System Information:${NOCOLOR}\n"
-printf "   DNS Logging Status                  Status:         " && { [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-printf "   DNS Log Path                        Log Path:       ${LIGHTBLUE}${DNSLOGPATH}${NOCOLOR}\n"
+printf "   DNS Logging Status                  Status:              " && { [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "   DNS Log Path                        Log Path:            ${LIGHTBLUE}${DNSLOGPATH}${NOCOLOR}\n"
+printf "   AdGuardHome Status                  Status:              " && { [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && printf "${GREEN}Active${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 if [[ "$WANSDUALWANENABLE" == "1" ]] &>/dev/null;then
   WAN0RPFILTER="$(cat /proc/sys/net/ipv4/conf/${WAN0GWIFNAME}/rp_filter)"
   WAN1RPFILTER="$(cat /proc/sys/net/ipv4/conf/${WAN1GWIFNAME}/rp_filter)"
-  printf "   WAN0 FWMark                         WAN0 FWMark:    ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
-  printf "   WAN0 Mask                           WAN0 Mask:      ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
-  printf "   WAN0 Reverse Path Filter            WAN0 RP Filter: " && { { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
-  printf "   WAN1 FWMark                         WAN1 FWMark:    ${LIGHTBLUE}${WAN1FWMARK}${NOCOLOR}\n"
-  printf "   WAN1 Mask                           WAN1 Mask:      ${LIGHTBLUE}${WAN1MASK}${NOCOLOR}\n"
-  printf "   WAN1 Reverse Path Filter            WAN1 RP Filter: " && { { [[ "$WAN1RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN1RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN1RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
+  printf "   WAN0 FWMark                         WAN0 FWMark:         ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
+  printf "   WAN0 Mask                           WAN0 Mask:           ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
+  printf "   WAN0 Reverse Path Filter            WAN0 RP Filter:      " && { { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
+  printf "   WAN1 FWMark                         WAN1 FWMark:         ${LIGHTBLUE}${WAN1FWMARK}${NOCOLOR}\n"
+  printf "   WAN1 Mask                           WAN1 Mask:           ${LIGHTBLUE}${WAN1MASK}${NOCOLOR}\n"
+  printf "   WAN1 Reverse Path Filter            WAN1 RP Filter:      " && { { [[ "$WAN1RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN1RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN1RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
 else
   WAN0RPFILTER="$(cat /proc/sys/net/ipv4/conf/${WAN0GWIFNAME}/rp_filter)"
-  printf "   WAN FWMark                          WAN FWMark:     ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
-  printf "   WAN Mask                            WAN Mask:       ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
-  printf "   WAN Reverse Path Filter             WAN RP Filter:  " && { { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
+  printf "   WAN FWMark                          WAN FWMark:          ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
+  printf "   WAN Mask                            WAN Mask:            ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
+  printf "   WAN Reverse Path Filter             WAN RP Filter:       " && { { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
 fi
-printf "   IP Version                          IP Version:     ${LIGHTBLUE}${IPVERSION}${NOCOLOR} ${RED}${ipversionwarning}${NOCOLOR}\n"
-printf "   DIG Installed                       DIG Installed:  " && { [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null && printf "${GREEN}Yes${NOCOLOR}" || printf "${RED}No${NOCOLOR}" ;} && printf "\n"
-printf "   JQ Installed                        JQ Installed:   " && { [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && printf "${GREEN}Yes${NOCOLOR}" || printf "${RED}No${NOCOLOR}" ;} && printf "\n"
+printf "   IP Version                          IP Version:          ${LIGHTBLUE}${IPVERSION}${NOCOLOR} ${RED}${ipversionwarning}${NOCOLOR}\n"
+printf "   Dig Installed                       DIG Installed:       " && { [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null && printf "${GREEN}Yes${NOCOLOR}" || printf "${RED}No${NOCOLOR}" ;} && printf "\n"
+printf "   Jq Installed                        JQ Installed:        " && { [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && printf "${GREEN}Yes${NOCOLOR}" || printf "${RED}No${NOCOLOR}" ;} && printf "\n"
+printf "   Python3 Installed                   Python3 Installed:   " && { [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null && printf "${GREEN}Yes${NOCOLOR}" || printf "${RED}No${NOCOLOR}" ;} && printf "\n"
 
 
 if [[ "$mode" == "menu" ]] &>/dev/null;then
@@ -1554,6 +1605,18 @@ printf "\nMake a selection: "
 [[ -z "${RESTARTREQUIRED+x}" ]] &>/dev/null && RESTARTREQUIRED="0"
 read -r configinput
 case "${configinput}" in
+  '0')      # ENABLE
+  while true &>/dev/null;do
+    read -r -p "Do you want to enable Domain VPN Routing? This defines if the Script is enabled for execution: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETENABLE="1"; break;;
+      [Nn]* ) SETENABLE="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  zENABLE="${ENABLE}"
+  NEWVARIABLES="${NEWVARIABLES} ENABLE=|$SETENABLE"
+  ;;
   '1')      # DEVMODE
   while true &>/dev/null;do
     read -r -p "Do you want to enable Developer Mode? This defines if the Script is set to Developer Mode where updates will apply beta releases: ***Enter Y for Yes or N for No***" yn
@@ -2364,6 +2427,16 @@ if [[ -n "$NEWVARIABLES" ]] &>/dev/null;then
 
   # Update Configuration
   setglobalconfig || return
+  
+  # Check if ENABLE was changed and delete or create FWMark rules accordingly
+  if [[ -n "${zENABLE+x}" ]] &>/dev/null;then
+    if [[ "${ENABLE}" == "1" ]] &>/dev/null;then
+      enablescript
+    else
+      disablescript
+    fi
+    unset zENABLE
+  fi
 
   # Check if cron job needs to be updated
   if [[ -n "${zCHECKINTERVAL+x}" ]] &>/dev/null;then
@@ -2501,7 +2574,7 @@ INTERFACES=""
 # Create IP FWMark Rules
 createipmarkrules ()
 {
-if [[ "${STATE}" != "0" ]] &>/dev/null && [[ -n "${FWMARK}" ]] &>/dev/null;then
+if [[ "${STATE}" != "0" ]] &>/dev/null && [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${ENABLE}" == "1" ]] &>/dev/null;then
   if [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
     # Create FWMark IPv6 Rule
     if { [[ -n "${IPV6ADDR}" ]] &>/dev/null || [[ -n "$(${ipbinpath}ip -6 route show default dev ${IFNAME} table ${IPV6ROUTETABLE})" ]] &>/dev/null ;} && [[ -z "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${IPV6ROUTETABLE}'") {print}')" ]] &>/dev/null;then
@@ -2569,7 +2642,7 @@ return
 # Delete IP FWMark Rules
 deleteipmarkrules ()
 {
-if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(awk -F "|" '$4 == "'${INTERFACE}'" {print $4}' "${CONFIGFILE}" | sort -u)" ]] &>/dev/null && [[ -z "$(awk -F "|" '$2 == "'${INTERFACE}'" {print $2}' "${ASNFILE}" | sort -u)" ]] &>/dev/null;then
+if [[ "${ENABLE}" == "0" ]] &>/dev/null || { [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(awk -F "|" '$4 == "'${INTERFACE}'" {print $4}' "${CONFIGFILE}" | sort -u)" ]] &>/dev/null && [[ -z "$(awk -F "|" '$2 == "'${INTERFACE}'" {print $2}' "${ASNFILE}" | sort -u)" ]] &>/dev/null ;};then
   # Delete IPv6
   # Delete FWMark IPv6 Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${IPV6ROUTETABLE}'") {print}')" ]] &>/dev/null;then
@@ -3266,6 +3339,10 @@ return
 # Query ASN
 queryasn ()
 {
+# Check if Domain VPN Routing is enabled
+checkscriptstatus || return
+
+# Check Alias
 checkalias || return
 
 # Boot Delay Timer
@@ -4530,9 +4607,121 @@ unset POLICY IP DOMAINIPLIST
 return
 }
 
+# Parse AdGuardHome Log
+parseadguardhomelog ()
+{
+# Check if AdGuardHome is active
+if [[ "${ADGUARDHOMEACTIVE}" == "0" ]] &>/dev/null;then
+  logger -p 2 -t "$ALIAS" "Parse AdguardHome Log - ***Error*** AdGuardHome is not currently active or installed"
+  return 1
+fi
+
+/opt/bin/python3 - ${answer} << END
+import struct
+import base64
+import sys
+
+def parse_dns_response(data):
+    # Parse DNS data header
+    transaction_id = data[:2]
+    flags = data[2:4]
+    qdcount = struct.unpack('!H', data[4:6])[0]
+    ancount = struct.unpack('!H', data[6:8])[0]
+    nscount = struct.unpack('!H', data[8:10])[0]
+    arcount = struct.unpack('!H', data[10:12])[0]
+
+    print("Transaction ID:", transaction_id.hex())
+    print("Flags:", flags.hex())
+    print("Questions:", qdcount)
+    print("Answer RRs:", ancount)
+    print("Authority RRs:", nscount)
+    print("Additional RRs:", arcount)
+
+    # Skip header length
+    offset = 12
+
+    # Parse query part
+    for _ in range(qdcount):
+        offset, qname = parse_name(data, offset)
+        qtype, qclass = struct.unpack('!HH', data[offset:offset+4])
+        offset += 4
+        print("Query Name:", qname)
+        print("Query Type:", qtype)
+        print("Query Class:", qclass)
+
+    # Parse answer part
+    for _ in range(ancount):
+        offset, name = parse_name(data, offset)
+        atype, aclass, ttl, rdlength = struct.unpack('!HHIH', data[offset:offset+10])
+        offset += 10
+        rdata = data[offset:offset+rdlength]
+        offset += rdlength
+        print("Answer Name:", name)
+        print("Answer Type:", atype)
+        print("Answer Class:", aclass)
+        print("Answer TTL:", ttl)
+        print("Answer Data Length:", rdlength)
+        if atype == 1:  # If A record
+            ip = struct.unpack('!BBBB', rdata)
+            print("Answer Address:", ".".join(map(str, ip)))
+        else:
+            print("Answer Data:", rdata.hex())
+
+def parse_name(data, offset):
+    labels = []
+    while True:
+        length = data[offset]
+        if length & 0xc0 == 0xc0:  # If pointer
+            pointer = struct.unpack('!H', data[offset:offset+2])[0]
+            offset += 2
+            return offset, parse_name(data, pointer & 0x3fff)[1]
+        if length == 0:  # Domain end if length == 0
+            offset += 1
+            break
+        offset += 1
+        labels.append(data[offset:offset+length].decode('utf-8'))
+        offset += length
+    return offset, ".".join(labels)
+
+encoded_string = sys.argv[1]
+
+decoded_bytes = base64.b64decode(encoded_string)
+
+print(f'Raw: {encoded_string}\n')
+parse_dns_response(decoded_bytes)
+END
+
+return
+}
+
+# Format IPv6 from AdGuardHome
+formatipv6 ()
+{
+if [[ "${PYTHON3INSTALLED}" == "0" ]] &>/dev/null;then
+  logger -p 2 -t "$ALIAS" "Format IPv6 - ***Error*** Python3 is not installed"
+  return 1
+fi
+
+/opt/bin/python3 - ${ipv6answerdata} << END
+import ipaddress
+import sys
+
+ipv6_addr = ipaddress.ip_address(int(sys.argv[1], 16))
+print(ipv6_addr)
+END
+
+return
+}
+
+
+
 # Query Policies for New IP Addresses
 querypolicy ()
 {
+# Check if Domain VPN Routing is enabled
+checkscriptstatus || return
+
+# Check Alias
 checkalias || return
 
 # Boot Delay Timer
@@ -4655,15 +4844,36 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN}...${NOCOLOR}"
     fi
     # Determine to query for IPv6 and IPv4 IP Addresses or only IPv4 Addresses
-    if [[ "$IPV6SERVICE" == "disabled" ]] &>/dev/null;then
+    if [[ "${IPV6SERVICE}" == "disabled" ]] &>/dev/null;then
+      # Query AdGuardHome log if enabled for IPv4 and check if domain is wildcard
+      if [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+        answers="$(/opt/bin/jq -c '. | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "A") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+		for answer in ${answers};do
+          answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
+          for IP in ${answerips};do
+            if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+              if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+                if tty >/dev/null 2>&1;then
+                  printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+                fi
+              fi
+            fi
+          done
+        done
+        unset answers answerips IP
       # Query dnsmasq log if enabled for IPv4 and check if domain is wildcard
-      if [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+      elif [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "0" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
         for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 ~ /.*.'${domainwildcard}'/ && $8 ~ /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
-            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
             if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
               if tty >/dev/null 2>&1;then
@@ -4672,14 +4882,35 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             fi
           fi
         done
+      # Query AdGuardHome log if enabled for IPv4 for non wildcard
+      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+        answers="$(/opt/bin/jq -c '. | select(.QH == "'${DOMAIN}'" and .QT == "A") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+		for answer in ${answers};do
+          answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
+          for IP in ${answerips};do
+            if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+              if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+                if tty >/dev/null 2>&1;then
+                  printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+                fi
+              fi
+            fi
+          done
+        done
+        unset answers answerips IP
       # Query dnsmasq log if enabled for IPv4 for non wildcard
-      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "0" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
         for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 == "'${DOMAIN}'" && $8 ~ /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
-            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
             if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
               if tty >/dev/null 2>&1;then
@@ -4693,10 +4924,10 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       if [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null;then
         for IP in $(dig ${digdnsserver} ${DOMAIN} A +noall +answer | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
-            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
             if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 3 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
               if tty >/dev/null 2>&1;then
@@ -4709,10 +4940,10 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
         for IP in $(/usr/bin/nslookup ${DOMAIN} ${DNSSERVER} 2>/dev/null | awk '(NR>2)' | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
-            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
             if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 3 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
               if tty >/dev/null 2>&1;then
@@ -4723,14 +4954,46 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         done
       fi
     else
+      # Query AdGuardHome log if enabled for IPv6 and IPv4 and check if domain is wildcard
+      if [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+        # Query IPv4
+        answers="$(/opt/bin/jq -c '. | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "A") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+		for answer in ${answers};do
+          answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
+          for IP in ${answerips};do
+            if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+              if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+                if tty >/dev/null 2>&1;then
+                  printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+                fi
+              fi
+            fi
+          done
+        done
+        unset answers answerips IP
+        # Query IPv6
+        answers="$(/opt/bin/jq -c '. | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "AAAA") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+		for answer in ${answers};do
+          ipv6answerdata="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
+          answerips="$(formatipv6 ${ipv6answerdata})"
+          for IP in ${answerips};do
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+          done
+        done
+        unset answers answerips ipv6answerdata IP
       # Query dnsmasq log if enabled for IPv6 and IPv4 and check if domain is wildcard
-      if [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+      elif [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "0" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
         for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 ~ /.*.'${domainwildcard}'/ && $8 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
-            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
             if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 3 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
               if tty >/dev/null 2>&1;then
@@ -4739,14 +5002,44 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             fi
           fi
         done
+      # Query AdGuardHome log if enabled for IPv6 and IPv4 for non wildcard
+      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+        # Query IPv4
+        answers="$(/opt/bin/jq -c '. | select(.QH == "'${DOMAIN}'" and .QT == "A") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+		for answer in ${answers};do
+          answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
+          for IP in ${answerips};do
+            if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
+              if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 4 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+                if tty >/dev/null 2>&1;then
+                  printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+                fi
+              fi
+            fi
+          done
+        done
+        unset answers answerips IP
+        # Query IPv6
+        answers="$(/opt/bin/jq -c '. | select(.QH == "'${DOMAIN}'" and .QT == "AAAA") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+		for answer in ${answers};do
+          ipv6answerdata="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
+          IP="$(formatipv6 ${ipv6answerdata})"
+          echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+        done
+        unset answers ipv6answerdata IP
       # Query dnsmasq log if enabled for IPv6 and IPv4 for non wildcard
-      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "0" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
         for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 == "'${DOMAIN}'" && $8 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
-            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
             if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 3 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
               if tty >/dev/null 2>&1;then
@@ -4760,15 +5053,15 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       if [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null;then
         # Capture IPv6 Records
         for IP in $(dig ${digdnsserver} ${DOMAIN} AAAA +noall +answer | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
-          echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+          echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
         done
         # Capture IPv4 Records
         for IP in $(dig ${digdnsserver} ${DOMAIN} A +noall +answer | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
-            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
             if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 3 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
               if tty >/dev/null 2>&1;then
@@ -4781,10 +5074,10 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
         for IP in $(/usr/bin/nslookup ${DOMAIN} ${DNSSERVER} 2>/dev/null | awk '(NR>2)' | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
-            echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "$PRIVATEIPS" == "0" ]] &>/dev/null;then
             if [[ -z "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-              echo $DOMAIN'>>'$IP >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             elif [[ -n "$(echo $IP | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
               [[ "$VERBOSELOGGING" == "1" ]] &>/dev/null && logger -p 3 -st "$ALIAS" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
               if tty >/dev/null 2>&1;then
@@ -5177,9 +5470,76 @@ fi
 return
 }
 
+# Enable Script
+enablescript ()
+{
+logger -p 5 -t "$ALIAS" "Enable Script - Enabling Domain VPN Routing"
+
+# Set Process Priority
+setprocesspriority
+
+# Check for FWMark Rules to enable
+POLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+for POLICY in ${POLICIES};do
+  INTERFACE="$(grep -w "${POLICY}" "${CONFIGFILE}" | awk -F"|" '{print $4}')"
+  routingdirector || return
+  
+  # Create IP FWMark Rules
+  createipmarkrules
+done
+
+# Create Cron Job
+cronjob || return
+
+logger -p 4 -t "$ALIAS" "Enable Script - Enabled Domain VPN Routing"
+
+return
+}
+
+# Enable Script
+disablescript ()
+{
+logger -p 5 -t "$ALIAS" "Disable Script - Disabling Domain VPN Routing"
+
+# Set Process Priority
+setprocesspriority
+
+# Check for FWMark Rules to enable
+POLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+for POLICY in ${POLICIES};do
+  INTERFACE="$(grep -w "${POLICY}" "${CONFIGFILE}" | awk -F"|" '{print $4}')"
+  routingdirector || return
+  
+  # Delete IP FWMark Rules
+  deleteipmarkrules
+done
+
+# Delete Cron Job
+cronjob || return
+
+logger -p 4 -t "$ALIAS" "Disable Script - Disabled Domain VPN Routing"
+
+return
+}
+
+# Check if Script Status is Enabled
+checkscriptstatus ()
+{
+if [[ "${ENABLE}" == "1" ]] &>/dev/null;then
+  logger -p 6 -t "$ALIAS" "Debug - Domain VPN Routing is Enabled"
+  return
+else
+  logger -p 6 -t "$ALIAS" "Debug - Domain VPN Routing is Disabled"
+  return 1
+fi
+}
+
 # Restore Existing Policies
 restorepolicy ()
 {
+# Check if Domain VPN Routing is enabled
+checkscriptstatus || return
+
 # Boot Delay Timer
 bootdelaytimer
 
@@ -5662,7 +6022,7 @@ else
 fi
 
 # Create Cron Job
-if [[ "${mode}" != "uninstall" ]] &>/dev/null;then
+if [[ "${ENABLE}" == "1" ]] &>/dev/null && [[ "${mode}" != "uninstall" ]] &>/dev/null;then
   logger -p 6 -st "$ALIAS" "Cron - Checking if Cron Job is Scheduled"
 
   # Delete old cron job if flag is set by configuration menu
@@ -5687,7 +6047,7 @@ if [[ "${mode}" != "uninstall" ]] &>/dev/null;then
   fi
 
 # Remove Cron Job
-elif [[ "${mode}" == "uninstall" ]] &>/dev/null;then
+elif [[ "${ENABLE}" == "0" ]] &>/dev/null || [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   if [[ -n "$(cru l | grep -w "$0" | grep -w "setup_domain_vpn_routing")" ]] &>/dev/null;then
     logger -p 3 -st "$ALIAS" "Cron - Removing Cron Job"
     cru d setup_domain_vpn_routing "*/${CHECKINTERVAL} * * * *" $0 querypolicy all \
@@ -5899,7 +6259,14 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
     JQINSTALLED="1"
   else
     JQINSTALLED="0"
-  fi 
+  fi
+  
+  # PYTHON3INSTALLED
+  if [[ -f "/opt/bin/python3" ]] &>/dev/null;then
+    PYTHON3INSTALLED="1"
+  else
+    PYTHON3INSTALLED="0"
+  fi
   
   # WANSDUALWANENABLE
   if [[ -z "${WANSDUALWANENABLE+x}" ]] &>/dev/null;then
@@ -6269,6 +6636,12 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
     DNSLOGPATH="$(awk -F "=" '$1 == "log-facility" {print $2}' "${DNSMASQCONFIGFILE}")"
   else
     DNSLOGPATH=""
+  fi
+  
+  if [[ -n "$(pidof AdGuardHome)" ]] &>/dev/null || { [[ -f "/opt/etc/AdGuardHome/.config" ]] &>/dev/null && [[ -n "$(awk -F "=" '/ADGUARD_LOCAL/ {print $2}' "/opt/etc/AdGuardHome/.config" | sed -e 's/^"//' -e 's/"$//' | grep -w ^"YES")" ]] &>/dev/null ;};then
+    ADGUARDHOMEACTIVE="1"
+  else
+    ADGUARDHOMEACTIVE="0"
   fi
 
  systemparameterssync="1"

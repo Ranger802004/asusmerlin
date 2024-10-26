@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 10/26/2024
-# Version: v3.0.1
+# Version: v3.0.2-beta1
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -47,6 +47,7 @@ Run Modes:
 - resetconfig: Will reset the global configuration of Domain VPN Routing to defaults.
 
 Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
+- ENABLE: This defines if the Script is enabled for execution. Default: Enabled
 - DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
 - CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Disabled 
 - PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
@@ -199,6 +200,12 @@ Considerations:
 - To use ASN related functions, install jq package from Entware.  
 
 Release Notes:
+v3.0.2-beta1 - 10/26/2024
+Enhancements
+- Added functionality to query the AdGuardHome log.
+- Created option to enable/disable Domain VPN Routing under configuration menu.
+- During uninstallation, a prompt has been added to ask to back up the configuration.  When reinstalling Domain VPN Routing a backup file will be checked for existence and prompted to restore configuration.
+
 v3.0.1 - 10/26/2024
 Enhancements
 - Added functionality to add ASNs to be routed over an interface.
