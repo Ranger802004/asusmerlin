@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/22/2024
-# Version: v3.0.1-beta2
+# Date: 10/26/2024
+# Version: v3.0.1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.0.1-beta2"
+VERSION="v3.0.1"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -1533,10 +1533,10 @@ else
   printf "   WAN FWMark                          WAN FWMark:     ${LIGHTBLUE}${WAN0FWMARK}${NOCOLOR}\n"
   printf "   WAN Mask                            WAN Mask:       ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
   printf "   WAN Reverse Path Filter             WAN RP Filter:  " && { { [[ "$WAN0RPFILTER" == "2" ]] &>/dev/null && printf "${LIGHTCYAN}Loose Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "1" ]] &>/dev/null && printf "${LIGHTCYAN}Strict Filtering${NOCOLOR}" ;} || { [[ "$WAN0RPFILTER" == "0" ]] &>/dev/null && printf "${RED}Disabled${NOCOLOR}" ;} ;} && printf "\n"
-  printf "   IP Version                          IP Version:     ${LIGHTBLUE}${IPVERSION}${NOCOLOR} ${RED}${ipversionwarning}${NOCOLOR}\n"
-  printf "   DIG Installed                       DIG Installed:  " && { [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null && printf "${GREEN}Yes${NOCOLOR}" || printf "${RED}No${NOCOLOR}" ;} && printf "\n"
-  printf "   JQ Installed                        JQ Installed:   " && { [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && printf "${GREEN}Yes${NOCOLOR}" || printf "${RED}No${NOCOLOR}" ;} && printf "\n"
 fi
+printf "   IP Version                          IP Version:     ${LIGHTBLUE}${IPVERSION}${NOCOLOR} ${RED}${ipversionwarning}${NOCOLOR}\n"
+printf "   DIG Installed                       DIG Installed:  " && { [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null && printf "${GREEN}Yes${NOCOLOR}" || printf "${RED}No${NOCOLOR}" ;} && printf "\n"
+printf "   JQ Installed                        JQ Installed:   " && { [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && printf "${GREEN}Yes${NOCOLOR}" || printf "${RED}No${NOCOLOR}" ;} && printf "\n"
 
 
 if [[ "$mode" == "menu" ]] &>/dev/null;then
