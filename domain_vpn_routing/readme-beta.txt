@@ -1,14 +1,18 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/26/2024
-# Version: v3.0.2-beta1
+# Date: 10/29/2024
+# Version: v3.0.2-beta2
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
 Requirements:
-- ASUS Merlin Firmware v386.7
-- JFFS custom scripts and configs Enabled
-- OpenVPN
+- ASUS Merlin Firmware v386.7 or newer.
+- JFFS custom scripts and configs enabled
+- OpenVPN or WireGuard clients configured.
+- (Optional) Entware installed.
+- (Optional) Dig installed via Entware, this allows more optimized DNS querying as well as support for adding CNAMES to policies.
+- (Optional) Jq installed via Entware, this is required for ASN querying and AdGuardHome log querying.
+- (Optional) Python3 installed via Entware, this is required for AdGuardHome log querying.
 
 Installation Command:
 /usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing-beta.sh" -o "/jffs/scripts/domain_vpn_routing.sh" && chmod 755 /jffs/scripts/domain_vpn_routing.sh && sh /jffs/scripts/domain_vpn_routing.sh install
@@ -50,10 +54,11 @@ Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
 - ENABLE: This defines if the Script is enabled for execution. Default: Enabled
 - DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
 - CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Disabled 
-- PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
+- PROCESSPRIORITY: This defines the process priority for Domain VPN Routing on the system.  Default: Normal
 - CHECKINTERVAL: This defines the policy check interval via cron job, value range is from 1 to 59 minutes. Default: 15 Minutes
 - BOOTDELAYTIMER: This will delay execution until System Uptime reaches this time. Default: 0 Seconds
 - FIREWALLRESTORE: This will execute the restorepolicy mode during a firewall restart event.  Default: Disabled
+- QUERYADGUARDHOMELOG: This defines if the Script queries the AdGuardHome log if it is enabled.  Default: Disabled
 - OVPNC1FWMARK: This defines the FWMark value for OpenVPN Client 1. Default: 0x1000
 - OVPNC1MASK: This defines the Mask value for OpenVPN Client 1. Default: 0xf000
 - OVPNC2FWMARK: This defines the FWMark value for OpenVPN Client 2. Default: 0x2000
@@ -194,20 +199,25 @@ Considerations:
   
 - To bulk add domains, you can manually add them to the Policy domainlist File under /jffs/configs/domain_vpn_routing/
   ***WARNING*** Only add 1 domain per line and make sure no extra characters are added.
-  
-- To enhance performance of querying domains, install dig package from Entware.
 
-- To use ASN related functions, install jq package from Entware.  
+- Enabling AdGuardHome log querying can take a long time to process if the AdGuardHome log file is large.  The log file rotation interval can be lowered within AdGuardHome to reduce the size of the log file. 
 
 Release Notes:
-v3.0.2-beta1 - 10/26/2024
-Enhancements
-- Added functionality to query the AdGuardHome log.
+v3.0.2-beta2 - 10/29/2024
+Enhancements:
+- Added functionality to query the AdGuardHome log.  This can be enabled or disabled via the QUERYADGUARDHOMELOG configuration option.
 - Created option to enable/disable Domain VPN Routing under configuration menu.
 - During uninstallation, a prompt has been added to ask to back up the configuration.  When reinstalling Domain VPN Routing a backup file will be checked for existence and prompted to restore configuration.
+- Removed log message regarding No ASNs being detected if queryasn function is being executed by querypolicy for all policies.
+- Enhanced prompts in querypolicy mode.
+- Added log message stating length of processing time for querypolicy function.
+- Minor optimizations.
+
+Fixes:
+- Fixed script locking mechanism when executing querypolicy or queryasn from the UI menu.
 
 v3.0.1 - 10/26/2024
-Enhancements
+Enhancements:
 - Added functionality to add ASNs to be routed over an interface.
 - Added ADDCNAMES to Show Policy menu when viewing a policy.
 - Optimized functionality to generate interface list when creating or editing a policy or ASN.

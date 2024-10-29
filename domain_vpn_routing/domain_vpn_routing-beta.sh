@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 10/26/2024
-# Version: v3.0.2-beta1
+# Date: 10/29/2024
+# Version: v3.0.2-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,13 +12,14 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.0.2-beta1"
+VERSION="v3.0.2-beta2"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
 ASNFILE="/jffs/configs/domain_vpn_routing/asn.conf"
 ADGUARDHOMELOGFILE="/opt/etc/AdGuardHome/data/querylog.json"
+ADGUARDHOMELOGCHECKPOINT="/jffs/configs/domain_vpn_routing/adguardhomelog.checkpoint"
 POLICYDIR="/jffs/configs/domain_vpn_routing"
 BACKUPPATH="/jffs/configs/domain_vpn_routing.tar.gz"
 SYSTEMLOG="/tmp/syslog.log"
@@ -328,6 +329,9 @@ menu ()
 		;;
 		'9')    # querypolicy
 			mode="querypolicy"
+            exec 100>"$LOCKFILE" || return
+            flock -x -n 100 || { echo -e "${LIGHTRED}***Query Policy already running***${NOCOLOR}" && PressEnter && menu ;}
+            trap 'cleanup' EXIT HUP INT QUIT TERM
                         POLICY="all"
                         clear
                         showpolicy
@@ -348,9 +352,13 @@ menu ()
                         done
                         querypolicy ${POLICY}
                         unset value policysel
+                        cleanup && trap '' EXIT HUP INT QUIT TERM
         ;;
 		'10')    # queryasn
 			mode="queryasn"
+            exec 100>"$LOCKFILE" || return
+            flock -x -n 100 || { echo -e "${LIGHTRED}***Query ASN already running***${NOCOLOR}" && PressEnter && menu ;}
+            trap 'cleanup' EXIT HUP INT QUIT TERM
                         ASN="all"
                         clear
                         showasn
@@ -371,6 +379,7 @@ menu ()
                         done
                         queryasn ${ASN}
                         unset value asnsel
+                        cleanup && trap '' EXIT HUP INT QUIT TERM
         ;;
 		'11')    # restorepolicy
 			mode="restorepolicy"
@@ -799,6 +808,15 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
 
   # Create Initial Cron Jobs
   cronjob || return
+  
+  # Read Global Config File
+  setglobalconfig || return
+  
+  # Execute Restore Policy if restoring from back up
+  if [[ "${restoreconfig}" == "1" ]] &>/dev/null;then
+    POLICY="all"
+    restorepolicy
+  fi
 
 fi
 return
@@ -1023,6 +1041,12 @@ if [[ "$globalconfigsync" == "0" ]] &>/dev/null;then
   if [[ -z "$(sed -n '/\bFIREWALLRESTORE=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "$ALIAS" "Debug - Creating FIREWALLRESTORE Default: Disabled"
     echo -e "FIREWALLRESTORE=0" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # QUERYADGUARDHOMELOG
+  if [[ -z "$(sed -n '/\bQUERYADGUARDHOMELOG=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "$ALIAS" "Debug - Creating QUERYADGUARDHOMELOG Default: Disabled"
+    echo -e "QUERYADGUARDHOMELOG=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC1FWMARK
@@ -1523,46 +1547,47 @@ printf "  (3)  Configure Process Priority      Process Priority: " && { { [[ "${
 printf "  (4)  Configure Check Interval        Check Interval: ${LIGHTBLUE}${CHECKINTERVAL} Minutes${NOCOLOR}\n"
 printf "  (5)  Configure Boot Delay Timer      Boot Delay Timer: ${LIGHTBLUE}${BOOTDELAYTIMER} Seconds${NOCOLOR}\n"
 printf "  (6)  Configure Firewall Restore      Firewall Restore: " && { [[ "${FIREWALLRESTORE}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (7)  Enable AdGuardHome Log Query    AdGuardHome Log Query: " && { [[ "${QUERYADGUARDHOMELOG}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 
 printf "\n  ${BOLD}Advanced Settings:${NOCOLOR}  ${LIGHTRED}***Recommended to leave default unless necessary to change***${NOCOLOR}\n"
-printf "  (7)  OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
-printf "  (8)  OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
-printf "  (9)  OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
-printf "  (10) OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
-printf "  (11) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
-printf "  (12) OpenVPN Client 3 Mask           OpenVPN Client 3 Mask:     ${LIGHTBLUE}${OVPNC3MASK}${NOCOLOR}\n"
-printf "  (13) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
-printf "  (14) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
-printf "  (15) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
-printf "  (16) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
-printf "  (17) WireGuard Client 1 FWMark       WireGuard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
-printf "  (18) WireGuard Client 1 Mask         WireGuard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
-printf "  (19) WireGuard Client 2 FWMark       WireGuard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
-printf "  (20) WireGuard Client 2 Mask         WireGuard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
-printf "  (21) WireGuard Client 3 FWMark       WireGuard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
-printf "  (22) WireGuard Client 3 Mask         WireGuard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
-printf "  (23) WireGuard Client 4 FWMark       WireGuard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
-printf "  (24) WireGuard Client 4 Mask         WireGuard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
-printf "  (25) WireGuard Client 5 FWMark       WireGuard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
-printf "  (26) WireGuard Client 5 Mask         WireGuard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
+printf "  (8)  OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
+printf "  (9)  OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
+printf "  (10) OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
+printf "  (11) OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
+printf "  (12) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
+printf "  (13) OpenVPN Client 3 Mask           OpenVPN Client 3 Mask:     ${LIGHTBLUE}${OVPNC3MASK}${NOCOLOR}\n"
+printf "  (14) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
+printf "  (15) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
+printf "  (16) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
+printf "  (17) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
+printf "  (18) WireGuard Client 1 FWMark       WireGuard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
+printf "  (19) WireGuard Client 1 Mask         WireGuard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
+printf "  (20) WireGuard Client 2 FWMark       WireGuard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
+printf "  (21) WireGuard Client 2 Mask         WireGuard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
+printf "  (22) WireGuard Client 3 FWMark       WireGuard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
+printf "  (23) WireGuard Client 3 Mask         WireGuard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
+printf "  (24) WireGuard Client 4 FWMark       WireGuard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
+printf "  (25) WireGuard Client 4 Mask         WireGuard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
+printf "  (26) WireGuard Client 5 FWMark       WireGuard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
+printf "  (27) WireGuard Client 5 Mask         WireGuard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
 
 printf "\n  ${BOLD}DNS Override Settings:${NOCOLOR}\n"
-printf "  (27) OpenVPN Client 1 DNS Server     OpenVPN Client 1 DNS Server:    " && { [[ -z "${OVPNC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (28) OpenVPN Client 2 DNS Server     OpenVPN Client 2 DNS Server:    " && { [[ -z "${OVPNC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (29) OpenVPN Client 3 DNS Server     OpenVPN Client 3 DNS Server:    " && { [[ -z "${OVPNC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (30) OpenVPN Client 4 DNS Server     OpenVPN Client 4 DNS Server:    " && { [[ -z "${OVPNC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (31) OpenVPN Client 5 DNS Server     OpenVPN Client 5 DNS Server:    " && { [[ -z "${OVPNC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (32) WireGuard Client 1 DNS Server   WireGuard Client 1 DNS Server:  " && { [[ -z "${WGC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (33) WireGuard Client 2 DNS Server   WireGuard Client 2 DNS Server:  " && { [[ -z "${WGC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (34) WireGuard Client 3 DNS Server   WireGuard Client 3 DNS Server:  " && { [[ -z "${WGC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (35) WireGuard Client 4 DNS Server   WireGuard Client 4 DNS Server:  " && { [[ -z "${WGC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (36) WireGuard Client 5 DNS Server   WireGuard Client 5 DNS Server:  " && { [[ -z "${WGC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (28) OpenVPN Client 1 DNS Server     OpenVPN Client 1 DNS Server:    " && { [[ -z "${OVPNC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (29) OpenVPN Client 2 DNS Server     OpenVPN Client 2 DNS Server:    " && { [[ -z "${OVPNC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (30) OpenVPN Client 3 DNS Server     OpenVPN Client 3 DNS Server:    " && { [[ -z "${OVPNC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (31) OpenVPN Client 4 DNS Server     OpenVPN Client 4 DNS Server:    " && { [[ -z "${OVPNC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (32) OpenVPN Client 5 DNS Server     OpenVPN Client 5 DNS Server:    " && { [[ -z "${OVPNC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (33) WireGuard Client 1 DNS Server   WireGuard Client 1 DNS Server:  " && { [[ -z "${WGC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (34) WireGuard Client 2 DNS Server   WireGuard Client 2 DNS Server:  " && { [[ -z "${WGC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (35) WireGuard Client 3 DNS Server   WireGuard Client 3 DNS Server:  " && { [[ -z "${WGC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (36) WireGuard Client 4 DNS Server   WireGuard Client 4 DNS Server:  " && { [[ -z "${WGC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (37) WireGuard Client 5 DNS Server   WireGuard Client 5 DNS Server:  " && { [[ -z "${WGC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
 if [[ "$WANSDUALWANENABLE" == "0" ]] &>/dev/null;then
-  printf "  (37) WAN DNS Server                  WAN DNS Server:                 " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (38) WAN DNS Server                  WAN DNS Server:                 " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
 else
-  printf "  (37) Active WAN DNS Server           Active WAN DNS Server:          " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
-  printf "  (38) WAN0 DNS Server                 WAN0 DNS Server:                " && { [[ -z "${WAN0DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN0DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-  printf "  (39) WAN1 DNS Server                 WAN1 DNS Server:                " && { [[ -z "${WAN1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (38) Active WAN DNS Server           Active WAN DNS Server:          " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (39) WAN0 DNS Server                 WAN0 DNS Server:                " && { [[ -z "${WAN0DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN0DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (40) WAN1 DNS Server                 WAN1 DNS Server:                " && { [[ -z "${WAN1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
 fi
 
 printf "\n  ${BOLD}System Information:${NOCOLOR}\n"
@@ -1694,7 +1719,18 @@ case "${configinput}" in
   zFIREWALLRESTORE="${FIREWALLRESTORE}"
   NEWVARIABLES="${NEWVARIABLES} FIREWALLRESTORE=|$SETFIREWALLRESTORE"
   ;;
-  '7')      # OVPNC1FWMARK
+  '7')      # QUERYADGUARDHOMELOG
+  while true &>/dev/null;do
+    read -r -p "Do you want to enable querying of the AdGuardHome log? This defines if Domain VPN Routing queries the AdGuardHome log if it is enabled: ***Enter Y for Yes or N for No***" yn
+    case $yn in
+      [Yy]* ) SETQUERYADGUARDHOMELOG="1"; break;;
+      [Nn]* ) SETQUERYADGUARDHOMELOG="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} QUERYADGUARDHOMELOG=|$SETQUERYADGUARDHOMELOG"
+  ;;
+  '8')      # OVPNC1FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 FWMark - This defines the OVPNC1 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1711,7 +1747,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC1FWMARK=|$SETOVPNC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '8')      # OVPNC1MASK
+  '9')      # OVPNC1MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 Mask - This defines the OVPNC1 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1728,7 +1764,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC1MASK=|$SETOVPNC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '9')      # OVPNC2FWMARK
+  '10')      # OVPNC2FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 FWMark - This defines the OVPNC2 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1745,7 +1781,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC2FWMARK=|$SETOVPNC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '10')      # OVPNC2MASK
+  '11')      # OVPNC2MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 Mask - This defines the OVPNC2 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1762,7 +1798,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC2MASK=|$SETOVPNC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '11')      # OVPNC3FWMARK
+  '12')      # OVPNC3FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 FWMark - This defines the OVPNC3 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1779,7 +1815,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC3FWMARK=|$SETOVPNC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '12')      # OVPNC3MASK
+  '13')      # OVPNC3MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 Mask - This defines the OVPNC3 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1796,7 +1832,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC3MASK=|$SETOVPNC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '13')      # OVPNC4FWMARK
+  '14')      # OVPNC4FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 FWMark - This defines the OVPNC4 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1813,7 +1849,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC4FWMARK=|$SETOVPNC4FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '14')      # OVPNC4MASK
+  '15')      # OVPNC4MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 Mask - This defines the OVPNC4 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1830,7 +1866,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC4MASK=|$SETOVPNC4MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '15')      # OVPNC5FWMARK
+  '16')      # OVPNC5FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 FWMark - This defines the OVPNC5 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1847,7 +1883,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC5FWMARK=|$SETOVPNC5FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '16')      # OVPNC5MASK
+  '17')      # OVPNC5MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 Mask - This defines the OVPNC5 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1864,7 +1900,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC5MASK=|$SETOVPNC5MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '17')      # WGC1FWMARK
+  '18')      # WGC1FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC1 FWMark - This defines the WGC1 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1881,7 +1917,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC1FWMARK=|$SETWGC1FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '18')      # WGC1MASK
+  '19')      # WGC1MASK
   while true &>/dev/null;do
     read -p "Configure WGC1 Mask - This defines the WGC1 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1898,7 +1934,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC1MASK=|$SETWGC1MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '19')      # WGC2FWMARK
+  '20')      # WGC2FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC2 FWMark - This defines the WGC2 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1915,7 +1951,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC2FWMARK=|$SETWGC2FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '20')      # WGC2MASK
+  '21')      # WGC2MASK
   while true &>/dev/null;do
     read -p "Configure WGC2 Mask - This defines the WGC2 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1932,7 +1968,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC2MASK=|$SETWGC2MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '21')      # WGC3FWMARK
+  '22')      # WGC3FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC3 FWMark - This defines the WGC3 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1949,7 +1985,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC3FWMARK=|$SETWGC3FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '22')      # WGC3MASK
+  '23')      # WGC3MASK
   while true &>/dev/null;do
     read -p "Configure WGC3 Mask - This defines the WGC3 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1966,7 +2002,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC3MASK=|$SETWGC3MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '23')      # WGC4FWMARK
+  '24')      # WGC4FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC4 FWMark - This defines the WGC4 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1982,7 +2018,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC4FWMARK=|$SETWGC4FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '24')      # WGC4MASK
+  '25')      # WGC4MASK
   while true &>/dev/null;do
     read -p "Configure WGC4 Mask - This defines the WGC4 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1998,7 +2034,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC4MASK=|$SETWGC4MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '25')      # WGC5FWMARK
+  '26')      # WGC5FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC5 FWMark - This defines the WGC5 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2015,7 +2051,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC5FWMARK=|$SETWGC5FWMARK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '26')      # WGC5MASK
+  '27')      # WGC5MASK
   while true &>/dev/null;do
     read -p "Configure WGC5 Mask - This defines the WGC5 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2032,7 +2068,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC5MASK=|$SETWGC5MASK"
   [[ "$RESTARTREQUIRED" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '27')      # OVPNC1DNSSERVER
+  '28')      # OVPNC1DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 1 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2059,7 +2095,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC1DNSSERVER=|${SETOVPNC1DNSSERVER}"
   ;;
-  '28')      # OVPNC2DNSSERVER
+  '29')      # OVPNC2DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 2 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2086,7 +2122,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC2DNSSERVER=|${SETOVPNC2DNSSERVER}"
   ;;
-  '29')      # OVPNC3DNSSERVER
+  '30')      # OVPNC3DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 3 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2113,7 +2149,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC3DNSSERVER=|${SETOVPNC3DNSSERVER}"
   ;;
-  '30')      # OVPNC4DNSSERVER
+  '31')      # OVPNC4DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 4 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2140,7 +2176,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC4DNSSERVER=|${SETOVPNC4DNSSERVER}"
   ;;
-  '31')      # OVPNC5DNSSERVER
+  '32')      # OVPNC5DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 5 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2167,7 +2203,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC5DNSSERVER=|${SETOVPNC5DNSSERVER}"
   ;;
-  '32')      # WGC1DNSSERVER
+  '33')      # WGC1DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 1 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2194,7 +2230,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC1DNSSERVER=|${SETWGC1DNSSERVER}"
   ;;
-  '33')      # WGC2DNSSERVER
+  '34')      # WGC2DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 2 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2221,7 +2257,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC2DNSSERVER=|${SETWGC2DNSSERVER}"
   ;;
-  '34')      # WGC3DNSSERVER
+  '35')      # WGC3DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 3 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2248,7 +2284,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC3DNSSERVER=|${SETWGC3DNSSERVER}"
   ;;
-  '35')      # WGC4DNSSERVER
+  '36')      # WGC4DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 4 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2275,7 +2311,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC4DNSSERVER=|${SETWGC4DNSSERVER}"
   ;;
-  '36')      # WGC5DNSSERVER
+  '37')      # WGC5DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 5 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2302,7 +2338,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC5DNSSERVER=|${SETWGC5DNSSERVER}"
   ;;
-  '37')      # WANDNSSERVER
+  '38')      # WANDNSSERVER
   while true &>/dev/null;do
     read -p "Configure WAN DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2329,7 +2365,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WANDNSSERVER=|${SETWANDNSSERVER}"
   ;;
-  '38')      # WAN0DNSSERVER
+  '39')      # WAN0DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WAN0 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2356,7 +2392,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WAN0DNSSERVER=|${SETWAN0DNSSERVER}"
   ;;
-  '39')      # WAN1DNSSERVER
+  '40')      # WAN1DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WAN1 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -3356,12 +3392,16 @@ checkwanstatus || return 1
 
 # Generate Query ASN List
 if [[ ! -f "${ASNFILE}" ]] &>/dev/null;then
-  logger -p 3 -st "$ALIAS" "Query ASN - ***No ASNs Detected***"
+  if [[ "${mode}" == "queryasn" ]] &>/dev/null;then
+    logger -p 3 -st "$ALIAS" "Query ASN - ***No ASNs Detected***"
+  fi
   return
 elif [[ "${ASN}" == "all" ]] &>/dev/null;then
   QUERYASNS="$(awk -F"|" '{print $1}' ${ASNFILE})"
   if [[ -z "${QUERYASNS}" ]] &>/dev/null;then
-    logger -p 3 -st "$ALIAS" "Query ASN - ***No ASNs Detected***"
+    if [[ "${mode}" == "queryasn" ]] &>/dev/null;then
+      logger -p 3 -st "$ALIAS" "Query ASN - ***No ASNs Detected***"
+    fi
     return
   fi
 elif [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})" ]] &>/dev/null;then
@@ -4718,6 +4758,9 @@ return
 # Query Policies for New IP Addresses
 querypolicy ()
 {
+# Set start timer for processing time
+querystart="$(date +%s)"
+
 # Check if Domain VPN Routing is enabled
 checkscriptstatus || return
 
@@ -4740,8 +4783,15 @@ if [[ "${POLICY}" == "all" ]] &>/dev/null;then
     logger -p 3 -st "$ALIAS" "Query Policy - ***No Policies Detected***"
     return
   fi
+  # Capture AdGuardHome log checkpoint or set default checkpoint
+  if [[ -f "${ADGUARDHOMELOGCHECKPOINT}" ]] &>/dev/null;then
+    adguardhomelogcheckpoint="$(cat ${ADGUARDHOMELOGCHECKPOINT})"
+  else
+    adguardhomelogcheckpoint="0"
+  fi
 elif [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
   QUERYPOLICIES="${POLICY}"
+  adguardhomelogcheckpoint="0"
 else
   echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
   return
@@ -4821,6 +4871,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   if [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null && [[ "${ADDCNAMES}" == "1" ]] &>/dev/null && [[ "${QUERYPOLICY}" != "all" ]] &>/dev/null;then
     for DOMAIN in ${DOMAINS};do
       for domaincname in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} CNAME +noall +answer | awk '{print substr($NF, 1, length ($NF)-1)}');do
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying CNAME records for ${DOMAIN}...${NOCOLOR}"
+        fi
         if [[ -z "$(awk '$0 == "'${domaincname}'" {print}' "${POLICYDIR}/policy_${QUERYPOLICY}_domainlist")" ]] &>/dev/null;then
           logger -p 5 -t "$ALIAS" "Query Policy - Adding CNAME: ${domaincname} to ${QUERYPOLICY}"
           echo -e "${domaincname}" >> "${POLICYDIR}/policy_${QUERYPOLICY}_domainlist" \
@@ -4846,9 +4899,15 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     # Determine to query for IPv6 and IPv4 IP Addresses or only IPv4 Addresses
     if [[ "${IPV6SERVICE}" == "disabled" ]] &>/dev/null;then
       # Query AdGuardHome log if enabled for IPv4 and check if domain is wildcard
-      if [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
-        answers="$(/opt/bin/jq -c '. | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "A") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+      if [[ "${QUERYADGUARDHOMELOG}" == "1" ]] &>/dev/null && [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMELOGENABLED}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying AdGuardHome log for ${DOMAIN}...${NOCOLOR}"
+        fi
+        answers="$(grep -e ".${domainwildcard}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "A") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
+          if tty >/dev/null 2>&1;then
+            printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
+          fi
           answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
           for IP in ${answerips};do
             if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
@@ -4868,6 +4927,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         unset answers answerips IP
       # Query dnsmasq log if enabled for IPv4 and check if domain is wildcard
       elif [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "0" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying DNSMasq log for ${DOMAIN}...${NOCOLOR}"
+        fi
         for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 ~ /.*.'${domainwildcard}'/ && $8 ~ /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
@@ -4883,9 +4945,15 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
         done
       # Query AdGuardHome log if enabled for IPv4 for non wildcard
-      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
-        answers="$(/opt/bin/jq -c '. | select(.QH == "'${DOMAIN}'" and .QT == "A") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+      elif [[ "${QUERYADGUARDHOMELOG}" == "1" ]] &>/dev/null && [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMELOGENABLED}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying AdGuardHome log for ${DOMAIN}...${NOCOLOR}"
+        fi
+        answers="$(grep -e "${DOMAIN}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH == "'${DOMAIN}'" and .QT == "A") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
+          if tty >/dev/null 2>&1;then
+            printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
+          fi
           answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
           for IP in ${answerips};do
             if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
@@ -4905,6 +4973,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         unset answers answerips IP
       # Query dnsmasq log if enabled for IPv4 for non wildcard
       elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "0" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying DNSMasq log for ${DOMAIN}...${NOCOLOR}"
+        fi
         for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 == "'${DOMAIN}'" && $8 ~ /((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
@@ -4922,6 +4993,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       fi
       # Perform dig lookup if installed for IPv4
       if [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using dig...${NOCOLOR}"
+        fi
         for IP in $(dig ${digdnsserver} ${DOMAIN} A +noall +answer | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
@@ -4938,6 +5012,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         done
       # Perform nslookup if nslookup is installed for IPv4
       elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using nslookup...${NOCOLOR}"
+        fi
         for IP in $(/usr/bin/nslookup ${DOMAIN} ${DNSSERVER} 2>/dev/null | awk '(NR>2)' | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
@@ -4955,10 +5032,16 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       fi
     else
       # Query AdGuardHome log if enabled for IPv6 and IPv4 and check if domain is wildcard
-      if [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+      if [[ "${QUERYADGUARDHOMELOG}" == "1" ]] &>/dev/null && [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMELOGENABLED}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying AdGuardHome log for ${DOMAIN}...${NOCOLOR}"
+        fi
         # Query IPv4
-        answers="$(/opt/bin/jq -c '. | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "A") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+        answers="$(grep -e ".${domainwildcard}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "A") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
+          if tty >/dev/null 2>&1;then
+            printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
+          fi
           answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
           for IP in ${answerips};do
             if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
@@ -4977,8 +5060,11 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         done
         unset answers answerips IP
         # Query IPv6
-        answers="$(/opt/bin/jq -c '. | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "AAAA") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+        answers="$(grep -e ".${domainwildcard}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "AAAA") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
+          if tty >/dev/null 2>&1;then
+            printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
+          fi
           ipv6answerdata="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
           answerips="$(formatipv6 ${ipv6answerdata})"
           for IP in ${answerips};do
@@ -4988,6 +5074,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         unset answers answerips ipv6answerdata IP
       # Query dnsmasq log if enabled for IPv6 and IPv4 and check if domain is wildcard
       elif [[ -n "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "0" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying DNSMasq log for ${DOMAIN}...${NOCOLOR}"
+        fi
         for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 ~ /.*.'${domainwildcard}'/ && $8 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
@@ -5003,10 +5092,16 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           fi
         done
       # Query AdGuardHome log if enabled for IPv6 and IPv4 for non wildcard
-      elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+      elif [[ "${QUERYADGUARDHOMELOG}" == "1" ]] &>/dev/null && [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMELOGENABLED}" == "1" ]] &>/dev/null && [[ "${JQINSTALLED}" == "1" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying AdGuardHome log for ${DOMAIN}...${NOCOLOR}"
+        fi
         # Query IPv4
-        answers="$(/opt/bin/jq -c '. | select(.QH == "'${DOMAIN}'" and .QT == "A") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+        answers="$(grep -e "${DOMAIN}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH == "'${DOMAIN}'" and .QT == "A") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
+          if tty >/dev/null 2>&1;then
+            printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
+          fi
           answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
           for IP in ${answerips};do
             if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
@@ -5025,15 +5120,23 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         done
         unset answers answerips IP
         # Query IPv6
-        answers="$(/opt/bin/jq -c '. | select(.QH == "'${DOMAIN}'" and .QT == "AAAA") | .Answer' ${ADGUARDHOMELOGFILE} 2>/dev/null | tr -d \" | sort -u)"
+        answers="$(grep -e "${DOMAIN}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH == "'${DOMAIN}'" and .QT == "AAAA") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
+          if tty >/dev/null 2>&1;then
+            printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
+          fi
           ipv6answerdata="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
-          IP="$(formatipv6 ${ipv6answerdata})"
-          echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+          answerips="$(formatipv6 ${ipv6answerdata})"
+          for IP in ${answerips};do
+            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+          done
         done
         unset answers ipv6answerdata IP
       # Query dnsmasq log if enabled for IPv6 and IPv4 for non wildcard
       elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${ADGUARDHOMEACTIVE}" == "0" ]] &>/dev/null && [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && [[ -n "${DNSLOGPATH}" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying DNSMasq log for ${DOMAIN}...${NOCOLOR}"
+        fi
         for IP in $(awk '($5 == "reply" || $5 == "cached") && $6 == "'${DOMAIN}'" && $8 ~ /(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))/ {print $8}' "${DNSLOGPATH}" | sort -u | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
@@ -5051,6 +5154,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       fi
       # Perform dig lookup if installed for IPv6 and IPv4
       if [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using dig...${NOCOLOR}"
+        fi
         # Capture IPv6 Records
         for IP in $(dig ${digdnsserver} ${DOMAIN} AAAA +noall +answer | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
@@ -5072,6 +5178,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         done
       # Perform nslookup if nslookup is installed for IPv6 and IPv4
       elif [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ -L "/usr/bin/nslookup" ]] &>/dev/null;then
+        if tty >/dev/null 2>&1;then
+          printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using nslookup...${NOCOLOR}"
+        fi
         for IP in $(/usr/bin/nslookup ${DOMAIN} ${DNSSERVER} 2>/dev/null | awk '(NR>2)' | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::"); do
           if [[ "$PRIVATEIPS" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
@@ -5455,8 +5564,14 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   [[ -n "${saveipv4ipset+x}" ]] &>/dev/null && unset saveipv4ipset
 
 done
+
+# Set new checkpoint for AdGuardHome log
+if [[ "${QUERYADGUARDHOMELOG}" == "1" ]] &>/dev/null && [[ "${POLICY}" == "all" ]] &>/dev/null && [[ -n "${adguardhomelognewcheckpoint+x}" ]] &>/dev/null;then
+  echo "${adguardhomelognewcheckpoint}" > ${ADGUARDHOMELOGCHECKPOINT}
+fi
+
 # Clear Parameters
-unset VERBOSELOGGING PRIVATEIPS INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE DOMAIN IP FWMARK MASK IPV6ROUTETABLE OLDIPV6ROUTETABLE domainwildcard
+unset VERBOSELOGGING PRIVATEIPS INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE DOMAIN IP FWMARK MASK IPV6ROUTETABLE OLDIPV6ROUTETABLE domainwildcard adguardhomelognewcheckpoint
 
 # Query ASNs
 if [[ "${POLICY}" == "all" ]] &>/dev/null;then
@@ -5467,6 +5582,12 @@ fi
 if tty >/dev/null 2>&1;then
   printf '\033[K'
 fi
+
+# Process Query execution time
+queryend="$(date +%s)"
+processtime="$((${queryend}-${querystart}))"
+logger -p 5 -st "$ALIAS" "Query Policy - Processing Time: ${processtime} seconds"
+
 return
 }
 
@@ -6097,7 +6218,7 @@ if [[ -n "${PIDS+x}" ]] &>/dev/null && [[ -n "${PIDS}" ]] &>/dev/null;then
       || PIDS="${PIDS//[${PID}$'\t\r\n']/}" && continue
     done
   done
-elif [[ -z "${PIDS+x}" ]] &>/dev/null || [[ -z "$PIDS" ]] &>/dev/null;then
+elif [[ "${mode}" != "update" ]] &>/dev/null && { [[ -z "${PIDS+x}" ]] &>/dev/null || [[ -z "$PIDS" ]] &>/dev/null ;};then
   # Log no PIDs found and return
   logger -p 2 -st "$ALIAS" "Restart - ***${ALIAS} is not running*** No Process ID Detected"
   if tty &>/dev/null;then
@@ -6638,10 +6759,18 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "$systemparameterss
     DNSLOGPATH=""
   fi
   
+  # ADGUARDHOMEACTIVE
   if [[ -n "$(pidof AdGuardHome)" ]] &>/dev/null || { [[ -f "/opt/etc/AdGuardHome/.config" ]] &>/dev/null && [[ -n "$(awk -F "=" '/ADGUARD_LOCAL/ {print $2}' "/opt/etc/AdGuardHome/.config" | sed -e 's/^"//' -e 's/"$//' | grep -w ^"YES")" ]] &>/dev/null ;};then
     ADGUARDHOMEACTIVE="1"
   else
     ADGUARDHOMEACTIVE="0"
+  fi
+  
+  # ADGUARDHOMELOGENABLED
+  if [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ -f "${ADGUARDHOMELOGFILE}" ]] &>/dev/null;then
+    ADGUARDHOMELOGENABLED="1"
+  else
+    ADGUARDHOMELOGENABLED="0"
   fi
 
  systemparameterssync="1"
