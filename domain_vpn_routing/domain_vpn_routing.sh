@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 11/05/2024
-# Version: v3.0.2
+# Date: 11/08/2024
+# Version: v3.0.3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.0.2"
+VERSION="v3.0.3"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -688,8 +688,10 @@ if [[ "${mode}" == "install" ]] &>/dev/null;then
         * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
       esac
     done
+  else
+    restoreconfig="0"
   fi
-  
+
   # Restore Configuration from Backup
   if [[ "${restoreconfig}" == "1" ]] &>/dev/null;then
     logger -p 5 -st "${ALIAS}" "Install - Restoring configuration from ${BACKUPPATH}"
