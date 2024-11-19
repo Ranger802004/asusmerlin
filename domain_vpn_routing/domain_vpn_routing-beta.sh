@@ -4889,7 +4889,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # Add CNAME records to Domains if enabled and dig is installed
   if [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null && [[ "${ADDCNAMES}" == "1" ]] &>/dev/null && [[ "${QUERYPOLICY}" != "all" ]] &>/dev/null;then
     for DOMAIN in ${DOMAINS};do
-      for domaincname in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} CNAME +short +noall +answer 2>/dev/null | grep -E '([[:alnum:]]+\.)+[\n]' | awk '{print substr($NF, 1, length ($NF)-1)}');do
+      for domaincname in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} CNAME +short +noall +answer 2>/dev/null | grep -E '([-[:alnum:]]+\.)+[\n]' | awk '{print substr($NF, 1, length ($NF)-1)}');do
         if tty >/dev/null 2>&1;then
           printf '\033[K%b\r' "${LIGHTCYAN}Querying CNAME records for ${DOMAIN}...${NOCOLOR}"
         fi
