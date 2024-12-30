@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 11/27/2024
-# Version: v3.0.4
+# Date: 12/30/2024
+# Version: v3.0.5-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.0.4"
+VERSION="v3.0.5-beta1"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -28,6 +28,7 @@ DNSMASQCONFIGFILE="/etc/dnsmasq.conf"
 RTTABLESFILE="/etc/iproute2/rt_tables"
 IPSETPREFIX="DVR"
 POLICYNAMEMAXLENGTH="24"
+IPSETMAXCOMMENTLENGTH="255"
 
 # Checksum
 if [[ -f "/usr/sbin/openssl" ]] &>/dev/null;then
@@ -3447,7 +3448,7 @@ for QUERYASN in ${QUERYASNS};do
   fi
 
   logger -p 5 -t "${ALIAS}" "Query ASN - Querying ASN: ${QUERYASN}"
-  /usr/sbin/curl --connect-timeout 30 --max-time 30 --url "https://api.bgpview.io/asn/${QUERYASN}/prefixes" --ssl-reqd 2>/dev/null | /opt/bin/jq > /tmp/${QUERYASN}_query.tmp \
+  /usr/sbin/curl --connect-timeout 60 --max-time 300 --url "https://api.bgpview.io/asn/${QUERYASN}/prefixes" --ssl-reqd 2>/dev/null | /opt/bin/jq 2>/dev/null > /tmp/${QUERYASN}_query.tmp \
   || { logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to query ASN: ${QUERYASN}" && continue ;}
   
   # Check if IPv6 is enabled and query for IPv6 subnets
@@ -4889,7 +4890,8 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # Add CNAME records to Domains if enabled and dig is installed
   if [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null && [[ "${ADDCNAMES}" == "1" ]] &>/dev/null && [[ "${QUERYPOLICY}" != "all" ]] &>/dev/null;then
     for DOMAIN in ${DOMAINS};do
-      for domaincname in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} CNAME +short +noall +answer 2>/dev/null | grep -E '([-[:alnum:]]+\.)+[\n]' | awk '{print substr($NF, 1, length ($NF)-1)}');do
+      domaincnames="$(/opt/bin/dig ${digdnsserver} ${DOMAIN} CNAME +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -E '([-[:alnum:]]+\.)+[\n]' | awk '{print substr($NF, 1, length ($NF)-1)}')"
+      for domaincname in ${domaincnames};do
         if tty >/dev/null 2>&1;then
           printf '\033[K%b\r' "${LIGHTCYAN}Querying CNAME records for ${DOMAIN}...${NOCOLOR}"
         fi
@@ -4928,20 +4930,22 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
           fi
           answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
-          for IP in ${answerips};do
-            if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
-              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-            elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
-              if [[ -z "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+          if [[ -n "${answerips}" ]] &>/dev/null;then
+            for IP in ${answerips};do
+              if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
                 echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-              elif [[ -n "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-                [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -st "${ALIAS}" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
-                if tty >/dev/null 2>&1;then
-                  printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+              elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
+                if [[ -z "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                  echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+                elif [[ -n "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                  [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -st "${ALIAS}" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+                  if tty >/dev/null 2>&1;then
+                    printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+                  fi
                 fi
               fi
-            fi
-          done
+            done
+          fi
         done
         unset answers answerips IP
       # Query dnsmasq log if enabled for IPv4 and check if domain is wildcard
@@ -4974,20 +4978,22 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
           fi
           answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
-          for IP in ${answerips};do
-            if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
-              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-            elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
-              if [[ -z "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+          if [[ -n "${answerips}" ]] &>/dev/null;then
+            for IP in ${answerips};do
+              if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
                 echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-              elif [[ -n "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-                [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -st "${ALIAS}" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
-                if tty >/dev/null 2>&1;then
-                  printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+              elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
+                if [[ -z "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                  echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+                elif [[ -n "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                  [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -st "${ALIAS}" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+                  if tty >/dev/null 2>&1;then
+                    printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+                  fi
                 fi
               fi
-            fi
-          done
+            done
+          fi
         done
         unset answers answerips IP
       # Query dnsmasq log if enabled for IPv4 for non wildcard
@@ -5062,20 +5068,22 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
           fi
           answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
-          for IP in ${answerips};do
-            if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
-              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-            elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
-              if [[ -z "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+          if [[ -n "${answerips}" ]] &>/dev/null;then
+            for IP in ${answerips};do
+              if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
                 echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-              elif [[ -n "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-                [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -st "${ALIAS}" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
-                if tty >/dev/null 2>&1;then
-                  printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+              elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
+                if [[ -z "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                  echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+                elif [[ -n "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                  [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -st "${ALIAS}" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+                  if tty >/dev/null 2>&1;then
+                    printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+                  fi
                 fi
               fi
-            fi
-          done
+            done
+          fi
         done
         unset answers answerips IP
         # Query IPv6
@@ -5085,10 +5093,12 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
           fi
           ipv6answerdata="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
-          answerips="$(formatipv6 ${ipv6answerdata})"
-          for IP in ${answerips};do
-            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-          done
+          if [[ -n "${ipv6answerdata}" ]] &>/dev/null;then
+            answerips="$(formatipv6 ${ipv6answerdata})"
+            for IP in ${answerips};do
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            done
+          fi
         done
         unset answers answerips ipv6answerdata IP
       # Query dnsmasq log if enabled for IPv6 and IPv4 and check if domain is wildcard
@@ -5122,20 +5132,22 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
           fi
           answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
-          for IP in ${answerips};do
-            if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
-              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-            elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
-              if [[ -z "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+          if [[ -n "${answerips}" ]] &>/dev/null;then
+            for IP in ${answerips};do
+              if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
                 echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-              elif [[ -n "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
-                [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -st "${ALIAS}" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
-                if tty >/dev/null 2>&1;then
-                  printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+              elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
+                if [[ -z "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                  echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+                elif [[ -n "$(echo ${IP} | grep -oE "\b^(((10|127)(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})|(((172\.(1[6-9]|2[0-9]|3[0-1]))|(192\.168))(\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}))$\b")" ]] &>/dev/null;then
+                  [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -st "${ALIAS}" "Query Policy - Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***"
+                  if tty >/dev/null 2>&1;then
+                    printf '\033[K%b\r' "${RED}Query Policy: Domain: ${DOMAIN} queried ${IP} ***Excluded because Private IPs are disabled for Policy: ${QUERYPOLICY}***${NOCOLOR}"
+                  fi
                 fi
               fi
-            fi
-          done
+            done
+          fi
         done
         unset answers answerips IP
         # Query IPv6
@@ -5145,10 +5157,12 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
             printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
           fi
           ipv6answerdata="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
-          answerips="$(formatipv6 ${ipv6answerdata})"
-          for IP in ${answerips};do
-            echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
-          done
+          if [[ -n "${ipv6answerdata}" ]] &>/dev/null;then
+            answerips="$(formatipv6 ${ipv6answerdata})"
+            for IP in ${answerips};do
+              echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
+            done
+          fi
         done
         unset answers ipv6answerdata IP
       # Query dnsmasq log if enabled for IPv6 and IPv4 for non wildcard
@@ -5337,6 +5351,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           # Add to IPv6 IPSET with prefix fixed
           if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+              comment="$(echo ${comment} | cut -f1 -d",")"
+            fi
             [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Query Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6}:: comment "${comment}" \
             || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" \
@@ -5372,6 +5389,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
             [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Query Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+              comment="$(echo ${comment} | cut -f1 -d",")"
+            fi
             ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6} comment "${comment}" \
             || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" \
             && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Query Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" ;} ;}
@@ -5411,6 +5431,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
             [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Query Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+              comment="$(echo ${comment} | cut -f1 -d",")"
+            fi
             ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6}:: comment "${comment}" \
             || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" \
             && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Query Policy - Added ${IPV6}:: to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" ;} ;}
@@ -5436,6 +5459,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
             [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Query Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+              comment="$(echo ${comment} | cut -f1 -d",")"
+            fi
             ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v6 ${IPV6} comment "${comment}" \
             || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" \
             && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Query Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6" ;} ;}
@@ -5502,6 +5528,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
         [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Query Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+        if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+          comment="$(echo ${comment} | cut -f1 -d",")"
+        fi
         ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v4 ${IPV4} comment "${comment}" \
         || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4" \
         && { saveipv4ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Query Policy - Added ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4" ;} ;}
@@ -5539,6 +5568,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
         [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Query Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${QUERYPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+        if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+          comment="$(echo ${comment} | cut -f1 -d",")"
+        fi
         ipset add ${IPSETPREFIX}-${QUERYPOLICY}-v4 ${IPV4} comment "${comment}" \
         || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4" \
         && { saveipv4ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Query Policy - Added ${IPV4} to IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4" ;} ;}
@@ -5850,6 +5882,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           # Add to IPv6 IPSET with prefix fixed
           if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}::")" ]] &>/dev/null;then
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+              comment="$(echo ${comment} | cut -f1 -d",")"
+            fi
             [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Restore Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6}:: comment "${comment}" \
             || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" \
@@ -5885,6 +5920,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
             [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Restore Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+              comment="$(echo ${comment} | cut -f1 -d",")"
+            fi
             ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6} comment "${comment}" \
             || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" \
             && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Restore Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" ;} ;}
@@ -5924,6 +5962,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           if [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -w "${IPV6}::")" ]] &>/dev/null;then
             [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Restore Policy - Adding ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'::" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+              comment="$(echo ${comment} | cut -f1 -d",")"
+            fi
             ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6}:: comment "${comment}" \
             || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" \
             && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Restore Policy - Added ${IPV6}:: to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" ;} ;}
@@ -5949,6 +5990,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
           if [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 | grep -wo "${IPV6}")" ]] &>/dev/null;then
             [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Restore Policy - Adding ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6"
             comment="$(awk -F ">>" '$2 == "'${IPV6}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+            if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+              comment="$(echo ${comment} | cut -f1 -d",")"
+            fi
             ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v6 ${IPV6} comment "${comment}" \
             || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" \
             && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Restore Policy - Added ${IPV6} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6" ;} ;}
@@ -6043,6 +6087,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
       if [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
         [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Restore Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+        if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+          comment="$(echo ${comment} | cut -f1 -d",")"
+        fi
         ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v4 ${IPV4} comment "${comment}" \
         || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4" \
         && { saveipv4ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Restore Policy - Added ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4" ;} ;}
@@ -6080,6 +6127,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
       if [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
         [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Restore Policy - Adding ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4"
         comment="$(awk -F ">>" '$2 == "'${IPV4}'" {print $1}' /tmp/policy_${RESTOREPOLICY}_domaintoIP | sort -u)" && comment=${comment//[$'\t\r\n']/,}
+        if [[ "${#comment}" -gt "${IPSETMAXCOMMENTLENGTH}" ]] &>/dev/null;then
+          comment="$(echo ${comment} | cut -f1 -d",")"
+        fi
         ipset add ${IPSETPREFIX}-${RESTOREPOLICY}-v4 ${IPV4} comment "${comment}" \
         || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4" \
         && { saveipv4ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Restore Policy - Added ${IPV4} to IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4" ;} ;}
