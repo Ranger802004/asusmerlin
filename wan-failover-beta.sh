@@ -2840,11 +2840,11 @@ else
         if [[ "${PINGPATH}" == "0" ]] &>/dev/null;then
           STATUS="DISCONNECTED"
           logger -p 6 -t "${ALIAS}" "Debug - ${WANPREFIX} Status: ${STATUS}"
-          if [[ "${i}" -le "${RECURSIVEPINGCHECK}" ]] &>/dev/null;then
+          if [[ "${i}" -lt "${RECURSIVEPINGCHECK}" ]] &>/dev/null;then
             i="$((${i}+1))"
             setwanstatus && continue
           else
-            setwanstatus && break 1
+            setwanstatus &
           fi
           restartwan${WANSUFFIX} &
           restartwanpid="$!"
