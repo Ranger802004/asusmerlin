@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 07/25/2024
-# Version: v2.1.2
+# Date: 03/11/2025
+# Version: v2.1.3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -11,7 +11,7 @@ set -u
 
 # Global Variables
 ALIAS="wan-failover"
-VERSION="v2.1.2"
+VERSION="v2.1.3"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -1582,6 +1582,10 @@ if [[ "${configdefaultssync}" == "0" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting FLUSHCONNTRACK Default: Disabled"
     echo -e "FLUSHCONNTRACK=0" >> ${CONFIGFILE}
   fi
+  if [[ -z "$(sed -n '/\bFAILBACKDELAYTIMER=\b/p' "${CONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Creating FAILBACKDELAYTIMER Default: 0"
+    echo -e "FAILBACKDELAYTIMER=0" >> ${CONFIGFILE}
+  fi
 
 # Cleanup Config file of deprecated options
 DEPRECATEDOPTIONS='
@@ -1800,17 +1804,18 @@ printf "  (27) Configure Process Priority      Process Priority: " && { { [[ "${
 printf "  (28) Configure Failover Block IPV6   Failover Block IPV6: " && { [[ "${FOBLOCKIPV6}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 printf "  (29) Configure Failover Timeout      Failover Timeout: ${LIGHTBLUE}${FAILOVERTIMEOUT} Seconds${NOCOLOR}\n"
 printf "  (30) Configure Conntrack Flushing    Conntrack Flushing: " && { [[ "${FLUSHCONNTRACK}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (31) Configure Failback Delay        Failback Delay Timer: ${LIGHTBLUE}${FAILBACKDELAYTIMER}${NOCOLOR}\n"
 
 if [[ "${WANSMODE}" == "lb" ]] &>/dev/null || [[ "${DEVMODE}" == "1" ]] &>/dev/null;then
   printf "\n  ${BOLD}Load Balance Mode Settings:${NOCOLOR}\n"
-  printf "  (31) Configure LB Rule Priority      Load Balance Rule Priority: ${LIGHTBLUE}${LBRULEPRIORITY}${NOCOLOR}\n"
-  printf "  (32) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "${OVPNSPLITTUNNEL}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
-  printf "  (33) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${LIGHTBLUE}${OVPNWAN0PRIORITY}${NOCOLOR}\n"
-  printf "  (34) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${LIGHTBLUE}${OVPNWAN1PRIORITY}${NOCOLOR}\n"
-  printf "  (35) Configure WAN0 FWMark           WAN0 FWMark: ${LIGHTBLUE}${WAN0MARK}${NOCOLOR}\n"
-  printf "  (36) Configure WAN1 FWMark           WAN1 FWMark: ${LIGHTBLUE}${WAN1MARK}${NOCOLOR}\n"
-  printf "  (37) Configure WAN0 Mask             WAN0 Mask: ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
-  printf "  (38) Configure WAN1 Mask             WAN1 Mask: ${LIGHTBLUE}${WAN1MASK}${NOCOLOR}\n"
+  printf "  (32) Configure LB Rule Priority      Load Balance Rule Priority: ${LIGHTBLUE}${LBRULEPRIORITY}${NOCOLOR}\n"
+  printf "  (33) Configure OpenVPN Split Tunnel  OpenVPN Split Tunneling: " && { [[ "${OVPNSPLITTUNNEL}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  printf "  (34) Configure WAN0 OVPN Priority    WAN0 OVPN Priority: ${LIGHTBLUE}${OVPNWAN0PRIORITY}${NOCOLOR}\n"
+  printf "  (35) Configure WAN1 OVPN Priority    WAN1 OVPN Priority: ${LIGHTBLUE}${OVPNWAN1PRIORITY}${NOCOLOR}\n"
+  printf "  (36) Configure WAN0 FWMark           WAN0 FWMark: ${LIGHTBLUE}${WAN0MARK}${NOCOLOR}\n"
+  printf "  (37) Configure WAN1 FWMark           WAN1 FWMark: ${LIGHTBLUE}${WAN1MARK}${NOCOLOR}\n"
+  printf "  (38) Configure WAN0 Mask             WAN0 Mask: ${LIGHTBLUE}${WAN0MASK}${NOCOLOR}\n"
+  printf "  (39) Configure WAN1 Mask             WAN1 Mask: ${LIGHTBLUE}${WAN1MASK}${NOCOLOR}\n"
 fi
 
 # Unset Variables
@@ -2424,7 +2429,19 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|${SETFAILOVERTIMEOUT}"
   NEWVARIABLES="${NEWVARIABLES} FLUSHCONNTRACK=|${SETFLUSHCONNTRACK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '31')      # LBRULEPRIORITY
+  '31')      # FAILBACKDELAYTIMER
+  while true &>/dev/null;do  
+    read -p "Configure Failback Delay Timer - Value is in seconds: " value
+    value=${value//[$'\t\r\n']/}
+    case ${value} in
+      [0123456789]* ) SETFAILBACKDELAYTIMER="${value}"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Value is in seconds***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} FAILBACKDELAYTIMER=|${SETFAILBACKDELAYTIMER}"
+  [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
+  ;;
+  '32')      # LBRULEPRIORITY
   while true &>/dev/null;do
     read -p "Configure Load Balance Rule Priority - This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change: " value
     value=${value//[$'\t\r\n']/}
@@ -2436,7 +2453,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|${SETFAILOVERTIMEOUT}"
   NEWVARIABLES="${NEWVARIABLES} LBRULEPRIORITY=|${SETLBRULEPRIORITY}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '32')      # OVPNSPLITTUNNEL
+  '33')      # OVPNSPLITTUNNEL
   while true &>/dev/null;do
     read -p "Do you want to enable OpenVPN Split Tunneling? This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode: ***Enter Y for Yes or N for No***" yn
     yn=${yn//[$'\t\r\n']/}
@@ -2449,7 +2466,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|${SETFAILOVERTIMEOUT}"
   NEWVARIABLES="${NEWVARIABLES} OVPNSPLITTUNNEL=|${SETOVPNSPLITTUNNEL}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '33')      # OVPNWAN0PRIORITY
+  '34')      # OVPNWAN0PRIORITY
   while true &>/dev/null;do
     read -p "Configure OpenVPN WAN0 Priority - This defines the OpenVPN Tunnel Priority for WAN0 if OVPNSPLITTUNNEL is Disabled: " value
     value=${value//[$'\t\r\n']/}
@@ -2461,7 +2478,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|${SETFAILOVERTIMEOUT}"
   NEWVARIABLES="${NEWVARIABLES} OVPNWAN0PRIORITY=|${SETOVPNWAN0PRIORITY}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '34')      # OVPNWAN1PRIORITY
+  '35')      # OVPNWAN1PRIORITY
   while true &>/dev/null;do
     read -p "Configure OpenVPN WAN1 Priority - This defines the OpenVPN Tunnel Priority for WAN1 if OVPNSPLITTUNNEL is Disabled: " value
     value=${value//[$'\t\r\n']/}
@@ -2473,7 +2490,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|${SETFAILOVERTIMEOUT}"
   NEWVARIABLES="${NEWVARIABLES} OVPNWAN1PRIORITY=|${SETOVPNWAN1PRIORITY}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '35')      # WAN0MARK
+  '36')      # WAN0MARK
   while true &>/dev/null;do
     read -p "Configure WAN0 FWMark - This defines the WAN0 FWMark for Load Balance Mode: " value
     value=${value//[$'\t\r\n']/}
@@ -2490,7 +2507,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|${SETFAILOVERTIMEOUT}"
   NEWVARIABLES="${NEWVARIABLES} WAN0MARK=|${SETWAN0MARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '36')      # WAN1MARK
+  '37')      # WAN1MARK
   while true &>/dev/null;do
     read -p "Configure WAN1 FWMark - This defines the WAN1 FWMark for Load Balance Mode: " value
     value=${value//[$'\t\r\n']/}
@@ -2507,7 +2524,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|${SETFAILOVERTIMEOUT}"
   NEWVARIABLES="${NEWVARIABLES} WAN1MARK=|${SETWAN1MARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '37')      # WAN0MASK
+  '38')      # WAN0MASK
   while true &>/dev/null;do
     read -p "Configure WAN0 Mask - This defines the WAN0 Mask for Load Balance Mode: " value
     value=${value//[$'\t\r\n']/}
@@ -2524,7 +2541,7 @@ NEWVARIABLES="${NEWVARIABLES} FAILOVERTIMEOUT=|${SETFAILOVERTIMEOUT}"
   NEWVARIABLES="${NEWVARIABLES} WAN0MASK=|${SETWAN0MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '38')      # WAN1MASK
+  '39')      # WAN1MASK
   while true &>/dev/null;do
     read -p "Configure WAN1 Mask - This defines the WAN1 Mask for Load Balance Mode: " value
     value=${value//[$'\t\r\n']/}
@@ -4444,6 +4461,15 @@ while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "${restartwan0timeout}"
     nvram set ${WAN0}_state_t="2"
     sleep 1
     break
+  elif [[ "${wan0state}" == "4" ]] &>/dev/null;then
+    [[ -z "${wan0restartfailcount+x}" ]] &>/dev/null && wan0restartfailcount="1"
+    if [[ "${wan0restartfailcount}" -le "10" ]] &>/dev/null;then
+      wan0restartfailcount="$((${wan0restartfailcount}+1))"
+      restartwan0
+    elif [[ "${wan0restartfailcount}" -gt "10" ]] &>/dev/null;then
+      logger -p 1 -st "${ALIAS}" "Restart WAN0 - Rebooting Router"
+	  reboot
+    fi
   elif [[ "${wan0state}" == "5" ]] &>/dev/null;then
     break
   else
@@ -4464,7 +4490,7 @@ if [[ "${wan0state}" == "2" ]] &>/dev/null;then
 
   # Check WAN Routing Table for Default Routes if WAN0 is Connected
   checkroutingtable &
-  CHECKROUTINGTABLEPID=$!
+  CHECKROUTINGTABLEPID="$!"
   wait ${CHECKROUTINGTABLEPID}
   unset CHECKROUTINGTABLEPID
 fi
@@ -4522,6 +4548,15 @@ while [[ "$(awk -F "." '{print $1}' "/proc/uptime")" -le "${restartwan1timeout}"
     nvram set ${WAN1}_state_t="2"
     sleep 1
     break
+  elif [[ "${wan1state}" == "4" ]] &>/dev/null;then
+    [[ -z "${wan1restartfailcount+x}" ]] &>/dev/null && wan1restartfailcount="1"
+    if [[ "${wan1restartfailcount}" -le "10" ]] &>/dev/null;then
+      wan1restartfailcount="$((${wan1restartfailcount}+1))"
+      restartwan1
+    elif [[ "${wan1restartfailcount}" -gt "10" ]] &>/dev/null;then
+      logger -p 1 -st "${ALIAS}" "Restart WAN1 - Rebooting Router"
+	  reboot
+    fi
   elif [[ "${wan1state}" == "5" ]] &>/dev/null;then
     break
   else
@@ -5469,6 +5504,11 @@ elif [[ "${ACTIVEWAN}" == "${WAN1}" ]] &>/dev/null;then
   SWITCHWANMODE="Failover"
 fi
 
+# Execute Failback Delay Timer
+if [[ "${SWITCHWANMODE}" == "Failback" ]] &>/dev/null && [[ "${FAILBACKDELAYTIMER}" -gt "0" ]] &>/dev/null;then
+  sleep ${FAILBACKDELAYTIMER}
+fi
+
 # Verify new Active WAN is Enabled
 if [[ "$(nvram get ${ACTIVEWAN}_enable & nvramcheck)" == "0" ]] &>/dev/null;then
   logger -p 1 -st "${ALIAS}" "${SWITCHWANMODE} - ***Error*** ${ACTIVEWAN} is disabled"
@@ -5857,6 +5897,15 @@ while [[ "${i}" -le "5" ]] &>/dev/null;do
   fi
 done
 
+# Restart WireGuard VPN Servers
+i="0"
+while [[ "${i}" -le "5" ]] &>/dev/null;do
+  i="$((${i}+1))"
+  if [[ -s "/etc/wg/fw_wgs${i}.sh" ]] &>/dev/null;then
+    WGSERVERS="${WGSERVERS} ${i}"
+  fi
+done
+
 # Restart Services
 if [[ -n "${SERVICES}" ]] &>/dev/null;then
   for SERVICE in ${SERVICES};do
@@ -5892,6 +5941,16 @@ if [[ -n "${WGVPNS}" ]] &>/dev/null;then
     service "restart_wgc ${WGVPN}" &>/dev/null &
     WGVPNRESTARTPID="$!"
     SERVICERESTARTPIDS="${SERVICERESTARTPIDS} ${WGVPNRESTARTPID}"
+  done
+fi
+
+# Restart WireGuard VPN Servers
+if [[ -n "${WGSERVERS}" ]] &>/dev/null;then
+  for WGSERVER in ${WGSERVERS};do
+    logger -p 5 -st "${ALIAS}" "Service Restart - Restarting WireGuard VPN Server ${WGSERVER}"
+    service "restart_wgs ${WGSERVER}" &>/dev/null &
+    WGSERVERRESTARTPID="$!"
+    SERVICERESTARTPIDS="${SERVICERESTARTPIDS} ${WGSERVERRESTARTPID}"
   done
 fi
 
