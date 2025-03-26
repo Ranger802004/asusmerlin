@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/11/2025
-# Version: v2.1.3
+# Date: 03/26/2025
+# Version: v2.2.0-beta1
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -81,7 +81,7 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - WAN0PACKETSIZE: This defines the Packet Size for pinging the WAN0 Target IP Address.  Default: 56 Bytes
 - WAN1PACKETSIZE: This defines the Packet Size for pinging the WAN1 Target IP Address.  Default: 56 Bytes
 - CUSTOMLOGPATH: This defines a Custom System Log path for Monitor Mode. Default: N/A
-- DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
+- DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases or advanced Developer Mode where update channels are disabled.  Default: 0 (Disabled)
 - CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Disabled
 - SCHEDULECRONJOB: This defines control whether the Cron Job is scheduled or not for WAN Failover to run.  Default: Enabled
 - PINGTIMEMIN: This defines a minimum threshold for the console showing the Ping Time Status as Green, above this value it will show Yellow. Default: 40ms
@@ -94,8 +94,24 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - WAN1WEBGUI: This defines the IP Address of the WAN1 Device Web GUI Portal.  Default: N/A
 - FLUSHCONNTRACK: This defines if the conntrack table is flushed during a wan failover event.  Default: Disabled
 - FAILBACKDELAYTIMER: This defines how long failback will be delayed when switching back from WAN1 to WAN0 in Failover Mode.  Default: 0 Seconds
+- PINGTIMELOGGING: This allows ping time logging to be enabled or disabled. Default: Enabled
 
 Release Notes:
+v2.2.0-beta1 - 03/26/2025
+Enhancements:
+- Support for 3006 Codebase
+- Added PINGTIMELOGGING configuration option, this option allows ping time logging to be enabled or disabled. Default: Enabled
+- Added new Dev Mode to support disabling update channels.
+
+Fixes:
+- Fixed an issue where WGSERVERS parameter was causing script to hang during failover events.
+- Resolved an issue where RECURSIVEPINGCHECK loop would prevent WAN restart actions to occur.  
+	- Credit for identifying issue: https://github.com/Tigger2014 & https://github.com/nathan57971
+- Removed use of pstree to detect and kill PIDs for WAN Failover due to inconsistencies with use.
+
+Known Issues:
+- LED service is not restarted in 3006 Codebase during WAN Failover events.
+
 v2.1.3 - 03/11/2025
 Enhancements:
 - Added FAILBACKDELAYTIMER configuration option
