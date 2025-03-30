@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 02/08/2025
-# Version: v3.0.5
+# Date: 03/30/2025
+# Version: v3.0.6
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.0.5"
+VERSION="v3.0.6"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -984,7 +984,7 @@ setfirewallrestore ()
       && logger -p 4 -st "${ALIAS}" "Firewall Restore - ${ALIAS} added to ${firewallfile}" \
       || logger -p 2 -st "${ALIAS}" "Firewall Restore - ***Error*** Failed to add ${ALIAS} to ${firewallfile}"
     fi
-  elif [[ "${FIREWALLRESTORE}" == "0" ]] &>/dev/null;then
+  elif [[ "${FIREWALLRESTORE}" == "0" ]] &>/dev/null && [[ -f "${firewallfile}" ]] &>/dev/null;then
     # Remove Script from file
     cmdline="sh ${0} restorepolicy all"
     if [[ -n "$(grep -e "^${cmdline}" ${firewallfile})" ]] &>/dev/null;then 
@@ -6306,8 +6306,11 @@ if [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
   setglobalconfig || return
 fi
 
-# Determine Production or Beta Update Channel
-if [[ -z "${DEVMODE+x}" ]] &>/dev/null;then
+# Determine Update Channel
+if [[ -n "$(echo ${VERSION} | grep -o "alpha")" ]] &>/dev/null;then
+  echo -e "${RED}***${ALIAS} current version is an alpha release and does not support automatic updates***${NOCOLOR}"
+  return
+elif [[ -z "${DEVMODE+x}" ]] &>/dev/null;then
   echo -e "Dev Mode not configured in Global Configuration"
 elif [[ "${DEVMODE}" == "0" ]] &>/dev/null;then
   DOWNLOADPATH="${REPO}domain_vpn_routing.sh"
