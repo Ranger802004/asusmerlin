@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/30/2025
-# Version: v3.0.6
+# Date: 04/02/2025
+# Version: v3.1.0-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.0.6"
+VERSION="v3.1.0-beta1"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -145,6 +145,8 @@ elif [[ "${mode}" == "queryasn" ]] &>/dev/null;then
 elif [[ "${mode}" == "restorepolicy" ]] &>/dev/null;then 
   POLICY="${arg2}"
   restorepolicy
+elif [[ "${mode}" == "restoreasncache" ]] &>/dev/null;then 
+  restoreasncache
 elif [[ "${mode}" == "adddomain" ]] &>/dev/null;then 
   DOMAIN="${arg2}"
   adddomain
@@ -237,18 +239,19 @@ menu ()
      printf "  (9)  querypolicy       Perform a manual query of an existing policy\n"
      printf "  (10) queryasn          Perform a manual query of an existing configured ASN\n"
      printf "  (11) restorepolicy     Perform a restore of an existing policy\n"
-     printf "  (12) kill              Kill any running instances of ${FRIENDLYNAME}\n"
+     printf "  (12) restoreasncache   Perform a restore of the ASN Cache\n"
+     printf "  (13) kill              Kill any running instances of ${FRIENDLYNAME}\n"
      printf "\n"
      printf "  ${BOLD}Policy Configuration:${NOCOLOR}\n"
-     printf "  (13) createpolicy      Create Policy\n"
-	 printf "  (14) addasn            Add ASN\n"
-	printf "  (15) editpolicy        Edit Policy\n"
-	printf "  (16) editasn           Edit ASN\n"
-	printf "  (17) deletepolicy      Delete Policy\n"
-	printf "  (18) deleteasn         Delete ASN\n"
-	printf "  (19) adddomain         Add Domain to an existing Policy\n"
-	printf "  (20) deletedomain      Delete Domain from an existing Policy\n"
-	printf "  (21) deleteip          Delete IP from an existing Policy\n"
+     printf "  (14) createpolicy      Create Policy\n"
+	 printf "  (15) addasn            Add ASN\n"
+	printf "  (16) editpolicy        Edit Policy\n"
+	printf "  (17) editasn           Edit ASN\n"
+	printf "  (18) deletepolicy      Delete Policy\n"
+	printf "  (19) deleteasn         Delete ASN\n"
+	printf "  (20) adddomain         Add Domain to an existing Policy\n"
+	printf "  (21) deletedomain      Delete Domain from an existing Policy\n"
+	printf "  (22) deleteip          Delete IP from an existing Policy\n"
      printf "\n"
 	printf "  (e)  exit              Exit ${FRIENDLYNAME} Menu\n"
 	printf "\nMake a selection: "
@@ -413,15 +416,19 @@ menu ()
                         restorepolicy ${POLICY}
                         unset value policysel
         ;;
-		'12')    # kill
+		'12')    # restoreasncache
+			mode="restoreasncache"
+                        restoreasncache
+        ;;
+		'13')    # kill
 			mode="kill"
                         killscript
 		;;
-		'13')    # createpolicy
+		'14')    # createpolicy
 			mode="createpolicy"
                         createpolicy
 		;;
-		'14')    # addasn
+		'15')    # addasn
 			mode="addasn"
 			while true &>/dev/null;do  
                           read -r -p "Select an ASN to add: " value
@@ -431,7 +438,7 @@ menu ()
                         done
                         addasn
 		;;
-		'15')   # editpolicy
+		'16')   # editpolicy
 			mode="editpolicy"
                         POLICY="all"
                         showpolicy
@@ -453,7 +460,7 @@ menu ()
                         editpolicy ${POLICY}
                         unset value policysel
 		;;
-		'16')   # editasn
+		'17')   # editasn
 			mode="editasn"
                         ASN="all"
                         showasn
@@ -475,7 +482,7 @@ menu ()
                         editasn ${ASN}
                         unset value asnsel
 		;;
-		'17')   # deletepolicy
+		'18')   # deletepolicy
 			mode="deletepolicy"
                         POLICY="all"
                         showpolicy
@@ -497,7 +504,7 @@ menu ()
                         deletepolicy ${POLICY}
                         unset value policysel
 		;;
-		'18')   # deleteasn
+		'19')   # deleteasn
 			mode="deleteasn"
                         ASN="all"
                         showasn
@@ -519,7 +526,7 @@ menu ()
                         deleteasn ${ASN}
                         unset value asnsel
 		;;
-		'19')   # adddomain
+		'20')   # adddomain
 			mode="adddomain"
 			while true &>/dev/null;do  
                           read -r -p "Select a domain to add to a policy: " value
@@ -547,7 +554,7 @@ menu ()
                         adddomain ${DOMAIN}
                         unset value DOMAIN policysel
 		;;
-		'20')   # deletedomain
+		'21')   # deletedomain
 			mode="deletedomain"
 			while true &>/dev/null;do  
                           read -r -p "Select a domain to delete from a policy: " value
@@ -575,7 +582,7 @@ menu ()
                         deletedomain ${DOMAIN}
                         unset value DOMAIN policysel
 		;;
-		'21')   # deleteip
+		'22')   # deleteip
 			mode="deleteip"
 			while true &>/dev/null;do  
                           read -r -p "Select an IP Address to delete from a policy: " value
@@ -1059,6 +1066,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   if [[ -z "$(sed -n '/\bQUERYADGUARDHOMELOG=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating QUERYADGUARDHOMELOG Default: Disabled"
     echo -e "QUERYADGUARDHOMELOG=0" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # ASNCACHE
+  if [[ -z "$(sed -n '/\bASNCACHE=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Creating ASNCACHE Default: Disabled"
+    echo -e "ASNCACHE=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC1FWMARK
@@ -1560,46 +1573,47 @@ printf "  (4)  Configure Check Interval        Check Interval: ${LIGHTBLUE}${CHE
 printf "  (5)  Configure Boot Delay Timer      Boot Delay Timer: ${LIGHTBLUE}${BOOTDELAYTIMER} Seconds${NOCOLOR}\n"
 printf "  (6)  Configure Firewall Restore      Firewall Restore: " && { [[ "${FIREWALLRESTORE}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 printf "  (7)  Enable AdGuardHome Log Query    AdGuardHome Log Query: " && { [[ "${QUERYADGUARDHOMELOG}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+printf "  (8)  Enable ASN Query Cache          ASN Query Cache: " && { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 
 printf "\n  ${BOLD}Advanced Settings:${NOCOLOR}  ${LIGHTRED}***Recommended to leave default unless necessary to change***${NOCOLOR}\n"
-printf "  (8)  OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
-printf "  (9)  OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
-printf "  (10) OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
-printf "  (11) OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
-printf "  (12) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
-printf "  (13) OpenVPN Client 3 Mask           OpenVPN Client 3 Mask:     ${LIGHTBLUE}${OVPNC3MASK}${NOCOLOR}\n"
-printf "  (14) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
-printf "  (15) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
-printf "  (16) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
-printf "  (17) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
-printf "  (18) WireGuard Client 1 FWMark       WireGuard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
-printf "  (19) WireGuard Client 1 Mask         WireGuard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
-printf "  (20) WireGuard Client 2 FWMark       WireGuard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
-printf "  (21) WireGuard Client 2 Mask         WireGuard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
-printf "  (22) WireGuard Client 3 FWMark       WireGuard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
-printf "  (23) WireGuard Client 3 Mask         WireGuard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
-printf "  (24) WireGuard Client 4 FWMark       WireGuard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
-printf "  (25) WireGuard Client 4 Mask         WireGuard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
-printf "  (26) WireGuard Client 5 FWMark       WireGuard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
-printf "  (27) WireGuard Client 5 Mask         WireGuard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
+printf "  (9)  OpenVPN Client 1 FWMark         OpenVPN Client 1 FWMark:   ${LIGHTBLUE}${OVPNC1FWMARK}${NOCOLOR}\n"
+printf "  (10) OpenVPN Client 1 Mask           OpenVPN Client 1 Mask:     ${LIGHTBLUE}${OVPNC1MASK}${NOCOLOR}\n"
+printf "  (11) OpenVPN Client 2 FWMark         OpenVPN Client 2 FWMark:   ${LIGHTBLUE}${OVPNC2FWMARK}${NOCOLOR}\n"
+printf "  (12) OpenVPN Client 2 Mask           OpenVPN Client 2 Mask:     ${LIGHTBLUE}${OVPNC2MASK}${NOCOLOR}\n"
+printf "  (13) OpenVPN Client 3 FWMark         OpenVPN Client 3 FWMark:   ${LIGHTBLUE}${OVPNC3FWMARK}${NOCOLOR}\n"
+printf "  (14) OpenVPN Client 3 Mask           OpenVPN Client 3 Mask:     ${LIGHTBLUE}${OVPNC3MASK}${NOCOLOR}\n"
+printf "  (15) OpenVPN Client 4 FWMark         OpenVPN Client 4 FWMark:   ${LIGHTBLUE}${OVPNC4FWMARK}${NOCOLOR}\n"
+printf "  (16) OpenVPN Client 4 Mask           OpenVPN Client 4 Mask:     ${LIGHTBLUE}${OVPNC4MASK}${NOCOLOR}\n"
+printf "  (17) OpenVPN Client 5 FWMark         OpenVPN Client 5 FWMark:   ${LIGHTBLUE}${OVPNC5FWMARK}${NOCOLOR}\n"
+printf "  (18) OpenVPN Client 5 Mask           OpenVPN Client 5 Mask:     ${LIGHTBLUE}${OVPNC5MASK}${NOCOLOR}\n"
+printf "  (19) WireGuard Client 1 FWMark       WireGuard Client 1 FWMark: ${LIGHTBLUE}${WGC1FWMARK}${NOCOLOR}\n"
+printf "  (20) WireGuard Client 1 Mask         WireGuard Client 1 Mask:   ${LIGHTBLUE}${WGC1MASK}${NOCOLOR}\n"
+printf "  (21) WireGuard Client 2 FWMark       WireGuard Client 2 FWMark: ${LIGHTBLUE}${WGC2FWMARK}${NOCOLOR}\n"
+printf "  (22) WireGuard Client 2 Mask         WireGuard Client 2 Mask:   ${LIGHTBLUE}${WGC2MASK}${NOCOLOR}\n"
+printf "  (23) WireGuard Client 3 FWMark       WireGuard Client 3 FWMark: ${LIGHTBLUE}${WGC3FWMARK}${NOCOLOR}\n"
+printf "  (24) WireGuard Client 3 Mask         WireGuard Client 3 Mask:   ${LIGHTBLUE}${WGC3MASK}${NOCOLOR}\n"
+printf "  (25) WireGuard Client 4 FWMark       WireGuard Client 4 FWMark: ${LIGHTBLUE}${WGC4FWMARK}${NOCOLOR}\n"
+printf "  (26) WireGuard Client 4 Mask         WireGuard Client 4 Mask:   ${LIGHTBLUE}${WGC4MASK}${NOCOLOR}\n"
+printf "  (27) WireGuard Client 5 FWMark       WireGuard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
+printf "  (28) WireGuard Client 5 Mask         WireGuard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
 
 printf "\n  ${BOLD}DNS Override Settings:${NOCOLOR}\n"
-printf "  (28) OpenVPN Client 1 DNS Server     OpenVPN Client 1 DNS Server:    " && { [[ -z "${OVPNC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (29) OpenVPN Client 2 DNS Server     OpenVPN Client 2 DNS Server:    " && { [[ -z "${OVPNC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (30) OpenVPN Client 3 DNS Server     OpenVPN Client 3 DNS Server:    " && { [[ -z "${OVPNC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (31) OpenVPN Client 4 DNS Server     OpenVPN Client 4 DNS Server:    " && { [[ -z "${OVPNC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (32) OpenVPN Client 5 DNS Server     OpenVPN Client 5 DNS Server:    " && { [[ -z "${OVPNC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (33) WireGuard Client 1 DNS Server   WireGuard Client 1 DNS Server:  " && { [[ -z "${WGC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (34) WireGuard Client 2 DNS Server   WireGuard Client 2 DNS Server:  " && { [[ -z "${WGC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (35) WireGuard Client 3 DNS Server   WireGuard Client 3 DNS Server:  " && { [[ -z "${WGC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (36) WireGuard Client 4 DNS Server   WireGuard Client 4 DNS Server:  " && { [[ -z "${WGC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-printf "  (37) WireGuard Client 5 DNS Server   WireGuard Client 5 DNS Server:  " && { [[ -z "${WGC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (29) OpenVPN Client 1 DNS Server     OpenVPN Client 1 DNS Server:    " && { [[ -z "${OVPNC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (30) OpenVPN Client 2 DNS Server     OpenVPN Client 2 DNS Server:    " && { [[ -z "${OVPNC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (31) OpenVPN Client 3 DNS Server     OpenVPN Client 3 DNS Server:    " && { [[ -z "${OVPNC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (32) OpenVPN Client 4 DNS Server     OpenVPN Client 4 DNS Server:    " && { [[ -z "${OVPNC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (33) OpenVPN Client 5 DNS Server     OpenVPN Client 5 DNS Server:    " && { [[ -z "${OVPNC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (34) WireGuard Client 1 DNS Server   WireGuard Client 1 DNS Server:  " && { [[ -z "${WGC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (35) WireGuard Client 2 DNS Server   WireGuard Client 2 DNS Server:  " && { [[ -z "${WGC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (36) WireGuard Client 3 DNS Server   WireGuard Client 3 DNS Server:  " && { [[ -z "${WGC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (37) WireGuard Client 4 DNS Server   WireGuard Client 4 DNS Server:  " && { [[ -z "${WGC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+printf "  (38) WireGuard Client 5 DNS Server   WireGuard Client 5 DNS Server:  " && { [[ -z "${WGC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
 if [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null;then
-  printf "  (38) WAN DNS Server                  WAN DNS Server:                 " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (39) WAN DNS Server                  WAN DNS Server:                 " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
 else
-  printf "  (38) Active WAN DNS Server           Active WAN DNS Server:          " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
-  printf "  (39) WAN0 DNS Server                 WAN0 DNS Server:                " && { [[ -z "${WAN0DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN0DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-  printf "  (40) WAN1 DNS Server                 WAN1 DNS Server:                " && { [[ -z "${WAN1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (39) Active WAN DNS Server           Active WAN DNS Server:          " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (40) WAN0 DNS Server                 WAN0 DNS Server:                " && { [[ -z "${WAN0DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN0DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  printf "  (41) WAN1 DNS Server                 WAN1 DNS Server:                " && { [[ -z "${WAN1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
 fi
 
 printf "\n  ${BOLD}System Information:${NOCOLOR}\n"
@@ -1742,7 +1756,18 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} QUERYADGUARDHOMELOG=|${SETQUERYADGUARDHOMELOG}"
   ;;
-  '8')      # OVPNC1FWMARK
+  '8')      # ASNCACHE
+  while true &>/dev/null;do
+    read -r -p "Do you want to enable ASN query cache? This defines if Domain VPN Routing caches ASN IP subnets queried from API: ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETASNCACHE="1"; break;;
+      [Nn]* ) SETASNCACHE="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} ASNCACHE=|${SETASNCACHE}"
+  ;;
+  '9')      # OVPNC1FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 FWMark - This defines the OVPNC1 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1759,7 +1784,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC1FWMARK=|${SETOVPNC1FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '9')      # OVPNC1MASK
+  '10')      # OVPNC1MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC1 Mask - This defines the OVPNC1 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1776,7 +1801,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC1MASK=|${SETOVPNC1MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '10')      # OVPNC2FWMARK
+  '11')      # OVPNC2FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 FWMark - This defines the OVPNC2 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1793,7 +1818,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC2FWMARK=|${SETOVPNC2FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '11')      # OVPNC2MASK
+  '12')      # OVPNC2MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC2 Mask - This defines the OVPNC2 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1810,7 +1835,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC2MASK=|${SETOVPNC2MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '12')      # OVPNC3FWMARK
+  '13')      # OVPNC3FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 FWMark - This defines the OVPNC3 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1827,7 +1852,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC3FWMARK=|${SETOVPNC3FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '13')      # OVPNC3MASK
+  '14')      # OVPNC3MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC3 Mask - This defines the OVPNC3 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1844,7 +1869,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC3MASK=|${SETOVPNC3MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '14')      # OVPNC4FWMARK
+  '15')      # OVPNC4FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 FWMark - This defines the OVPNC4 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1861,7 +1886,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC4FWMARK=|${SETOVPNC4FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '15')      # OVPNC4MASK
+  '16')      # OVPNC4MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC4 Mask - This defines the OVPNC4 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1878,7 +1903,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC4MASK=|${SETOVPNC4MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '16')      # OVPNC5FWMARK
+  '17')      # OVPNC5FWMARK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 FWMark - This defines the OVPNC5 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1895,7 +1920,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC5FWMARK=|${SETOVPNC5FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '17')      # OVPNC5MASK
+  '18')      # OVPNC5MASK
   while true &>/dev/null;do
     read -p "Configure OVPNC5 Mask - This defines the OVPNC5 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1912,7 +1937,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} OVPNC5MASK=|${SETOVPNC5MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '18')      # WGC1FWMARK
+  '19')      # WGC1FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC1 FWMark - This defines the WGC1 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1929,7 +1954,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC1FWMARK=|${SETWGC1FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '19')      # WGC1MASK
+  '20')      # WGC1MASK
   while true &>/dev/null;do
     read -p "Configure WGC1 Mask - This defines the WGC1 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1946,7 +1971,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC1MASK=|${SETWGC1MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '20')      # WGC2FWMARK
+  '21')      # WGC2FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC2 FWMark - This defines the WGC2 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1963,7 +1988,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC2FWMARK=|${SETWGC2FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '21')      # WGC2MASK
+  '22')      # WGC2MASK
   while true &>/dev/null;do
     read -p "Configure WGC2 Mask - This defines the WGC2 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1980,7 +2005,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC2MASK=|${SETWGC2MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '22')      # WGC3FWMARK
+  '23')      # WGC3FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC3 FWMark - This defines the WGC3 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -1997,7 +2022,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC3FWMARK=|${SETWGC3FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '23')      # WGC3MASK
+  '24')      # WGC3MASK
   while true &>/dev/null;do
     read -p "Configure WGC3 Mask - This defines the WGC3 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2014,7 +2039,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC3MASK=|${SETWGC3MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '24')      # WGC4FWMARK
+  '25')      # WGC4FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC4 FWMark - This defines the WGC4 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2030,7 +2055,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC4FWMARK=|${SETWGC4FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '25')      # WGC4MASK
+  '26')      # WGC4MASK
   while true &>/dev/null;do
     read -p "Configure WGC4 Mask - This defines the WGC4 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2046,7 +2071,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC4MASK=|${SETWGC4MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '26')      # WGC5FWMARK
+  '27')      # WGC5FWMARK
   while true &>/dev/null;do
     read -p "Configure WGC5 FWMark - This defines the WGC5 FWMark for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2063,7 +2088,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC5FWMARK=|${SETWGC5FWMARK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '27')      # WGC5MASK
+  '28')      # WGC5MASK
   while true &>/dev/null;do
     read -p "Configure WGC5 Mask - This defines the WGC5 Mask for marking traffic: " value
     if [[ -n "${value}" ]] &>/dev/null && [[ "$(echo "$((${value}))" 2>/dev/null)" == "0" ]] &>/dev/null && [[ "${value}" != "0x0" ]] &>/dev/null;then
@@ -2080,7 +2105,7 @@ case "${configinput}" in
   NEWVARIABLES="${NEWVARIABLES} WGC5MASK=|${SETWGC5MASK}"
   [[ "${RESTARTREQUIRED}" == "0" ]] &>/dev/null && RESTARTREQUIRED="1"
   ;;
-  '28')      # OVPNC1DNSSERVER
+  '29')      # OVPNC1DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 1 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2107,7 +2132,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC1DNSSERVER=|${SETOVPNC1DNSSERVER}"
   ;;
-  '29')      # OVPNC2DNSSERVER
+  '30')      # OVPNC2DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 2 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2134,7 +2159,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC2DNSSERVER=|${SETOVPNC2DNSSERVER}"
   ;;
-  '30')      # OVPNC3DNSSERVER
+  '31')      # OVPNC3DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 3 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2161,7 +2186,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC3DNSSERVER=|${SETOVPNC3DNSSERVER}"
   ;;
-  '31')      # OVPNC4DNSSERVER
+  '32')      # OVPNC4DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 4 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2188,7 +2213,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC4DNSSERVER=|${SETOVPNC4DNSSERVER}"
   ;;
-  '32')      # OVPNC5DNSSERVER
+  '33')      # OVPNC5DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 5 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2215,7 +2240,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC5DNSSERVER=|${SETOVPNC5DNSSERVER}"
   ;;
-  '33')      # WGC1DNSSERVER
+  '34')      # WGC1DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 1 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2242,7 +2267,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC1DNSSERVER=|${SETWGC1DNSSERVER}"
   ;;
-  '34')      # WGC2DNSSERVER
+  '35')      # WGC2DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 2 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2269,7 +2294,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC2DNSSERVER=|${SETWGC2DNSSERVER}"
   ;;
-  '35')      # WGC3DNSSERVER
+  '36')      # WGC3DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 3 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2296,7 +2321,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC3DNSSERVER=|${SETWGC3DNSSERVER}"
   ;;
-  '36')      # WGC4DNSSERVER
+  '37')      # WGC4DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 4 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2323,7 +2348,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC4DNSSERVER=|${SETWGC4DNSSERVER}"
   ;;
-  '37')      # WGC5DNSSERVER
+  '38')      # WGC5DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 5 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2350,7 +2375,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC5DNSSERVER=|${SETWGC5DNSSERVER}"
   ;;
-  '38')      # WANDNSSERVER
+  '39')      # WANDNSSERVER
   while true &>/dev/null;do
     read -p "Configure WAN DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2377,7 +2402,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WANDNSSERVER=|${SETWANDNSSERVER}"
   ;;
-  '39')      # WAN0DNSSERVER
+  '40')      # WAN0DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WAN0 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -2404,7 +2429,7 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WAN0DNSSERVER=|${SETWAN0DNSSERVER}"
   ;;
-  '40')      # WAN1DNSSERVER
+  '41')      # WAN1DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WAN1 DNS Server: " ip
     ip=${ip//[$'\t\r\n']/}
@@ -3247,6 +3272,13 @@ if [[ "${mode}" == "deleteasn" ]] &>/dev/null || [[ "${mode}" == "uninstall" ]] 
       && logger -p 4 -t "${ALIAS}" "Delete ASN - Deleted IPv6 IPSET for ${ASN}" \
       || logger -p 2 -st "${ALIAS}" "Delete ASN - ***Error*** Failed to delete IPv6 IPSET for ${ASN}"
     fi
+    # Delete saved IPv6 IPSET
+    if [[ -f "${POLICYDIR}/asn_${ASN}-v6.ipset" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Delete ASN - Deleting IPv6 IPSET saved file for ${ASN}"
+      rm -f ${POLICYDIR}/asn_${ASN}-v6.ipset \
+      && logger -p 4 -t "${ALIAS}" "Delete ASN - Deleted IPv6 IPSET saved file for ${ASN}" \
+      || logger -p 2 -st "${ALIAS}" "Delete ASN - ***Error*** Failed to delete IPv6 IPSET saved file for ${ASN}"
+    fi
 	
     # Delete IPv4
     # Delete IPv4 IPTables OUTPUT Rule
@@ -3276,6 +3308,13 @@ if [[ "${mode}" == "deleteasn" ]] &>/dev/null || [[ "${mode}" == "uninstall" ]] 
       ipset destroy ${IPSETPREFIX}-${ASN}-v4 \
       && logger -p 4 -t "${ALIAS}" "Delete ASN - Deleted IPv4 IPSET for ${ASN}" \
       || logger -p 2 -st "${ALIAS}" "Delete ASN - ***Error*** Failed to delete IPv4 IPSET for ${ASN}"
+    fi
+    # Delete saved IPv4 IPSET
+    if [[ -f "${POLICYDIR}/asn_${ASN}-v4.ipset" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Delete ASN - Deleting IPv4 IPSET saved file for ${ASN}"
+      rm -f ${POLICYDIR}/asn_${ASN}-v4.ipset \
+      && logger -p 4 -t "${ALIAS}" "Delete ASN - Deleted IPv4 IPSET saved file for ${ASN}" \
+      || logger -p 2 -st "${ALIAS}" "Delete ASN - ***Error*** Failed to delete IPv4 IPSET saved file for ${ASN}"
     fi
 	
     # Delete ASN from ASN File
@@ -3426,6 +3465,7 @@ else
   return
 fi
 
+# Check if jq package is installed
 if [[ "${JQINSTALLED}" == "0" ]] &>/dev/null;then
   if [[ "${mode}" == "queryasn" ]] &>/dev/null;then
     logger -p 2 -t "${ALIAS}" "Query ASN - ***jq package is not installed from Entware***"
@@ -3435,6 +3475,9 @@ if [[ "${JQINSTALLED}" == "0" ]] &>/dev/null;then
   fi
   return
 fi
+
+# Check for ASN Cache if ASNCACHE is enabled
+[[ "${ASNCACHE}" == "1" ]] &>/dev/null && restoreasncache
 
 # Query ASNs
 for QUERYASN in ${QUERYASNS};do
@@ -3457,8 +3500,27 @@ for QUERYASN in ${QUERYASNS};do
     # Query for IPv6 subnets
     ASNIPV6S="$(cat /tmp/${QUERYASN}_query.tmp | /opt/bin/jq ".data.ipv6_prefixes[].prefix" 2>/dev/null | tr -d \" | sort -u)"
 	
-    # Create new IPv6 IPSET if it does not exist
-    if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
+    # Create IPv6 IPSET
+    # Check for saved IPSET if ASNCACHE is enabled
+    if [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Query ASN - Restoring IPv6 IPSET for ${QUERYASN}"
+      ipset restore -! <"${POLICYDIR}/asn_${QUERYASN}-v6.ipset" \
+      && logger -p 4 -t "${ALIAS}" "Query ASN - Restored IPv6 IPSET for ${QUERYASN}" \
+      || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to restore IPv6 IPSET for ${QUERYASN}"
+    # Create saved IPv6 IPSET file if IPSET exists and ASNCACHE is enabled
+    elif [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Query ASN - Saving IPv6 IPSET for ${QUERYASN}"
+      ipset save ${IPSETPREFIX}-${QUERYASN}-v6 -file ${POLICYDIR}/asn_${QUERYASN}-v6.ipset \
+      && logger -p 4 -t "${ALIAS}" "Query ASN - Saved IPv6 IPSET for ${QUERYASN}" \
+      || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to save IPv6 IPSET for ${QUERYASN}"
+    # Create new IPv6 IPSET if it does not exist and ASNCACHE is enabled
+    elif [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Query ASN - Creating IPv6 IPSET for ${QUERYASN}"
+      ipset create ${IPSETPREFIX}-${QUERYASN}-v6 hash:net family inet6 \
+      && { saveipv6ipset="1" && logger -p 4 -t "${ALIAS}" "Query ASN - Created IPv6 IPSET for ${QUERYASN}" ;} \
+      || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to create IPv6 IPSET for ${QUERYASN}"
+    # Create new IPv6 IPSET if it does not exist and ASNCACHE is disabled
+    elif [[ "${ASNCACHE}" == "0" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Query ASN - Creating IPv6 IPSET for ${QUERYASN}"
       ipset create ${IPSETPREFIX}-${QUERYASN}-v6 hash:net family inet6 \
       && logger -p 4 -t "${ALIAS}" "Query ASN - Created IPv6 IPSET for ${QUERYASN}" \
@@ -3499,18 +3561,60 @@ for QUERYASN in ${QUERYASNS};do
         logger -p 5 -t "${ALIAS}" "Query ASN - Adding ${ASNIPV6} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v6"
         ipset add ${IPSETPREFIX}-${QUERYASN}-v6 ${ASNIPV6} \
         || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to add ${ASNIPV6} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v6" \
-        && logger -p 4 -t "${ALIAS}" "Query ASN - Added ${ASNIPV6} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v6"
+        && { saveipv6ipset="1" && logger -p 4 -t "${ALIAS}" "Query ASN - Added ${ASNIPV6} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v6" ;}
       elif [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
         break
       fi
     done
+
+    # Cleanup IPv6 IPSET
+    if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null;then
+      ASNIPV6SIPSET="$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 | grep -E "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+      for ASNIPV6IPSET in ${ASNIPV6SIPSET};do
+	    if [[ -z "$(echo "${ASNIPV6S}" | grep -wo "${ASNIPV6IPSET}")" ]] &>/dev/null;then
+          logger -p 5 -t "${ALIAS}" "Query ASN - Deleting ${ASNIPV6IPSET} from IPSET: ${IPSETPREFIX}-${QUERYASN}-v6"
+          ipset del ${IPSETPREFIX}-${QUERYASN}-v6 ${ASNIPV6IPSET} \
+          || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to delete ${ASNIPV6IPSET} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v6" \
+          && { saveipv6ipset="1" && logger -p 4 -t "${ALIAS}" "Query ASN - Deleted ${ASNIPV6IPSET} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v6" ;}
+        fi
+      done
+    fi
+	
+    # Save IPv6 IPSET if modified or does not exist if ASNCACHE is enabled
+    [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
+    if { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ "${saveipv6ipset}" == "1" ]] &>/dev/null ;} || { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null ;};then
+      logger -p 5 -t "${ALIAS}" "Query ASN - Saving IPv6 IPSET for ${QUERYASN}"
+      ipset save ${IPSETPREFIX}-${QUERYASN}-v6 -file ${POLICYDIR}/asn_${QUERYASN}-v6.ipset \
+      && logger -p 4 -t "${ALIAS}" "Query ASN - Save IPv6 IPSET for ${QUERYASN}" \
+      || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to save IPv6 IPSET for ${QUERYASN}"
+    fi
+    [[ -n "${saveipv6ipset+x}" ]] &>/dev/null && unset saveipv6ipset
   fi
   
   # Query for IPv4 subnets
   ASNIPV4S="$(cat /tmp/${QUERYASN}_query.tmp | /opt/bin/jq ".data.ipv4_prefixes[].prefix" 2>/dev/null | tr -d \" | sort -u)"
-  
-  # Create new IPv4 IPSET if it does not exist
-  if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
+
+  # Create IPv4 IPSET
+  # Check for saved IPv4 IPSET if ASNCACHE is enabled
+  if [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Query ASN - Restoring IPv4 IPSET for ${QUERYASN}"
+    ipset restore -! <"${POLICYDIR}/asn_${QUERYASN}-v4.ipset" \
+    && logger -p 4 -t "${ALIAS}" "Query ASN - Restored IPv4 IPSET for ${QUERYASN}" \
+    || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to restore IPv4 IPSET for ${QUERYASN}"
+  # Create saved IPv4 IPSET file if IPSET exists and ASNCACHE is enabled
+  elif [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Query ASN - Saving IPv4 IPSET for ${QUERYASN}"
+    ipset save ${IPSETPREFIX}-${QUERYASN}-v4 -file ${POLICYDIR}/asn_${QUERYASN}-v4.ipset \
+    && logger -p 4 -t "${ALIAS}" "Query ASN - Saved IPv4 IPSET for ${QUERYASN}" \
+    || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to save IPv4 IPSET for ${QUERYASN}"
+  # Create new IPv4 IPSET if it does not exist and ASNCACHE is enabled
+  elif [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Query ASN - Creating IPv4 IPSET for ${QUERYASN}"
+    ipset create ${IPSETPREFIX}-${QUERYASN}-v4 hash:net family inet \
+    && { saveipv4ipset="1" && logger -p 4 -t "${ALIAS}" "Query ASN - Created IPv4 IPSET for ${QUERYASN}" ;} \
+    || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to create IPv4 IPSET for ${QUERYASN}"
+  # Create new IPv4 IPSET if it does not exist and ASNCACHE is disabled
+  elif [[ "${ASNCACHE}" == "0" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query ASN - Creating IPv4 IPSET for ${QUERYASN}"
     ipset create ${IPSETPREFIX}-${QUERYASN}-v4 hash:net family inet \
     && logger -p 4 -t "${ALIAS}" "Query ASN - Created IPv4 IPSET for ${QUERYASN}" \
@@ -3550,11 +3654,34 @@ for QUERYASN in ${QUERYASNS};do
       logger -p 5 -t "${ALIAS}" "Query ASN - Adding ${ASNIPV4} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v4"
       ipset add ${IPSETPREFIX}-${QUERYASN}-v4 ${ASNIPV4} \
       || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to add ${ASNIPV4} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v4" \
-      && logger -p 4 -t "${ALIAS}" "Query ASN - Added ${ASNIPV4} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v4"
+      && { saveipv4ipset="1" && logger -p 4 -t "${ALIAS}" "Query ASN - Added ${ASNIPV4} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v4" ;}
     elif [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
       break
     fi
   done
+  
+  # Cleanup IPv4 IPSET
+  if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
+    ASNIPV4SIPSET="$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 | grep -E "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
+    for ASNIPV4IPSET in ${ASNIPV4SIPSET};do
+	  if [[ -z "$(echo "${ASNIPV4S}" | grep -wo "${ASNIPV4IPSET}")" ]] &>/dev/null;then
+        logger -p 5 -t "${ALIAS}" "Query ASN - Deleting ${ASNIPV4IPSET} from IPSET: ${IPSETPREFIX}-${QUERYASN}-v4"
+        ipset del ${IPSETPREFIX}-${QUERYASN}-v4 ${ASNIPV4IPSET} \
+        || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to delete ${ASNIPV4IPSET} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v4" \
+        && { saveipv4ipset="1" && logger -p 4 -t "${ALIAS}" "Query ASN - Deleted ${ASNIPV4IPSET} to IPSET: ${IPSETPREFIX}-${QUERYASN}-v4" ;}
+      fi
+    done
+  fi
+  
+  # Save IPv4 IPSET if modified or does not exist if ASNCACHE is enabled
+  [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
+  if { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ "${saveipv4ipset}" == "1" ]] &>/dev/null ;} || { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null ;};then
+    logger -p 5 -t "${ALIAS}" "Query ASN - Saving IPv4 IPSET for ${QUERYASN}"
+    ipset save ${IPSETPREFIX}-${QUERYASN}-v4 -file ${POLICYDIR}/asn_${QUERYASN}-v4.ipset \
+    && logger -p 4 -t "${ALIAS}" "Query ASN - Save IPv4 IPSET for ${QUERYASN}" \
+    || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to save IPv4 IPSET for ${QUERYASN}"
+  fi
+  [[ -n "${saveipv4ipset+x}" ]] &>/dev/null && unset saveipv4ipset
   
   # Create IP FWMark Rules
   createipmarkrules
@@ -3577,7 +3704,7 @@ processtime="$((${asnend}-${asnstart}))"
 logger -p 5 -st "${ALIAS}" "Query ASN - Processing Time: ${processtime} seconds"
 
 # Unset Variables
-unset ASNIPV4S ASNIPV6S processtime asnend asnstart
+unset ASNIPV4S ASNIPV6S ASNIPV4SIPSET ASNIPV6SIPSET processtime asnend asnstart
 
 return
 }
@@ -5700,6 +5827,128 @@ else
 fi
 }
 
+# Restore ASN Cache
+restoreasncache ()
+{
+# Check if Domain VPN Routing is enabled
+checkscriptstatus || return
+
+# Check if ASNCACHE is enabled
+[[ "${ASNCACHE}" == "0" ]] &>/dev/null && return
+
+# Boot Delay Timer
+bootdelaytimer
+
+# Set Process Priority
+setprocesspriority
+
+# Generate Restore ASN Cache List
+if [[ -f "${ASNFILE}" ]] &>/dev/null;then
+  RESTOREASNS="$(awk -F"|" '{print $1}' ${ASNFILE})"
+  if [[ -z "${RESTOREASNS}" ]] &>/dev/null;then
+    logger -p 3 -t "${ALIAS}" "Restore ASN Cache - ***No ASNs Detected***"
+    return
+  fi
+else
+  logger -p 3 -t "${ALIAS}" "Restore ASN Cache - ***No ASNs Detected***"
+  return
+fi
+
+# Query ASNs
+for RESTOREASN in ${RESTOREASNS};do
+  # Check if IPSET fies exist
+  if [[ ! -f "${POLICYDIR}/asn_${RESTOREASN}-v6.ipset" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${RESTOREASN}-v4.ipset" ]] &>/dev/null &>/dev/null;then
+    continue
+  fi
+
+  # Get Interface for ASN
+  INTERFACE="$(grep -w "${RESTOREASN}" "${ASNFILE}" | awk -F"|" '{print $2}')"
+  routingdirector || return
+  
+  # Restore ASN for IP Subnets
+  if tty >/dev/null 2>&1;then
+    printf '\033[K%b\r' "${UNDERLINE}Restore ASN: ${RESTOREASN}...${NOCOLOR}\n"
+  fi
+  
+  # Check if IPv6 is enabled and query for IPv6 subnets
+  if [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
+  
+    # Restore IPv6 IPSET
+    if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/asn_${RESTOREASN}-v6.ipset" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Restoring IPv6 IPSET for ${RESTOREASN}"
+      ipset restore -! <"${POLICYDIR}/asn_${RESTOREASN}-v6.ipset" \
+      && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Restored IPv6 IPSET for ${RESTOREASN}" \
+      || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to restore IPv6 IPSET for ${RESTOREASN}"
+    fi
+	
+    # Create IPv6 IP6Tables OUTPUT Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}"
+    fi
+
+    # Create IPv6 IP6Tables PREROUTING Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}"
+      ip6tables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}" \
+      || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}"
+    fi
+
+    # Create IPv6 IP6Tables POSTROUTING Rule
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+      && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+      || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    fi
+  fi
+	
+  # Restore IPv4 IPSET
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/asn_${RESTOREASN}-v4.ipset" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Restoring IPv4 IPSET for ${RESTOREASN}"
+    ipset restore -! <"${POLICYDIR}/asn_${RESTOREASN}-v4.ipset" \
+    && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Restored IPv4 IPSET for ${RESTOREASN}" \
+    || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to restore IPv4 IPSET for ${RESTOREASN}"
+  fi
+  
+  # Create IPv4 IPTables OUTPUT Rule
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}"
+    iptables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}" \
+    || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}"
+  fi
+
+  # Create IPv4 IPTables PREROUTING Rule
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}"
+    iptables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}" \
+    || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}"
+  fi
+
+  # Create IPv4 IPTables POSTROUTING Rule
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} \
+    && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
+    || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
+  fi
+  
+  # Create IP FWMark Rules
+  createipmarkrules
+  
+done
+
+# Clear Parameters
+unset RESTOREASNS INTERFACE IFNAME OLDIFNAME IPV6S IPV4S RGW PRIORITY ROUTETABLE DOMAIN IP FWMARK MASK IPV6ROUTETABLE OLDIPV6ROUTETABLE
+
+return
+}
+
 # Restore Existing Policies
 restorepolicy ()
 {
@@ -6188,6 +6437,11 @@ fi
 # Delete old IPSets Pre-version 2.1.4
 if [[ -n "$(ipset list -name | grep -e "DomainVPNRouting-")" ]] &>/dev/null;then
   deleteoldipsetsprev300
+fi
+
+# Restore ASN Cache if ASNCACHE is enabled
+if [[ "${ASNCACHE}" == "1" ]] &>/dev/null;then
+  restoreasncache
 fi
 
 return

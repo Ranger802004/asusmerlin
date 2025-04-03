@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/30/2025
-# Version: v3.0.6
+# Date: 04/02/2025
+# Version: v3.1.0-beta1
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -59,6 +59,7 @@ Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
 - BOOTDELAYTIMER: This will delay execution until System Uptime reaches this time. Default: 0 Seconds
 - FIREWALLRESTORE: This will execute the restorepolicy mode during a firewall restart event.  Default: Disabled
 - QUERYADGUARDHOMELOG: This defines if the Script queries the AdGuardHome log if it is enabled.  Default: Disabled
+- ASNCACHE: This defines if Domain VPN Routing caches ASN IP subnets queried from API. Default: Disabled
 - OVPNC1FWMARK: This defines the FWMark value for OpenVPN Client 1. Default: 0x1000
 - OVPNC1MASK: This defines the Mask value for OpenVPN Client 1. Default: 0xf000
 - OVPNC2FWMARK: This defines the FWMark value for OpenVPN Client 2. Default: 0x2000
@@ -203,6 +204,11 @@ Considerations:
 - Enabling AdGuardHome log querying can take a long time to process if the AdGuardHome log file is large.  The log file rotation interval can be lowered within AdGuardHome to reduce the size of the log file. 
 
 Release Notes:
+v3.1.0-beta1 - 04/02/2025
+Enhancements:
+- Added functionality to cache ASN IP Subnets for faster restoration from reboot or service restart.  This can be enabled or disabled via the ASNCACHE configuration option.  Default: Disabled
+- ASN queries will now check existing IPSets for IP Subnets that are no longer applicable to the ASN and remove them.
+
 v3.0.6 - 03/30/2025
 Fixes:
 - Fixed an issue causing errors during installation when the firewall-start script does not exist and the Firewall Restore setting is disabled.
