@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 04/02/2025
-# Version: v3.1.0-beta1
+# Date: 04/05/2025
+# Version: v3.1.0-beta2
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -10,7 +10,7 @@ Requirements:
 - JFFS custom scripts and configs enabled
 - OpenVPN or WireGuard clients configured.
 - (Optional) Entware installed.
-- (Optional) Dig installed via Entware, this allows more optimized DNS querying as well as support for adding CNAMES to policies.
+- (Optional) Dig installed via Entware, this allows more optimized DNS querying as well as support for adding CNAMES to policies.  Dig will also allow the capability to configure DNS-over-TLS on an interface.
 - (Optional) Jq installed via Entware, this is required for ASN querying and AdGuardHome log querying.
 - (Optional) Python3 installed via Entware, this is required for AdGuardHome log querying.
 
@@ -81,18 +81,31 @@ Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
 - WGC5FWMARK: This defines the FWMark value for WireGuard Client 5. Default: 0xe000
 - WGC5MASK: This defines the Mask value for WireGuard Client 5. Default: 0xf000
 - OVPNC1DNSSERVER: This defines the DNS server override for OpenVPN Client 1.  Default: N/A
+- OVPNC1DOT: This defines if the DNS Server configured for OpenVPN Client 1 will use DNS-over-TLS. Default: Disabled
 - OVPNC2DNSSERVER: This defines the DNS server override for OpenVPN Client 2.  Default: N/A
+- OVPNC2DOT: This defines if the DNS Server configured for OpenVPN Client 2 will use DNS-over-TLS. Default: Disabled
 - OVPNC3DNSSERVER: This defines the DNS server override for OpenVPN Client 3.  Default: N/A
+- OVPNC3DOT: This defines if the DNS Server configured for OpenVPN Client 3 will use DNS-over-TLS. Default: Disabled
 - OVPNC4DNSSERVER: This defines the DNS server override for OpenVPN Client 4.  Default: N/A
+- OVPNC4DOT: This defines if the DNS Server configured for OpenVPN Client 4 will use DNS-over-TLS. Default: Disabled
 - OVPNC5DNSSERVER: This defines the DNS server override for OpenVPN Client 5.  Default: N/A
+- OVPNC5DOT: This defines if the DNS Server configured for OpenVPN Client 5 will use DNS-over-TLS. Default: Disabled
 - WGC1DNSSERVER: This defines the DNS server override for WireGuard Client 1.  Default: N/A
+- WGC1DOT: This defines if the DNS Server configured for WireGuard Client 1 will use DNS-over-TLS. Default: Disabled
 - WGC2DNSSERVER: This defines the DNS server override for WireGuard Client 2.  Default: N/A
+- WGC2DOT: This defines if the DNS Server configured for WireGuard Client 2 will use DNS-over-TLS. Default: Disabled
 - WGC3DNSSERVER: This defines the DNS server override for WireGuard Client 3.  Default: N/A
+- WGC3DOT: This defines if the DNS Server configured for WireGuard Client 3 will use DNS-over-TLS. Default: Disabled
 - WGC4DNSSERVER: This defines the DNS server override for WireGuard Client 4.  Default: N/A
+- WGC4DOT: This defines if the DNS Server configured for WireGuard Client 4 will use DNS-over-TLS. Default: Disabled
 - WGC5DNSSERVER: This defines the DNS server override for WireGuard Client 5.  Default: N/A
+- WGC5DOT: This defines if the DNS Server configured for WireGuard Client 5 will use DNS-over-TLS. Default: Disabled
 - WANDNSSERVER: This defines the DNS server override for WAN (Active WAN in Dual WAN Mode).  Default: N/A
+- WANDOT: This defines if the DNS Server configured for WAN will use DNS-over-TLS. Default: Disabled
 - WAN0DNSSERVER: This defines the DNS server override for WAN0 (Dual WAN Mode).  Default: N/A
+- WAN0DOT: This defines if the DNS Server configured for WAN0 will use DNS-over-TLS. Default: Disabled
 - WAN1DNSSERVER: This defines the DNS server override for WAN1 (Dual WAN Mode).  Default: N/A
+- WAN1DOT: This defines if the DNS Server configured for WAN1 will use DNS-over-TLS. Default: Disabled
 
 Creating a Policy:
 Step 1: Create a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh createpolicy
@@ -204,10 +217,11 @@ Considerations:
 - Enabling AdGuardHome log querying can take a long time to process if the AdGuardHome log file is large.  The log file rotation interval can be lowered within AdGuardHome to reduce the size of the log file. 
 
 Release Notes:
-v3.1.0-beta1 - 04/02/2025
+v3.1.0-beta2 - 04/05/2025
 Enhancements:
 - Added functionality to cache ASN IP Subnets for faster restoration from reboot or service restart.  This can be enabled or disabled via the ASNCACHE configuration option.  Default: Disabled
 - ASN queries will now check existing IPSets for IP Subnets that are no longer applicable to the ASN and remove them.
+- New configuration options to enable DNS-over-TLS for an interface if a custom DNS Server is configured for it, the options in the configuration menu will become displayed when a DNS Server is configured.  DoT requires dig to be installed to function properly.
 
 v3.0.6 - 03/30/2025
 Fixes:

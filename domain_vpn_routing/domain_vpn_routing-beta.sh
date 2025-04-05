@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 04/02/2025
-# Version: v3.1.0-beta1
+# Date: 04/05/2025
+# Version: v3.1.0-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.1.0-beta1"
+VERSION="v3.1.0-beta2"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -1091,6 +1091,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC1DNSSERVER Default: N/A"
     echo -e "OVPNC1DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # OVPNC1DOT
+  if [[ -z "$(sed -n '/\bOVPNC1DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC1DOT Default: Disabled"
+    echo -e "OVPNC1DOT=0" >> ${GLOBALCONFIGFILE}
+  fi
 
   # OVPNC2FWMARK
   if [[ -z "$(sed -n '/\bOVPNC2FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -1108,6 +1114,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   if [[ -z "$(awk -F "=" '$1 == "OVPNC2DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC2DNSSERVER Default: N/A"
     echo -e "OVPNC2DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # OVPNC2DOT
+  if [[ -z "$(sed -n '/\bOVPNC2DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC2DOT Default: Disabled"
+    echo -e "OVPNC2DOT=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC3FWMARK
@@ -1127,6 +1139,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC3DNSSERVER Default: N/A"
     echo -e "OVPNC3DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # OVPNC3DOT
+  if [[ -z "$(sed -n '/\bOVPNC3DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC3DOT Default: Disabled"
+    echo -e "OVPNC3DOT=0" >> ${GLOBALCONFIGFILE}
+  fi
 
   # OVPNC4FWMARK
   if [[ -z "$(sed -n '/\bOVPNC4FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -1144,6 +1162,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   if [[ -z "$(awk -F "=" '$1 == "OVPNC4DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC4DNSSERVER Default: N/A"
     echo -e "OVPNC4DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # OVPNC4DOT
+  if [[ -z "$(sed -n '/\bOVPNC4DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC4DOT Default: Disabled"
+    echo -e "OVPNC4DOT=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # OVPNC5FWMARK
@@ -1163,6 +1187,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC5DNSSERVER Default: N/A"
     echo -e "OVPNC5DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # OVPNC5DOT
+  if [[ -z "$(sed -n '/\bOVPNC5DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting OVPNC5DOT Default: Disabled"
+    echo -e "OVPNC5DOT=0" >> ${GLOBALCONFIGFILE}
+  fi
 
   # WGC1FWMARK
   if [[ -z "$(sed -n '/\bWGC1FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -1180,6 +1210,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   if [[ -z "$(awk -F "=" '$1 == "WGC1DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting WGC1DNSSERVER Default: N/A"
     echo -e "WGC1DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WGC1DOT
+  if [[ -z "$(sed -n '/\bWGC1DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC1DOT Default: Disabled"
+    echo -e "WGC1DOT=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC2FWMARK
@@ -1199,6 +1235,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting WGC2DNSSERVER Default: N/A"
     echo -e "WGC2DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # WGC2DOT
+  if [[ -z "$(sed -n '/\bWGC2DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC2DOT Default: Disabled"
+    echo -e "WGC2DOT=0" >> ${GLOBALCONFIGFILE}
+  fi
 
   # WGC3FWMARK
   if [[ -z "$(sed -n '/\bWGC3FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -1217,6 +1259,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting WGC3DNSSERVER Default: N/A"
     echo -e "WGC3DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
+  
+  # WGC3DOT
+  if [[ -z "$(sed -n '/\bWGC3DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC3DOT Default: Disabled"
+    echo -e "WGC3DOT=0" >> ${GLOBALCONFIGFILE}
+  fi
 
   # WGC4FWMARK
   if [[ -z "$(sed -n '/\bWGC4FWMARK\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
@@ -1234,6 +1282,12 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   if [[ -z "$(awk -F "=" '$1 == "WGC4DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting WGC4DNSSERVER Default: N/A"
     echo -e "WGC4DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WGC4DOT
+  if [[ -z "$(sed -n '/\bWGC4DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC4DOT Default: Disabled"
+    echo -e "WGC4DOT=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # WGC5FWMARK
@@ -1254,10 +1308,22 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
     echo -e "WGC5DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
   
+  # WGC5DOT
+  if [[ -z "$(sed -n '/\bWGC5DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WGC5DOT Default: Disabled"
+    echo -e "WGC5DOT=0" >> ${GLOBALCONFIGFILE}
+  fi
+  
   # WANDNSSERVER
   if [[ -z "$(awk -F "=" '$1 == "WANDNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting WANDNSSERVER Default: N/A"
     echo -e "WANDNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WANDOT
+  if [[ -z "$(sed -n '/\bWANDOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WANDOT Default: Disabled"
+    echo -e "WANDOT=0" >> ${GLOBALCONFIGFILE}
   fi
   
   # WAN0DNSSERVER
@@ -1266,10 +1332,22 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
     echo -e "WAN0DNSSERVER=" >> ${GLOBALCONFIGFILE}
   fi
   
+  # WAN0DOT
+  if [[ -z "$(sed -n '/\bWAN0DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WAN0DOT Default: Disabled"
+    echo -e "WAN0DOT=0" >> ${GLOBALCONFIGFILE}
+  fi
+  
   # WAN1DNSSERVER
   if [[ -z "$(awk -F "=" '$1 == "WAN1DNSSERVER" {print $1}' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting WAN1DNSSERVER Default: N/A"
     echo -e "WAN1DNSSERVER=" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # WAN1DOT
+  if [[ -z "$(sed -n '/\bWAN1DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Setting WAN1DOT Default: Disabled"
+    echo -e "WAN1DOT=0" >> ${GLOBALCONFIGFILE}
   fi
 
   # Reading updated Global Configuration
@@ -1597,23 +1675,65 @@ printf "  (26) WireGuard Client 4 Mask         WireGuard Client 4 Mask:   ${LIGH
 printf "  (27) WireGuard Client 5 FWMark       WireGuard Client 5 FWMark: ${LIGHTBLUE}${WGC5FWMARK}${NOCOLOR}\n"
 printf "  (28) WireGuard Client 5 Mask         WireGuard Client 5 Mask:   ${LIGHTBLUE}${WGC5MASK}${NOCOLOR}\n"
 
-printf "\n  ${BOLD}DNS Override Settings:${NOCOLOR}\n"
+printf "\n  ${BOLD}DNS Settings:${NOCOLOR}\n"
 printf "  (29) OpenVPN Client 1 DNS Server     OpenVPN Client 1 DNS Server:    " && { [[ -z "${OVPNC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ -n "${OVPNC1DNSSERVER}" ]] &>/dev/null;then
+  printf "   (29a) OpenVPN Client 1 DoT          Status: " && { [[ "${OVPNC1DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
 printf "  (30) OpenVPN Client 2 DNS Server     OpenVPN Client 2 DNS Server:    " && { [[ -z "${OVPNC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ -n "${OVPNC2DNSSERVER}" ]] &>/dev/null;then
+  printf "   (30a) OpenVPN Client 2 DoT          Status: " && { [[ "${OVPNC2DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
 printf "  (31) OpenVPN Client 3 DNS Server     OpenVPN Client 3 DNS Server:    " && { [[ -z "${OVPNC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ -n "${OVPNC3DNSSERVER}" ]] &>/dev/null;then
+  printf "   (31a) OpenVPN Client 3 DoT          Status: " && { [[ "${OVPNC3DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
 printf "  (32) OpenVPN Client 4 DNS Server     OpenVPN Client 4 DNS Server:    " && { [[ -z "${OVPNC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ -n "${OVPNC4DNSSERVER}" ]] &>/dev/null;then
+  printf "   (32a) OpenVPN Client 4 DoT          Status: " && { [[ "${OVPNC4DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
 printf "  (33) OpenVPN Client 5 DNS Server     OpenVPN Client 5 DNS Server:    " && { [[ -z "${OVPNC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${OVPNC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ -n "${OVPNC5DNSSERVER}" ]] &>/dev/null;then
+  printf "   (33a) OpenVPN Client 5 DoT          Status: " && { [[ "${OVPNC5DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
 printf "  (34) WireGuard Client 1 DNS Server   WireGuard Client 1 DNS Server:  " && { [[ -z "${WGC1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ -n "${WGC1DNSSERVER}" ]] &>/dev/null;then
+  printf "   (34a) WireGuard Client 1 DoT        Status: " && { [[ "${WGC1DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
 printf "  (35) WireGuard Client 2 DNS Server   WireGuard Client 2 DNS Server:  " && { [[ -z "${WGC2DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC2DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ -n "${WGC2DNSSERVER}" ]] &>/dev/null;then
+  printf "   (35a) WireGuard Client 2 DoT        Status: " && { [[ "${WGC2DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
 printf "  (36) WireGuard Client 3 DNS Server   WireGuard Client 3 DNS Server:  " && { [[ -z "${WGC3DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC3DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ -n "${WGC3DNSSERVER}" ]] &>/dev/null;then
+  printf "   (36a) WireGuard Client 1 DoT        Status: " && { [[ "${WGC3DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
 printf "  (37) WireGuard Client 4 DNS Server   WireGuard Client 4 DNS Server:  " && { [[ -z "${WGC4DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC4DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+if [[ -n "${WGC4DNSSERVER}" ]] &>/dev/null;then
+  printf "   (37a) WireGuard Client 4 DoT        Status: " && { [[ "${WGC4DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
 printf "  (38) WireGuard Client 5 DNS Server   WireGuard Client 5 DNS Server:  " && { [[ -z "${WGC5DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WGC5DNSSERVER}${NOCOLOR}" ;} && printf "\n"
-if [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null;then
+if [[ -n "${WGC5DNSSERVER}" ]] &>/dev/null;then
+  printf "   (38a) WireGuard Client 5 DoT        Status: " && { [[ "${WGC5DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+fi
+if [[ "${WANSDUALWANENABLE}" == "1" ]] &>/dev/null;then
   printf "  (39) WAN DNS Server                  WAN DNS Server:                 " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  if [[ -n "${WANDNSSERVER}" ]] &>/dev/null;then
+    printf "   (39a) WAN DoT                       Status: " && { [[ "${WANDOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  fi
 else
   printf "  (39) Active WAN DNS Server           Active WAN DNS Server:          " && { [[ -z "${WANDNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WANDNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  if [[ -n "${WANDNSSERVER}" ]] &>/dev/null;then
+    printf "   (39a) WAN DoT                       Status: " && { [[ "${WANDOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  fi
   printf "  (40) WAN0 DNS Server                 WAN0 DNS Server:                " && { [[ -z "${WAN0DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN0DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  if [[ -n "${WAN0DNSSERVER}" ]] &>/dev/null;then
+    printf "   (40a) WAN0 DoT                      Status: " && { [[ "${WAN0DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  fi
   printf "  (41) WAN1 DNS Server                 WAN1 DNS Server:                " && { [[ -z "${WAN1DNSSERVER}" ]] &>/dev/null && printf "${RED}(System Default)${NOCOLOR}" || printf "${LIGHTBLUE}${WAN1DNSSERVER}${NOCOLOR}" ;} && printf "\n"
+  if [[ -n "${WAN1DNSSERVER}" ]] &>/dev/null;then
+    printf "   (41a) WAN1 DoT                      Status: " && { [[ "${WAN1DOT}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+  fi
 fi
 
 printf "\n  ${BOLD}System Information:${NOCOLOR}\n"
@@ -2132,6 +2252,17 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC1DNSSERVER=|${SETOVPNC1DNSSERVER}"
   ;;
+  '29a')      # OVPNC1DOT
+  while true &>/dev/null;do
+    read -r -p "Enable OpenVPN Client 1 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETOVPNC1DOT="1"; break;;
+      [Nn]* ) SETOVPNC1DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC1DOT=|${SETOVPNC1DOT}"
+  ;;
   '30')      # OVPNC2DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 2 DNS Server: " ip
@@ -2158,6 +2289,17 @@ case "${configinput}" in
     fi
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC2DNSSERVER=|${SETOVPNC2DNSSERVER}"
+  ;;
+  '30a')      # OVPNC2DOT
+  while true &>/dev/null;do
+    read -r -p "Enable OpenVPN Client 2 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETOVPNC2DOT="1"; break;;
+      [Nn]* ) SETOVPNC2DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC2DOT=|${SETOVPNC2DOT}"
   ;;
   '31')      # OVPNC3DNSSERVER
   while true &>/dev/null;do
@@ -2186,6 +2328,17 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC3DNSSERVER=|${SETOVPNC3DNSSERVER}"
   ;;
+  '31a')      # OVPNC3DOT
+  while true &>/dev/null;do
+    read -r -p "Enable OpenVPN Client 3 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETOVPNC3DOT="1"; break;;
+      [Nn]* ) SETOVPNC3DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC3DOT=|${SETOVPNC3DOT}"
+  ;;
   '32')      # OVPNC4DNSSERVER
   while true &>/dev/null;do
     read -p "Configure OpenVPN Client 4 DNS Server: " ip
@@ -2212,6 +2365,17 @@ case "${configinput}" in
     fi
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC4DNSSERVER=|${SETOVPNC4DNSSERVER}"
+  ;;
+  '32a')      # OVPNC4DOT
+  while true &>/dev/null;do
+    read -r -p "Enable OpenVPN Client 4 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETOVPNC4DOT="1"; break;;
+      [Nn]* ) SETOVPNC4DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC4DOT=|${SETOVPNC4DOT}"
   ;;
   '33')      # OVPNC5DNSSERVER
   while true &>/dev/null;do
@@ -2240,6 +2404,17 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} OVPNC5DNSSERVER=|${SETOVPNC5DNSSERVER}"
   ;;
+  '33a')      # OVPNC5DOT
+  while true &>/dev/null;do
+    read -r -p "Enable OpenVPN Client 5 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETOVPNC5DOT="1"; break;;
+      [Nn]* ) SETOVPNC5DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} OVPNC5DOT=|${SETOVPNC5DOT}"
+  ;;
   '34')      # WGC1DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 1 DNS Server: " ip
@@ -2266,6 +2441,17 @@ case "${configinput}" in
     fi
   done
   NEWVARIABLES="${NEWVARIABLES} WGC1DNSSERVER=|${SETWGC1DNSSERVER}"
+  ;;
+  '34a')      # WGC1DOT
+  while true &>/dev/null;do
+    read -r -p "Enable WireGuard Client 1 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETWGC1DOT="1"; break;;
+      [Nn]* ) SETWGC1DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC1DOT=|${SETWGC1DOT}"
   ;;
   '35')      # WGC2DNSSERVER
   while true &>/dev/null;do
@@ -2294,6 +2480,17 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC2DNSSERVER=|${SETWGC2DNSSERVER}"
   ;;
+  '35a')      # WGC2DOT
+  while true &>/dev/null;do
+    read -r -p "Enable WireGuard Client 2 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETWGC2DOT="1"; break;;
+      [Nn]* ) SETWGC2DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC2DOT=|${SETWGC2DOT}"
+  ;;
   '36')      # WGC3DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 3 DNS Server: " ip
@@ -2320,6 +2517,17 @@ case "${configinput}" in
     fi
   done
   NEWVARIABLES="${NEWVARIABLES} WGC3DNSSERVER=|${SETWGC3DNSSERVER}"
+  ;;
+  '36a')      # WGC3DOT
+  while true &>/dev/null;do
+    read -r -p "Enable WireGuard Client 3 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETWGC3DOT="1"; break;;
+      [Nn]* ) SETWGC3DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC3DOT=|${SETWGC3DOT}"
   ;;
   '37')      # WGC4DNSSERVER
   while true &>/dev/null;do
@@ -2348,6 +2556,17 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WGC4DNSSERVER=|${SETWGC4DNSSERVER}"
   ;;
+  '37a')      # WGC4DOT
+  while true &>/dev/null;do
+    read -r -p "Enable WireGuard Client 4 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETWGC4DOT="1"; break;;
+      [Nn]* ) SETWGC4DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC4DOT=|${SETWGC4DOT}"
+  ;;
   '38')      # WGC5DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WireGuard Client 5 DNS Server: " ip
@@ -2374,6 +2593,17 @@ case "${configinput}" in
     fi
   done
   NEWVARIABLES="${NEWVARIABLES} WGC5DNSSERVER=|${SETWGC5DNSSERVER}"
+  ;;
+  '38a')      # WGC5DOT
+  while true &>/dev/null;do
+    read -r -p "Enable WireGuard Client 5 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETWGC5DOT="1"; break;;
+      [Nn]* ) SETWGC5DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WGC5DOT=|${SETWGC5DOT}"
   ;;
   '39')      # WANDNSSERVER
   while true &>/dev/null;do
@@ -2402,6 +2632,17 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WANDNSSERVER=|${SETWANDNSSERVER}"
   ;;
+  '39a')      # WANDOT
+  while true &>/dev/null;do
+    read -r -p "Enable WAN DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETWANDOT="1"; break;;
+      [Nn]* ) SETWANDOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WANDOT=|${SETWANDOT}"
+  ;;
   '40')      # WAN0DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WAN0 DNS Server: " ip
@@ -2429,6 +2670,17 @@ case "${configinput}" in
   done
   NEWVARIABLES="${NEWVARIABLES} WAN0DNSSERVER=|${SETWAN0DNSSERVER}"
   ;;
+  '40a')      # WAN0DOT
+  while true &>/dev/null;do
+    read -r -p "Enable WAN0 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETWAN0DOT="1"; break;;
+      [Nn]* ) SETWAN0DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN0DOT=|${SETWAN0DOT}"
+  ;;
   '41')      # WAN1DNSSERVER
   while true &>/dev/null;do
     read -p "Configure WAN1 DNS Server: " ip
@@ -2455,6 +2707,17 @@ case "${configinput}" in
     fi
   done
   NEWVARIABLES="${NEWVARIABLES} WAN1DNSSERVER=|${SETWAN1DNSSERVER}"
+  ;;
+  '41a')      # WAN1DOT
+  while true &>/dev/null;do
+    read -r -p "Enable WAN1 DNS Server to use DNS over TLS? (Requires dig to be installed): ***Enter Y for Yes or N for No***" yn
+    case ${yn} in
+      [Yy]* ) SETWAN1DOT="1"; break;;
+      [Nn]* ) SETWAN1DOT="0"; break;;
+      * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+    esac
+  done
+  NEWVARIABLES="${NEWVARIABLES} WAN1DOT=|${SETWAN1DOT}"
   ;;
 
   'r'|'R'|'menu'|'return'|'Return' )
@@ -2561,30 +2824,43 @@ DNSSERVER=""
 # Set paramaeters based on interface
 if [[ "${INTERFACE}" == "ovpnc1" ]] &>/dev/null;then
   DNSSERVER="${OVPNC1DNSSERVER}"
+  DOT="${OVPNC1DOT}"
 elif [[ "${INTERFACE}" == "ovpnc2" ]] &>/dev/null;then
   DNSSERVER="${OVPNC2DNSSERVER}"
+  DOT="${OVPNC2DOT}"
 elif [[ "${INTERFACE}" == "ovpnc3" ]] &>/dev/null;then
   DNSSERVER="${OVPNC3DNSSERVER}"
+  DOT="${OVPNC3DOT}"
 elif [[ "${INTERFACE}" == "ovpnc4" ]] &>/dev/null;then
   DNSSERVER="${OVPNC4DNSSERVER}"
+  DOT="${OVPNC4DOT}"
 elif [[ "${INTERFACE}" == "ovpnc5" ]] &>/dev/null;then
   DNSSERVER="${OVPNC5DNSSERVER}"
+  DOT="${OVPNC5DOT}"
 elif [[ "${INTERFACE}" == "wgc1" ]] &>/dev/null;then
   DNSSERVER="${WGC1DNSSERVER}"
+  DOT="${WGC1DOT}"
 elif [[ "${INTERFACE}" == "wgc2" ]] &>/dev/null;then
   DNSSERVER="${WGC2DNSSERVER}"
+  DOT="${WGC2DOT}"
 elif [[ "${INTERFACE}" == "wgc3" ]] &>/dev/null;then
   DNSSERVER="${WGC3DNSSERVER}"
+  DOT="${WGC3DOT}"
 elif [[ "${INTERFACE}" == "wgc4" ]] &>/dev/null;then
   DNSSERVER="${WGC4DNSSERVER}"
+  DOT="${WGC4DOT}"
 elif [[ "${INTERFACE}" == "wgc5" ]] &>/dev/null;then
   DNSSERVER="${WGC5DNSSERVER}"
+  DOT="${WGC5DOT}"
 elif [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
   DNSSERVER="${WANDNSSERVER}"
+  DOT="${WANDOT}"
 elif [[ "${INTERFACE}" == "wan0" ]] &>/dev/null;then
   DNSSERVER="${WAN0DNSSERVER}"
+  DOT="${WAN0DOT}"
 elif [[ "${INTERFACE}" == "wan1" ]] &>/dev/null;then
   DNSSERVER="${WAN1DNSSERVER}"
+  DOT="${WAN1DOT}"
 fi
 
 return
@@ -5009,15 +5285,22 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # Configure DNSSERVER for dig
   digdnsserver=""
   if [[ -n "${DNSSERVER}" ]] &>/dev/null;then
-    digdnsserver="@${DNSSERVER}"
+    digdnsserver="${DNSSERVER}"
   else
     digdnsserver=""
+  fi
+  
+  # Configure dig for DNS-over-TLS if enabled
+  if [[ "${DOT}" == "1" ]] &>/dev/null && [[ -n "${digdnsserver}" ]] &>/dev/null;then
+    digdnsconfig="@${digdnsserver} +tls"
+  else
+    digdnsconfig="@${digdnsserver}"
   fi
   
   # Add CNAME records to Domains if enabled and dig is installed
   if [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null && [[ "${ADDCNAMES}" == "1" ]] &>/dev/null && [[ "${QUERYPOLICY}" != "all" ]] &>/dev/null;then
     for DOMAIN in ${DOMAINS};do
-      domaincnames="$(/opt/bin/dig ${digdnsserver} ${DOMAIN} CNAME +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -E '([-[:alnum:]]+\.)+[\n]' | awk '{print substr($NF, 1, length ($NF)-1)}')"
+      domaincnames="$(/opt/bin/dig ${digdnsconfig} ${DOMAIN} CNAME +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -E '([-[:alnum:]]+\.)+[\n]' | awk '{print substr($NF, 1, length ($NF)-1)}')"
       for domaincname in ${domaincnames};do
         if tty >/dev/null 2>&1;then
           printf '\033[K%b\r' "${LIGHTCYAN}Querying CNAME records for ${DOMAIN}...${NOCOLOR}"
@@ -5148,7 +5431,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         if tty >/dev/null 2>&1;then
           printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using dig...${NOCOLOR}"
         fi
-        for IP in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
@@ -5318,11 +5601,11 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using dig...${NOCOLOR}"
         fi
         # Capture IPv6 Records
-        for IP in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} AAAA +short +noall +answer 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} AAAA +short +noall +answer 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
         done
         # Capture IPv4 Records
-        for IP in $(/opt/bin/dig ${digdnsserver} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
