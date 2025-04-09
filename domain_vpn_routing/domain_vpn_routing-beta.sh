@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 04/05/2025
-# Version: v3.1.0-beta2
+# Date: 04/08/2025
+# Version: v3.1.0-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.1.0-beta2"
+VERSION="v3.1.0-beta3"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -29,6 +29,7 @@ RTTABLESFILE="/etc/iproute2/rt_tables"
 IPSETPREFIX="DVR"
 POLICYNAMEMAXLENGTH="24"
 IPSETMAXCOMMENTLENGTH="255"
+ENTWAREMOUNTCHECKS="30"
 
 # Checksum
 if [[ -f "/usr/sbin/openssl" ]] &>/dev/null;then
@@ -6936,6 +6937,9 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     sleep 1
   fi
   
+  # Boot Delay Timer
+  bootdelaytimer
+  
   # PRODUCTID
   if [[ -z "${PRODUCTID+x}" ]] &>/dev/null;then
     PRODUCTID="$(nvram get productid & nvramcheck)"
@@ -6969,27 +6973,6 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     fi
   elif [[ -z "${IPOPTVERSION+x}" ]] &>/dev/null && [[ ! -f "/opt/sbin/ip" ]] &>/dev/null;then
     IPOPTVERSION=""
-  fi
-  
- # DIGINSTALLED
-  if [[ -f "/opt/bin/dig" ]] &>/dev/null;then
-    DIGINSTALLED="1"
-  else
-    DIGINSTALLED="0"
-  fi
-  
- # JQINSTALLED
-  if [[ -f "/opt/bin/jq" ]] &>/dev/null;then
-    JQINSTALLED="1"
-  else
-    JQINSTALLED="0"
-  fi
-  
-  # PYTHON3INSTALLED
-  if [[ -f "/opt/bin/python3" ]] &>/dev/null;then
-    PYTHON3INSTALLED="1"
-  else
-    PYTHON3INSTALLED="0"
   fi
   
   # WANSDUALWANENABLE
@@ -7361,7 +7344,55 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
   else
     DNSLOGPATH=""
   fi
+
+  # ENTWAREINSTALLED
+  if [[ -f "/jffs/scripts/post-mount" ]] &>/dev/null && [[ -n "$(grep -w ". /jffs/addons/amtm/mount-entware.mod # Added by amtm" /jffs/scripts/post-mount)" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Entware is installed"
+    ENTWAREINSTALLED="1"
+    ENTWAREMOUNTED="0"
+    i="1"
+    while [[ "${i}" -le "${ENTWAREMOUNTCHECKS}" ]] &>/dev/null;do
+	  if [[ -d "/opt/bin" ]] &>/dev/null;then
+        ENTWAREMOUNTED="1"
+        logger -p 6 -t "${ALIAS}" "Debug - Entware is mounted to /opt/bin"
+        break
+      else
+        [[ "${i}" == "1" ]] &>/dev/null && logger -p 6 -t "${ALIAS}" "Debug - Entware is not mounted to /opt/bin"
+        [[ "${i}" != "${ENTWAREMOUNTCHECKS}" ]] &>/dev/null && logger -p 6 -t "${ALIAS}" "Debug - Continuing to check if Entware is mounted to /opt/bin for $((${ENTWAREMOUNTCHECKS}-${i})) more attempts"
+        i="$((${i}+1))"
+        sleep 1
+        continue
+      fi
+    done
+    unset i
+    [[ "${ENTWAREMOUNTED}" == "0" ]] &>/dev/null && logger -p 2 -t "${ALIAS}" "Entware - ***Error*** Entware failed to mount to /opt/bin"
+  else
+    ENTWAREINSTALLED="0"
+    ENTWAREPATH=""
+    ENTWAREMOUNTED="0"
+  fi
   
+  # DIGINSTALLED
+  if [[ "${ENTWAREMOUNTED}" == "1" ]] &>/dev/null && [[ -f "/opt/bin/dig" ]] &>/dev/null;then
+    DIGINSTALLED="1"
+  else
+    DIGINSTALLED="0"
+  fi
+  
+  # JQINSTALLED
+  if [[ "${ENTWAREMOUNTED}" == "1" ]] &>/dev/null && [[ -f "/opt/bin/jq" ]] &>/dev/null;then
+    JQINSTALLED="1"
+  else
+    JQINSTALLED="0"
+  fi
+  
+  # PYTHON3INSTALLED
+  if [[ "${ENTWAREMOUNTED}" == "1" ]] &>/dev/null && [[ -f "/opt/bin/python3" ]] &>/dev/null;then
+    PYTHON3INSTALLED="1"
+  else
+    PYTHON3INSTALLED="0"
+  fi
+
   # ADGUARDHOMEACTIVE
   if [[ -n "$(pidof AdGuardHome)" ]] &>/dev/null || { [[ -f "/opt/etc/AdGuardHome/.config" ]] &>/dev/null && [[ -n "$(awk -F "=" '/ADGUARD_LOCAL/ {print $2}' "/opt/etc/AdGuardHome/.config" | sed -e 's/^"//' -e 's/"$//' | grep -w ^"YES")" ]] &>/dev/null ;};then
     ADGUARDHOMEACTIVE="1"
@@ -7413,6 +7444,19 @@ testipversion ()
 # Boot Delay Timer
 bootdelaytimer ()
 {
+# Check bootdelayinitialized flag
+if [[ -z "${bootdelayinitialized+x}" ]] &>/dev/null;then
+  bootdelayinitialized="0"
+elif [[ "${bootdelayinitialized}" == "1" ]] &>/dev/null;then
+  return
+fi
+
+# Get Global Configuration
+if [[ -f "${GLOBALCONFIGFILE}" ]] &>/dev/null;then
+  setglobalconfig || return
+fi
+
+# Check Boot Delay Timer
 if [[ -n "${BOOTDELAYTIMER+x}" ]] &>/dev/null;then
   logger -p 6 -t "${ALIAS}" "Debug - System Uptime: $(awk -F "." '{print $1}' "/proc/uptime") Seconds"
   logger -p 6 -t "${ALIAS}" "Debug - Boot Delay Timer: ${BOOTDELAYTIMER} Seconds"
@@ -7423,6 +7467,7 @@ if [[ -n "${BOOTDELAYTIMER+x}" ]] &>/dev/null;then
     done
     logger -p 5 -st "${ALIAS}" "Boot Delay - System Uptime is $(awk -F "." '{print $1}' "/proc/uptime") seconds"
   fi
+  bootdelayinitialized="1"
 fi
 
 return
