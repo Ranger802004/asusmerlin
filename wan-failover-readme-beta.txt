@@ -1,7 +1,7 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/26/2025
-# Version: v2.2.0-beta1
+# Date: 04/10/2025
+# Version: v2.2.0
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
@@ -43,10 +43,10 @@ Run Modes:
 - Reset Config Mode: This will reset the configuration of WAN Failover to defaults. Add the command argument "resetconfig" to use this mode.
 
 Configuration Options (/jffs/configs/wan-failover.conf):
--	WAN0TARGET:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.8.8
--	WAN1TARGET:  This is the target IP address for WAN1, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN1 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.4.4
--	PINGCOUNT:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected. Default: 3 Seconds
--	PINGTIMEOUT:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.  Default: 1 Second
+- WAN0TARGET:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.8.8
+- WAN1TARGET:  This is the target IP address for WAN1, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN1 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.4.4
+- PINGCOUNT:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected. Default: 3 Seconds
+- PINGTIMEOUT:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.  Default: 1 Second
 - WAN0_QOS_ENABLE: WAN0 QoS Enabled/Disabled
 - WAN0_QOS_IBW: WAN0 QoS Download Bandwidth:  Value is in Mbps
 - WAN0_QOS_OBW: WAN0 QoS Upload Bandwidth: Value is in Mbps
@@ -97,9 +97,10 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - PINGTIMELOGGING: This allows ping time logging to be enabled or disabled. Default: Enabled
 
 Release Notes:
-v2.2.0-beta1 - 03/26/2025
+v2.2.0 - 04/10/2025
 Enhancements:
 - Support for 3006 Codebase
+- Support for 388.9
 - Added PINGTIMELOGGING configuration option, this option allows ping time logging to be enabled or disabled. Default: Enabled
 - Added new Dev Mode to support disabling update channels.
 

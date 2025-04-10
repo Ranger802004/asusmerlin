@@ -1,12 +1,12 @@
 # WAN Failover for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/11/2025
-# Version: v2.1.3
+# Date: 04/10/2025
+# Version: v2.2.0
 
 WAN Failover is designed to replace the factory ASUS WAN Failover functionality, this script will monitor the WAN Interfaces using a Target IP Address and pinging these targets to determine when a failure occurs.  When a failure is detected in Failover Mode, the script will switch to the Secondary WAN interface automatically and then monitor for failback conditions.  When the Primary WAN interface connection is restored based on the Target IP Address, the script will perform the failback condition and switch back to Primary WAN.  When a failure is detected in Load Balancing Mode, the script will remove the down WAN interface from Load Balancing and restore it when it is active again.
 
 Requirements:
-- ASUS Merlin Firmware v386.5 or higher
+- ASUS Merlin Firmware v386.10 or higher
 - JFFS custom scripts and configs Enabled
 - Dual WAN Enabled
 - ASUS Factory Failover Disabled (Network Monitoring Options, Allow Failback Option under WAN > Dual WAN)
@@ -40,12 +40,13 @@ Run Modes:
 - Kill Mode: This will kill any running instances of the script. Add the command argument "kill" to use this mode.
 - Cron Job Mode: Create or delete the Cron Job necessary for the script to run.  Add the command argument "cron" to use this mode.
 - Status Console Mode: This will display the Status Console for WAN Failover.  Add the command argument "status" to use this mode.
+- Reset Config Mode: This will reset the configuration of WAN Failover to defaults. Add the command argument "resetconfig" to use this mode.
 
 Configuration Options (/jffs/configs/wan-failover.conf):
--	WAN0TARGET:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.8.8
--	WAN1TARGET:  This is the target IP address for WAN1, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN1 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.4.4
--	PINGCOUNT:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected. Default: 3 Seconds
--	PINGTIMEOUT:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.  Default: 1 Second
+- WAN0TARGET:  This is the target IP address for WAN0, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN0 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.8.8
+- WAN1TARGET:  This is the target IP address for WAN1, the script will monitor this IP via ICMP Echo Requests “ping” over the WAN1 interface.  Verify the target IP address is a valid server for ICMP Echo Requests prior to installation or configuration.  It is recommended to use different Target IP Addresses for each WAN interface.  Default: 8.8.4.4
+- PINGCOUNT:  This is how many consecutive times a ping must fail before a WAN connection is considered disconnected. Default: 3 Seconds
+- PINGTIMEOUT:  This is how many seconds a single ping attempt will execute before timing out from no ICMP Echo Reply “ping”.  If using an ISP with high latency such as satellite internet services, consider setting this to a higher value such as 3 seconds or higher.  Default: 1 Second
 - WAN0_QOS_ENABLE: WAN0 QoS Enabled/Disabled
 - WAN0_QOS_IBW: WAN0 QoS Download Bandwidth:  Value is in Mbps
 - WAN0_QOS_OBW: WAN0 QoS Upload Bandwidth: Value is in Mbps
@@ -66,8 +67,6 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - WAN1TARGETRULEPRIORITY: This defines the IP Rule Priority for the WAN1 Target IP Address.  Default: 100
 - LBRULEPRIORITY: This defines the IP Rule priority for Load Balance Mode, it is recommended to leave this default unless necessary to change. Default: 150
 - OVPNSPLITTUNNEL: This will enable or disable OpenVPN Split Tunneling while in Load Balance Mode. Default: 1 (Enabled)
-- WAN0ROUTETABLE: This defines the Routing Table for WAN0, it is recommended to leave this default unless necessary to change. Default: 100
-- WAN1ROUTETABLE: This defines the Routing Table for WAN1, it is recommended to leave this default unless necessary to change. Default: 200
 - WAN0MARK: This defines the FWMark used to mark and match traffic for WAN0 in IPTables Rules. Default: 0x80000000
 - WAN1MARK: This defines the FWMark used to mark and match traffic for WAN1 in IPTables Rules. Default: 0x90000000
 - WAN0MASK: This defines the FWMask used to mark and match traffic for WAN0 in IPTables Rules. Default: 0xf0000000
@@ -82,7 +81,7 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - WAN0PACKETSIZE: This defines the Packet Size for pinging the WAN0 Target IP Address.  Default: 56 Bytes
 - WAN1PACKETSIZE: This defines the Packet Size for pinging the WAN1 Target IP Address.  Default: 56 Bytes
 - CUSTOMLOGPATH: This defines a Custom System Log path for Monitor Mode. Default: N/A
-- DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases.  Default: Disabled
+- DEVMODE: This defines if the Script is set to Developer Mode where updates will apply beta releases or advanced Developer Mode where update channels are disabled.  Default: 0 (Disabled)
 - CHECKNVRAM: This defines if the Script is set to perform NVRAM checks before peforming key functions.  Default: Disabled
 - SCHEDULECRONJOB: This defines control whether the Cron Job is scheduled or not for WAN Failover to run.  Default: Enabled
 - PINGTIMEMIN: This defines a minimum threshold for the console showing the Ping Time Status as Green, above this value it will show Yellow. Default: 40ms
@@ -91,10 +90,29 @@ Configuration Options (/jffs/configs/wan-failover.conf):
 - PROCESSPRIORITY: This defines the process priority for WAN Failover on the system.  Default: Normal
 - FOBLOCKIPV6: This defines if WAN Failover will to block IPv6 in Failover Mode from traversing Secondary WAN.  Default: Disabled
 - FAILOVERTIMEOUT: This defines the failover timeout setting.  Default: 30 Seconds
+- WAN0WEBGUI: This defines the IP Address of the WAN0 Device Web GUI Portal.  Default: N/A
+- WAN1WEBGUI: This defines the IP Address of the WAN1 Device Web GUI Portal.  Default: N/A
 - FLUSHCONNTRACK: This defines if the conntrack table is flushed during a wan failover event.  Default: Disabled
 - FAILBACKDELAYTIMER: This defines how long failback will be delayed when switching back from WAN1 to WAN0 in Failover Mode.  Default: 0 Seconds
+- PINGTIMELOGGING: This allows ping time logging to be enabled or disabled. Default: Enabled
 
 Release Notes:
+v2.2.0 - 04/10/2025
+Enhancements:
+- Support for 3006 Codebase
+- Support for 388.9
+- Added PINGTIMELOGGING configuration option, this option allows ping time logging to be enabled or disabled. Default: Enabled
+- Added new Dev Mode to support disabling update channels.
+
+Fixes:
+- Fixed an issue where WGSERVERS parameter was causing script to hang during failover events.
+- Resolved an issue where RECURSIVEPINGCHECK loop would prevent WAN restart actions to occur.  
+	- Credit for identifying issue: https://github.com/Tigger2014 & https://github.com/nathan57971
+- Removed use of pstree to detect and kill PIDs for WAN Failover due to inconsistencies with use.
+
+Known Issues:
+- LED service is not restarted in 3006 Codebase during WAN Failover events.
+
 v2.1.3 - 03/11/2025
 Enhancements:
 - Added FAILBACKDELAYTIMER configuration option
