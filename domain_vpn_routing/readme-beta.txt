@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 04/08/2025
-# Version: v3.1.0-beta3
+# Date: 04/12/2025
+# Version: v3.1.0
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -15,7 +15,7 @@ Requirements:
 - (Optional) Python3 installed via Entware, this is required for AdGuardHome log querying.
 
 Installation Command:
-/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing.sh" -o "/jffs/scripts/domain_vpn_routing.sh" && chmod 755 /jffs/scripts/domain_vpn_routing.sh && sh /jffs/scripts/domain_vpn_routing.sh install
+/usr/sbin/curl -s "https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/domain_vpn_routing-beta.sh" -o "/jffs/scripts/domain_vpn_routing.sh" && chmod 755 /jffs/scripts/domain_vpn_routing.sh && sh /jffs/scripts/domain_vpn_routing.sh install
 
 Update Command:
 /jffs/scripts/domain_vpn_routing.sh update
@@ -217,7 +217,7 @@ Considerations:
 - Enabling AdGuardHome log querying can take a long time to process if the AdGuardHome log file is large.  The log file rotation interval can be lowered within AdGuardHome to reduce the size of the log file. 
 
 Release Notes:
-v3.1.0-beta3 - 04/08/2025
+v3.1.0 - 04/12/2025
 Enhancements:
 - Added functionality to cache ASN IP Subnets for faster restoration from reboot or service restart.  This can be enabled or disabled via the ASNCACHE configuration option.  Default: Disabled
 - ASN queries will now check existing IPSets for IP Subnets that are no longer applicable to the ASN and remove them.
