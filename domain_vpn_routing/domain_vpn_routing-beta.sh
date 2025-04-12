@@ -3,7 +3,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 04/12/2025
-# Version: v3.1.0
+# Version: v3.1.1-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.1.0"
+VERSION="v3.1.0-beta1"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -1740,6 +1740,11 @@ fi
 printf "\n  ${BOLD}System Information:${NOCOLOR}\n"
 printf "   DNS Logging Status                  Status:              " && { [[ "${DNSLOGGINGENABLED}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 printf "   DNS Log Path                        Log Path:            ${LIGHTBLUE}${DNSLOGPATH}${NOCOLOR}\n"
+printf "   DNS DNS-over-TLS Enabled            Status:              " && { [[ "${DOTENABLED}" == "1" ]] &>/dev/null && printf "${GREEN}Enabled${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
+if [[ "${DOTENABLED}" == "1" ]] &>/dev/null && [[ -n "${DOTDNSSERVERS}" ]] &>/dev/null;then
+  displaydotdnsservers=${DOTDNSSERVERS//[$'\t\r\n']/ | }
+  printf "   DNS DNS-over-TLS Servers            Servers:             ${LIGHTBLUE}${displaydotdnsservers}${NOCOLOR}\n"
+fi
 printf "   AdGuardHome Status                  Status:              " && { [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && printf "${GREEN}Active${NOCOLOR}" || printf "${RED}Disabled${NOCOLOR}" ;} && printf "\n"
 if [[ "${WANSDUALWANENABLE}" == "1" ]] &>/dev/null;then
   WAN0RPFILTER="$(cat /proc/sys/net/ipv4/conf/${WAN0GWIFNAME}/rp_filter)"
@@ -5071,6 +5076,43 @@ unset POLICY IP DOMAINIPLIST
 return
 }
 
+# Select Random DoT DNS Server
+randomdotdnsserver ()
+{
+if [[ "${PYTHON3INSTALLED}" == "0" ]] &>/dev/null;then
+  logger -p 2 -t "${ALIAS}" "Format IPv6 - ***Error*** Python3 is not installed"
+  return 1
+fi
+
+/opt/bin/python3 - ${DOTDNSSERVERS} << END
+import random
+import sys
+
+def pick_random_string(args):
+    """Picks a random string from a list of arguments.
+
+    Args:
+        args: A list of strings.
+
+    Returns:
+        A randomly selected string from the input list, or None if the list is empty.
+    """
+    if not args:
+        return None
+    return random.choice(args)
+
+if __name__ == "__main__":
+    arguments = sys.argv[1:]  # Get arguments passed from the command line (excluding the script name)
+    random_string = pick_random_string(arguments)
+    
+    if random_string:
+        print(f"{random_string}")
+END
+
+return
+}
+
+
 # Parse AdGuardHome Log
 parseadguardhomelog ()
 {
@@ -5287,15 +5329,28 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   digdnsserver=""
   if [[ -n "${DNSSERVER}" ]] &>/dev/null;then
     digdnsserver="${DNSSERVER}"
+    logger -p 6 -t "${ALIAS}" "Debug - Dig has been configured to use DNS Server: ${digdnsserver}"
+  # Configure dig to use random DNS Server from DNS-over-TLS list if configured and enabled.  Python3 must be installed.
+  elif [[ "${DOTENABLED}" == "1" ]] &>/dev/null && [[ -n "${DOTDNSSERVERS}" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null;then
+    digdnsserver="$(randomdotdnsserver ${DOTDNSSERVERS})"
+    logger -p 6 -t "${ALIAS}" "Debug - Dig has been configured to use DNS Server: ${digdnsserver}"
   else
     digdnsserver=""
+    logger -p 6 -t "${ALIAS}" "Debug - Dig has been configured to use system DNS Server"
   fi
   
-  # Configure dig for DNS-over-TLS if enabled
+  # Configure dig for DNS-over-TLS if enabled on interface
   if [[ "${DOT}" == "1" ]] &>/dev/null && [[ -n "${digdnsserver}" ]] &>/dev/null;then
     digdnsconfig="@${digdnsserver} +tls"
+    logger -p 6 -t "${ALIAS}" "Debug - Dig has been configured to use DNS-over-TLS using DNS Server: ${digdnsserver}"
+  # Configure dig for DNS-over-TLS if enabled on router and digdnsserver is in DOTDNSSERVERS list. Python3 must be installed.
+  elif [[ "${DOTENABLED}" == "1" ]] &>/dev/null && [[ -n "${DOTDNSSERVERS}" ]] &>/dev/null && [[ "${PYTHON3INSTALLED}" == "1" ]] &>/dev/null && [[ -n "${digdnsserver}" ]] &>/dev/null && [[ -n "$(echo ${DOTDNSSERVERS} | grep -o "${digdnsserver}")" ]] &>/dev/null;then
+    digdnsconfig="@${digdnsserver} +tls"
+    logger -p 6 -t "${ALIAS}" "Debug - Dig has been configured to use DNS-over-TLS using DNS Server: ${digdnsserver}"
+  # Configure dig without DNS-over-TLS
   else
     digdnsconfig="@${digdnsserver}"
+    logger -p 6 -t "${ALIAS}" "Debug - Dig has been configured without DNS-over-TLS using DNS Server: ${digdnsserver}"
   fi
   
   # Add CNAME records to Domains if enabled and dig is installed
@@ -5432,7 +5487,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         if tty >/dev/null 2>&1;then
           printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using dig...${NOCOLOR}"
         fi
-        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
@@ -5602,11 +5657,11 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
           printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using dig...${NOCOLOR}"
         fi
         # Capture IPv6 Records
-        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} AAAA +short +noall +answer 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} AAAA +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
         done
         # Capture IPv4 Records
-        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
           if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
@@ -7405,6 +7460,31 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     ADGUARDHOMELOGENABLED="1"
   else
     ADGUARDHOMELOGENABLED="0"
+  fi
+  
+  # DOTENABLED
+  if [[ -z "${DOTENABLED+x}" ]] &>/dev/null;then
+    DOTENABLED="$(nvram get dnspriv_enable & nvramcheck)"
+    [[ -n "${DOTENABLED}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set DOTENABLED" && unset DOTENABLED && continue ;}
+  fi
+  
+  # DOTDNSSERVERS
+  if [[ "${DOTENABLED}" == "1" ]] &>/dev/null;then
+    dotdnsservers="$(nvram get dnspriv_rulelist & nvramcheck)"
+	if [[ -n "${dotdnsservers}" ]] &>/dev/null;then
+      if [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
+	    DOTDNSSERVERS="$(echo ${dotdnsservers} | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
+      else
+        DOTDNSSERVERS="$(echo ${dotdnsservers} | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
+      fi
+      unset dotdnsservers
+	else
+      logger -p 6 -t "${ALIAS}" "Debug - failed to set DOTDNSSERVERS"
+	  unset dotdnsservers DOTDNSSERVERS
+	  continue
+    fi
+  else
+    DOTDNSSERVERS=""
   fi
 
  systemparameterssync="1"
