@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 04/17/2025
-# Version: v3.1.1-beta2
+# Date: 04/23/2025
+# Version: v3.1.1-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.1.1-beta2"
+VERSION="v3.1.1-beta3"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -3310,6 +3310,8 @@ if [[ -z "${STATE}" ]] &>/dev/null;then
   STATE="0"
 fi
 
+logger -p 6 -t "${ALIAS}" "Debug - State: ${STATE}"
+
 # Adjust Reverse Path Filter to Loose Filtering if enabled for Interface if FWMark is set
 if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
   logger -p 5 -t "${ALIAS}" "Routing Director - Setting Reverse Path Filter for ${IFNAME} to Loose Filtering"
@@ -4983,18 +4985,18 @@ if [[ -n "${IP}" ]] &>/dev/null;then
 
       # Delete from IPv6 IPSET with prefix fixed
       if [[ -n "$(ipset list ${IPSETPREFIX}-${POLICY}-v6 | grep -wo "${IPV6}::" 2>/dev/null)" ]] &>/dev/null;then
-        [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Delete IP - Deleting ${IPV6}:: to IPSET: ${IPSETPREFIX}-${POLICY}-v6"
+        [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Delete IP - Deleting ${IPV6}:: from IPSET: ${IPSETPREFIX}-${POLICY}-v6"
         ipset del ${IPSETPREFIX}-${POLICY}-v6 ${IPV6}:: \
-        || logger -p 2 -st "${ALIAS}" "Delete IP - ***Error*** Failed to delete ${IPV6}:: to IPSET: ${IPSETPREFIX}-${POLICY}-v6" \
-        && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Delete IP - Deleting ${IPV6}:: to IPSET: ${IPSETPREFIX}-${POLICY}-v6" ;} ;}
+        || logger -p 2 -st "${ALIAS}" "Delete IP - ***Error*** Failed to delete ${IPV6}:: from IPSET: ${IPSETPREFIX}-${POLICY}-v6" \
+        && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Delete IP - Deleting ${IPV6}:: from IPSET: ${IPSETPREFIX}-${POLICY}-v6" ;} ;}
       fi
 
       # Delete from IPv6 IPSET
       if [[ -n "$(ipset list ${IPSETPREFIX}-${POLICY}-v6 | grep -wo "${IPV6}" 2>/dev/null)" ]] &>/dev/null;then
-        [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Delete IP - Deleting ${IPV6} to IPSET: ${IPSETPREFIX}-${POLICY}-v6"
+        [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Delete IP - Deleting ${IPV6} from IPSET: ${IPSETPREFIX}-${POLICY}-v6"
         ipset del ${IPSETPREFIX}-${POLICY}-v6 ${IPV6} \
-        || logger -p 2 -st "${ALIAS}" "Delete IP - ***Error*** Failed to delete ${IPV6} to IPSET: ${IPSETPREFIX}-${POLICY}-v6" \
-        && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Delete IP - Deleting ${IPV6} to IPSET: ${IPSETPREFIX}-${POLICY}-v6" ;} ;}
+        || logger -p 2 -st "${ALIAS}" "Delete IP - ***Error*** Failed to delete ${IPV6} from IPSET: ${IPSETPREFIX}-${POLICY}-v6" \
+        && { saveipv6ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Delete IP - Deleting ${IPV6} from IPSET: ${IPSETPREFIX}-${POLICY}-v6" ;} ;}
       fi
 
       # Delete IPv6 Route with prefix fixed
@@ -5031,10 +5033,10 @@ if [[ -n "${IP}" ]] &>/dev/null;then
 
       # Delete from IPv4 IPSET
       if [[ -n "$(ipset list ${IPSETPREFIX}-${POLICY}-v4 | grep -wo "${IPV4}")" ]] &>/dev/null;then
-        [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Delete IP - Deleting ${IPV4} to IPSET: ${IPSETPREFIX}-${POLICY}-v4"
+        [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 5 -t "${ALIAS}" "Delete IP - Deleting ${IPV4} from IPSET: ${IPSETPREFIX}-${POLICY}-v4"
         ipset del ${IPSETPREFIX}-${POLICY}-v4 ${IPV4} \
-        || logger -p 2 -st "${ALIAS}" "Delete IP - ***Error*** Failed to delete ${IPV4} to IPSET: ${IPSETPREFIX}-${POLICY}-v4" \
-        && { saveipv4ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Delete IP - Deleted ${IPV4} to IPSET: ${IPSETPREFIX}-${POLICY}-v4" ;} ;}
+        || logger -p 2 -st "${ALIAS}" "Delete IP - ***Error*** Failed to delete ${IPV4} from IPSET: ${IPSETPREFIX}-${POLICY}-v4" \
+        && { saveipv4ipset="1" && { [[ "${VERBOSELOGGING}" == "1" ]] &>/dev/null && logger -p 4 -t "${ALIAS}" "Delete IP - Deleted ${IPV4} from IPSET: ${IPSETPREFIX}-${POLICY}-v4" ;} ;}
       fi
 
       # Delete IPv4 IPv4 Rule
@@ -5366,7 +5368,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # Add CNAME records to Domains if enabled and dig is installed
   if [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null && [[ "${ADDCNAMES}" == "1" ]] &>/dev/null && [[ "${QUERYPOLICY}" != "all" ]] &>/dev/null;then
     for DOMAIN in ${DOMAINS};do
-      domaincnames="$(/opt/bin/dig ${digdnsconfig} ${DOMAIN} CNAME +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -E '([-[:alnum:]]+\.)+[\n]' | awk '{print substr($NF, 1, length ($NF)-1)}')"
+      domaincnames="$(/opt/bin/dig ${digdnsconfig} ${DOMAIN} CNAME +short +noall +answer +time=5 +tries=1 2>/dev/null | grep -Ev "unreachable|\+|communications error|timed out" | grep -E '([-[:alnum:]]+\.)+[\n]' | awk '{print substr($NF, 1, length ($NF)-1)}')"
       for domaincname in ${domaincnames};do
         [[ "${ttymode}" == "1" ]] &>/dev/null && printf '\033[K%b\r' "${LIGHTCYAN}Querying CNAME records for ${DOMAIN}...${NOCOLOR}"
         if [[ -z "$(awk '$0 == "'${domaincname}'" {print}' "${POLICYDIR}/policy_${QUERYPOLICY}_domainlist")" ]] &>/dev/null;then
@@ -5397,7 +5399,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         answers="$(grep -e ".${domainwildcard}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "A") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
           [[ "${ttymode}" == "1" ]] &>/dev/null && printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
-          answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
+          answerips="$(parseadguardhomelog ${answer} 2>/dev/null | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
           if [[ -n "${answerips}" ]] &>/dev/null;then
             for IP in ${answerips};do
               if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
@@ -5435,7 +5437,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         answers="$(grep -e "${DOMAIN}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH == "'${DOMAIN}'" and .QT == "A") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
           [[ "${ttymode}" == "1" ]] &>/dev/null && printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
-          answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
+          answerips="$(parseadguardhomelog ${answer} 2>/dev/null | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
           if [[ -n "${answerips}" ]] &>/dev/null;then
             for IP in ${answerips};do
               if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
@@ -5471,7 +5473,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       # Perform dig lookup if installed for IPv4
       if [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null;then
         [[ "${ttymode}" == "1" ]] &>/dev/null && printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using dig...${NOCOLOR}"
-        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer +time=5 +tries=1 2>/dev/null | grep -Ev "unreachable|\+|communications error|timed out" | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0");do
           if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
@@ -5507,7 +5509,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         answers="$(grep -e ".${domainwildcard}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "A") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
           [[ "${ttymode}" == "1" ]] &>/dev/null && printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
-          answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
+          answerips="$(parseadguardhomelog ${answer} 2>/dev/null | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
           if [[ -n "${answerips}" ]] &>/dev/null;then
             for IP in ${answerips};do
               if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
@@ -5528,9 +5530,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         answers="$(grep -e ".${domainwildcard}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH|endswith(".'${domainwildcard}'")) | select(.QT == "AAAA") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
           [[ "${ttymode}" == "1" ]] &>/dev/null && printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
-          ipv6answerdata="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
+          ipv6answerdata="$(parseadguardhomelog ${answer} 2>/dev/null | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
           if [[ -n "${ipv6answerdata}" ]] &>/dev/null;then
-            answerips="$(formatipv6 ${ipv6answerdata})"
+            answerips="$(formatipv6 ${ipv6answerdata} 2>/dev/null)"
             for IP in ${answerips};do
               echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             done
@@ -5559,7 +5561,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         answers="$(grep -e "${DOMAIN}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH == "'${DOMAIN}'" and .QT == "A") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
           [[ "${ttymode}" == "1" ]] &>/dev/null && printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
-          answerips="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
+          answerips="$(parseadguardhomelog ${answer} 2>/dev/null | awk '($1 == "Answer" && $2 == "Address:") {print $3}')"
           if [[ -n "${answerips}" ]] &>/dev/null;then
             for IP in ${answerips};do
               if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
@@ -5580,9 +5582,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
         answers="$(grep -e "${DOMAIN}" ${ADGUARDHOMELOGFILE} | /opt/bin/jq -c '. | select (.T > ('${adguardhomelogcheckpoint}' | strflocaltime("%FT%T"))) | select(.QH == "'${DOMAIN}'" and .QT == "AAAA") | .Answer' 2>/dev/null | tr -d \" | sort -u)" && adguardhomelognewcheckpoint="$(date +%s)"
 		for answer in ${answers};do
           [[ "${ttymode}" == "1" ]] &>/dev/null && printf '\033[K%b\r' "${LIGHTCYAN}Parsing answer: ${answer} for ${DOMAIN} in AdGuardHome log...${NOCOLOR}"
-          ipv6answerdata="$(parseadguardhomelog ${answer} | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
+          ipv6answerdata="$(parseadguardhomelog ${answer} 2>/dev/null | awk '($1 == "Answer" && $2 == "Data:") {print $3}')"
           if [[ -n "${ipv6answerdata}" ]] &>/dev/null;then
-            answerips="$(formatipv6 ${ipv6answerdata})"
+            answerips="$(formatipv6 ${ipv6answerdata} 2>/dev/null)"
             for IP in ${answerips};do
               echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
             done
@@ -5609,11 +5611,11 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       if [[ -z "${domainwildcard+x}" ]] &>/dev/null && [[ "${DIGINSTALLED}" == "1" ]] &>/dev/null;then
         [[ "${ttymode}" == "1" ]] &>/dev/null && printf '\033[K%b\r' "${LIGHTCYAN}Querying ${DOMAIN} using dig...${NOCOLOR}"
         # Capture IPv6 Records
-        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} AAAA +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} AAAA +short +noall +answer +time=5 +tries=1 2>/dev/null | grep -Ev "unreachable|\+|communications error|timed out|\." | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "::");do
           echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
         done
         # Capture IPv4 Records
-        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer 2>/dev/null | grep -Ev "unreachable|\+" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0\|::");do
+        for IP in $(/opt/bin/dig ${digdnsconfig} ${DOMAIN} A +short +noall +answer +time=5 +tries=1 2>/dev/null | grep -Ev "unreachable|\+|communications error|timed out" | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | grep -xv "0.0.0.0");do
           if [[ "${PRIVATEIPS}" == "1" ]] &>/dev/null;then
             echo "${DOMAIN}>>${IP}" >> "/tmp/policy_${QUERYPOLICY}_domaintoIP"
           elif [[ "${PRIVATEIPS}" == "0" ]] &>/dev/null;then
@@ -6566,7 +6568,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
       || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     fi
   # Create FWMark Unreachable IPv4 Rule
-  elif [[ -n "${FWMARK}" ]] &>/dev/null && { { [[ "${TYPE}" == "WAN" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip route show default table ${ROUTETABLE})" ]] &>/dev/null ;} || { [[ "${TYPE}" == "VPN" ]] &>/dev/null && [[ "${STATE}" == "1" ]] &>/dev/null ;} ;} && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
+  elif [[ -n "${FWMARK}" ]] &>/dev/null && { { [[ "${TYPE}" == "WAN" ]] &>/dev/null && [[ -z "$(${ipbinpath}ip route show default table ${ROUTETABLE})" ]] &>/dev/null ;} || { [[ "${TYPE}" == "VPN" ]] &>/dev/null && [[ "${STATE}" == "0" ]] &>/dev/null ;} ;} && [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Checking for Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}"
     ${ipbinpath}ip rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${PRIORITY} \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Added Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK}" \
@@ -6931,6 +6933,7 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
   if [[ -z "${PRODUCTID+x}" ]] &>/dev/null;then
     PRODUCTID="$(nvram get productid & nvramcheck)"
     [[ -n "${PRODUCTID}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set PRODUCTID" && unset PRODUCTID && continue ;}
+	logger -p 6 -t "${ALIAS}" "Debug - PRODUCTID: ${PRODUCTID}"
   fi
   
   # Set number of OVPN Client Slots
@@ -6949,6 +6952,7 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
 	if [[ "${IPSYSVERSION}" == "ss150210" ]] &>/dev/null;then
 	  IPSYSVERSION="3.19.0"
     fi
+	logger -p 6 -t "${ALIAS}" "Debug - IPSYSVERSION: ${IPSYSVERSION}"
   fi
   
   # IPOPTVERSION
@@ -6958,8 +6962,10 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
 	if [[ "${IPOPTVERSION}" == "ss4.4.0" ]] &>/dev/null;then
 	  IPOPTVERSION="4.4.0"
     fi
+	logger -p 6 -t "${ALIAS}" "Debug - IPOPTVERSION: ${IPOPTVERSION}"
   elif [[ -z "${IPOPTVERSION+x}" ]] &>/dev/null && [[ ! -f "/opt/sbin/ip" ]] &>/dev/null;then
     IPOPTVERSION=""
+	logger -p 6 -t "${ALIAS}" "Debug - IPOPTVERSION: ${IPOPTVERSION}"
   fi
   
   # WANSDUALWANENABLE
@@ -6967,12 +6973,14 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     wansdualwanenable="$(nvram get wans_dualwan & nvramcheck)"
     [[ -n "$(echo "${wansdualwanenable}" | awk '{if ($0 != "" && $2 != "none") {print $2}}')" ]] &>/dev/null && WANSDUALWANENABLE="1" || WANSDUALWANENABLE="0"
     [[ -n "${WANSDUALWANENABLE}" ]] &>/dev/null && unset wansdualwanenable || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WANSDUALWANENABLE" && unset WANSDUALWANENABLE && continue ;}
+	logger -p 6 -t "${ALIAS}" "Debug - WANSDUALWANENABLE: ${WANSDUALWANENABLE}"
   fi
 
   # IPV6SERVICE
   if [[ -z "${IPV6SERVICE+x}" ]] &>/dev/null;then
     IPV6SERVICE="$(nvram get ipv6_service & nvramcheck)"
     [[ -n "${IPV6SERVICE}" ]] &>/dev/null && logger -p 6 -t "${ALIAS}" "Debug - IPv6 Service: ${IPV6SERVICE}" || { logger -p 6 -t "${ALIAS}" "Debug - failed to set IPV6SERVICE" && unset IPV6SERVICE && continue ;}
+	logger -p 6 -t "${ALIAS}" "Debug - IPV6SERVICE: ${IPV6SERVICE}"
   fi
 
   # IPV6IPADDR
@@ -6980,29 +6988,34 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     IPV6IPADDR="$(nvram get ipv6_wan_addr & nvramcheck)"
     { [[ -n "${IPV6IPADDR}" ]] &>/dev/null || [[ "${IPV6SERVICE}" == "disabled" ]] &>/dev/null || [[ -z "$(nvram get ipv6_wan_addr & nvramcheck)" ]] &>/dev/null ;} \
     || { logger -p 6 -t "${ALIAS}" "Debug - failed to set IPV6IPADDR" && unset IPV6IPADDR && continue ;}
+	logger -p 6 -t "${ALIAS}" "Debug - IPV6IPADDR: ${IPV6IPADDR}"
   fi
 
   # WAN0STATE
   if [[ -z "${WAN0STATE+x}" ]] &>/dev/null;then
     WAN0STATE="$(nvram get wan0_state_t & nvramcheck)"
     [[ -n "${WAN0STATE}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WAN0STATE" && unset WAN0STATE && continue ;}
+	logger -p 6 -t "${ALIAS}" "Debug - WAN0STATE: ${WAN0STATE}"
   fi
 
   # WAN0GWIFNAME
   if [[ -z "${WAN0GWIFNAME+x}" ]] &>/dev/null;then
     WAN0GWIFNAME="$(nvram get wan0_gw_ifname & nvramcheck)"
     [[ -n "${WAN0GWIFNAME}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WAN0GWIFNAME" && unset WAN0GWIFNAME && continue ;}
+	logger -p 6 -t "${ALIAS}" "Debug - WAN0GWIFNAME: ${WAN0GWIFNAME}"
   fi
 
   # WAN0IPV6ADDR
   if [[ -z "${WAN0IPV6ADDR+x}" ]] &>/dev/null;then
     WAN0IPV6ADDR="$(ifconfig ${WAN0GWIFNAME} 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	logger -p 6 -t "${ALIAS}" "Debug - WAN0IPV6ADDR: ${WAN0IPV6ADDR}"
   fi
 
   # WAN0GATEWAY
   if [[ -z "${WAN0GATEWAY+x}" ]] &>/dev/null;then
     WAN0GATEWAY="$(nvram get wan0_gateway & nvramcheck)"
     [[ -n "${WAN0GATEWAY}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WAN0GATEWAY" && unset WAN0GATEWAY && continue ;}
+	logger -p 6 -t "${ALIAS}" "Debug - WAN0GATEWAY: ${WAN0GATEWAY}"
   fi
 
   # WAN0PRIMARY
@@ -7011,22 +7024,26 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ "${WANSDUALWANENABLE}" == "1" ]] &>/dev/null;then
       [[ -n "${WAN0PRIMARY}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WAN0PRIMARY" && unset WAN0PRIMARY && continue ;}
     fi
+	logger -p 6 -t "${ALIAS}" "Debug - WAN0PRIMARY: ${WAN0PRIMARY}"
   fi
 
   # WAN0FWMARK
   if [[ -z "${WAN0FWMARK+x}" ]] &>/dev/null;then
     WAN0FWMARK="0x8000"
+	logger -p 6 -t "${ALIAS}" "Debug - WAN0FWMARK: ${WAN0FWMARK}"
   fi
 
   # WAN0MASK
   if [[ -z "${WAN0MASK+x}" ]] &>/dev/null;then
     WAN0MASK="0xf000"
+	logger -p 6 -t "${ALIAS}" "Debug - WAN0MASK: ${WAN0MASK}"
   fi
 
   # WAN1STATE
   if [[ -z "${WAN1STATE+x}" ]] &>/dev/null;then
     WAN1STATE="$(nvram get wan1_state_t & nvramcheck)"
     { [[ -n "${WAN1STATE}" ]] &>/dev/null || [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WAN1STATE" && unset WAN1STATE && continue ;}
+	logger -p 6 -t "${ALIAS}" "Debug - WAN1STATE: ${WAN1STATE}"
   fi
 
   # WAN1GWIFNAME
@@ -7035,11 +7052,13 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ "${WANSDUALWANENABLE}" == "1" ]] &>/dev/null;then
       [[ -n "${WAN1GWIFNAME}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WAN1GWIFNAME" && unset WAN1GWIFNAME && continue ;}
     fi
+	logger -p 6 -t "${ALIAS}" "Debug - WAN1GWIFNAME: ${WAN1GWIFNAME}"
   fi
 
   # WAN1IPV6ADDR
   if [[ -z "${WAN1IPV6ADDR+x}" ]] &>/dev/null;then
     WAN1IPV6ADDR="$(ifconfig ${WAN1GWIFNAME} 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	logger -p 6 -t "${ALIAS}" "Debug - WAN1IPV6ADDR: ${WAN1IPV6ADDR}"
   fi
 
   # WAN1GATEWAY
@@ -7048,6 +7067,7 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ "${WANSDUALWANENABLE}" == "1" ]] &>/dev/null;then
       [[ -n "${WAN1GATEWAY}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WAN1GATEWAY" && unset WAN1GATEWAY && continue ;}
     fi
+	logger -p 6 -t "${ALIAS}" "Debug - WAN1GATEWAY: ${WAN1GATEWAY}"
   fi
 
   # WAN1PRIMARY
@@ -7056,16 +7076,19 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ "${WANSDUALWANENABLE}" == "1" ]] &>/dev/null;then
       [[ -n "${WAN1PRIMARY}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WAN1PRIMARY" && unset WAN1PRIMARY && continue ;}
     fi
+	logger -p 6 -t "${ALIAS}" "Debug - WAN1PRIMARY: ${WAN1PRIMARY}"
   fi
 
   # WAN1FWMARK
   if [[ -z "${WAN1FWMARK+x}" ]] &>/dev/null;then
     WAN1FWMARK="0x9000"
+	logger -p 6 -t "${ALIAS}" "Debug - WAN1FWMARK: ${WAN1FWMARK}"
   fi
 
   # WAN1MASK
   if [[ -z "${WAN1MASK+x}" ]] &>/dev/null;then
     WAN1MASK="0xf000"
+	logger -p 6 -t "${ALIAS}" "Debug - WAN1MASK: ${WAN1MASK}"
   fi
 
   if [[ "${ovpncslots}" -ge "1" ]] &>/dev/null;then
@@ -7073,27 +7096,32 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${OVPNC1STATE+x}" ]] &>/dev/null;then
       OVPNC1STATE="$(nvram get vpn_client1_state & nvramcheck)"
       { [[ -n "${OVPNC1STATE}" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client1" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC1STATE" && unset OVPNC1STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC1STATE: ${OVPNC1STATE}"
     fi
 
     # OVPNC1IFNAME
     if [[ -z "${OVPNC1IFNAME+x}" ]] &>/dev/null;then
       OVPNC1IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC1IFNAME: ${OVPNC1IFNAME}"
     fi
 
     # OVPNC1IPV6ADDR
     if [[ -z "${OVPNC1IPV6ADDR+x}" ]] &>/dev/null;then
       OVPNC1IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client1/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC1IPV6ADDR: ${OVPNC1IPV6ADDR}"
     fi
 
     # OVPNC1RGW
     if [[ -z "${OVPNC1RGW+x}" ]] &>/dev/null;then
       OVPNC1RGW="$(nvram get vpn_client1_rgw & nvramcheck)"
       [[ -n "${OVPNC1RGW}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC1RGW" && unset OVPNC1RGW && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC1RGW: ${OVPNC1RGW}"
     fi
 
     # OVPNC1IPV6VPNGW
     if [[ -z "${OVPNC1IPV6VPNGW+x}" ]] &>/dev/null;then
       OVPNC1IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client1/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC1IPV6VPNGW: ${OVPNC1IPV6VPNGW}"
     fi
   fi
 
@@ -7102,27 +7130,32 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${OVPNC2STATE+x}" ]] &>/dev/null;then
       OVPNC2STATE="$(nvram get vpn_client2_state & nvramcheck)"
       { [[ -n "${OVPNC2STATE}" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client2" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC2STATE" && unset OVPNC2STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC2STATE: ${OVPNC2STATE}"
     fi
 
     # OVPNC2IFNAME
     if [[ -z "${OVPNC2IFNAME+x}" ]] &>/dev/null;then
       OVPNC2IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC2IFNAME: ${OVPNC2IFNAME}"
     fi
 
     # OVPNC2IPV6ADDR
     if [[ -z "${OVPNC2IPV6ADDR+x}" ]] &>/dev/null;then
       OVPNC2IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC2IPV6ADDR: ${OVPNC2IPV6ADDR}"
     fi
 
     # OVPNC2RGW
     if [[ -z "${OVPNC2RGW+x}" ]] &>/dev/null;then
       OVPNC2RGW="$(nvram get vpn_client2_rgw & nvramcheck)"
       [[ -n "${OVPNC2RGW}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC2RGW" && unset OVPNC2RGW && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC2RGW: ${OVPNC2RGW}"
     fi
 
     # OVPNC2IPV6VPNGW
     if [[ -z "${OVPNC2IPV6VPNGW+x}" ]] &>/dev/null;then
       OVPNC2IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC2IPV6VPNGW: ${OVPNC2IPV6VPNGW}"
     fi
   fi
   
@@ -7131,27 +7164,32 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${OVPNC3STATE+x}" ]] &>/dev/null;then
       OVPNC3STATE="$(nvram get vpn_client3_state & nvramcheck)"
       { [[ -n "${OVPNC3STATE}" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client3" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC3STATE" && unset OVPNC3STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC3STATE: ${OVPNC3STATE}"
     fi
 
     # OVPNC3IFNAME
     if [[ -z "${OVPNC3IFNAME+x}" ]] &>/dev/null;then
       OVPNC3IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC3IFNAME: ${OVPNC3IFNAME}"
     fi
 
     # OVPNC3IPV6ADDR
     if [[ -z "${OVPNC3IPV6ADDR+x}" ]] &>/dev/null;then
       OVPNC3IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC3IPV6ADDR: ${OVPNC3IPV6ADDR}"
     fi
 
     # OVPNC3RGW
     if [[ -z "${OVPNC3RGW+x}" ]] &>/dev/null;then
       OVPNC3RGW="$(nvram get vpn_client3_rgw & nvramcheck)"
       [[ -n "${OVPNC3RGW}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC3RGW" && unset OVPNC3RGW && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC3RGW: ${OVPNC3RGW}"
     fi
 
     # OVPNC3IPV6VPNGW
     if [[ -z "${OVPNC3IPV6VPNGW+x}" ]] &>/dev/null;then
       OVPNC3IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC3IPV6VPNGW: ${OVPNC3IPV6VPNGW}"
     fi
   fi
 	
@@ -7160,27 +7198,32 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${OVPNC4STATE+x}" ]] &>/dev/null;then
       OVPNC4STATE="$(nvram get vpn_client4_state & nvramcheck)"
       { [[ -n "${OVPNC4STATE}" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client4" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC4STATE" && unset OVPNC4STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC4STATE: ${OVPNC4STATE}"
     fi
 
     # OVPNC4IFNAME
     if [[ -z "${OVPNC4IFNAME+x}" ]] &>/dev/null;then
       OVPNC4IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC4IFNAME: ${OVPNC4IFNAME}"
     fi
 
     # OVPNC4IPV6ADDR
     if [[ -z "${OVPNC4IPV6ADDR+x}" ]] &>/dev/null;then
       OVPNC4IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC4IPV6ADDR: ${OVPNC4IPV6ADDR}"
     fi
 
     # OVPNC4RGW
     if [[ -z "${OVPNC4RGW+x}" ]] &>/dev/null;then
       OVPNC4RGW="$(nvram get vpn_client4_rgw & nvramcheck)"
       [[ -n "${OVPNC4RGW}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC4RGW" && unset OVPNC4RGW && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC4RGW: ${OVPNC4RGW}"
     fi
 
     # OVPNC4IPV6VPNGW
     if [[ -z "${OVPNC4IPV6VPNGW+x}" ]] &>/dev/null;then
       OVPNC4IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC4IPV6VPNGW: ${OVPNC4IPV6VPNGW}"
     fi
   fi
   
@@ -7189,38 +7232,45 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${OVPNC5STATE+x}" ]] &>/dev/null;then
       OVPNC5STATE="$(nvram get vpn_client5_state & nvramcheck)"
       { [[ -n "${OVPNC5STATE}" ]] &>/dev/null || [[ ! -d "/etc/openvpn/client5" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC5STATE" && unset OVPNC5STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC5STATE: ${OVPNC5STATE}"
     fi
 
     # OVPNC5IFNAME
     if [[ -z "${OVPNC5IFNAME+x}" ]] &>/dev/null;then
       OVPNC5IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC5IFNAME: ${OVPNC5IFNAME}"
     fi
 
     # OVPNC5IPV6ADDR
     if [[ -z "${OVPNC5IPV6ADDR+x}" ]] &>/dev/null;then
       OVPNC5IPV6ADDR="$(awk '$1 == "ifconfig-ipv6" {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC5IPV6ADDR: ${OVPNC5IPV6ADDR}"
     fi
 
     # OVPNC5RGW
     if [[ -z "${OVPNC5RGW+x}" ]] &>/dev/null;then
       OVPNC5RGW="$(nvram get vpn_client5_rgw & nvramcheck)"
       [[ -n "${OVPNC5RGW}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set OVPNC5RGW" && unset OVPNC5RGW && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC5RGW: ${OVPNC5RGW}"
     fi
 
     # OVPNC5IPV6VPNGW
     if [[ -z "${OVPNC5IPV6VPNGW+x}" ]] &>/dev/null;then
       OVPNC5IPV6VPNGW="$(awk '$1 == "ifconfig-ipv6" {print $3}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - OVPNC5IPV6VPNGW: ${OVPNC5IPV6VPNGW}"
     fi
   fi
 
   # OVPNS1IFNAME
   if [[ -z "${OVPNS1IFNAME+x}" ]] &>/dev/null;then
     OVPNS1IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/server1/config.ovpn 2>/dev/null)"
+	logger -p 6 -t "${ALIAS}" "Debug - OVPNS1IFNAME: ${OVPNS1IFNAME}"
   fi
 
   # OVPNS2IFNAME
   if [[ -z "${OVPNS2IFNAME+x}" ]] &>/dev/null;then
     OVPNS2IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/server2/config.ovpn 2>/dev/null)"
+	logger -p 6 -t "${ALIAS}" "Debug - OVPNS2IFNAME: ${OVPNS2IFNAME}"
   fi
 
   if [[ "${wgcslots}" -ge "1" ]] &>/dev/null;then
@@ -7228,22 +7278,26 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${WGC1STATE+x}" ]] &>/dev/null;then
       WGC1STATE="$(nvram get wgc1_enable & nvramcheck)"
       { [[ -n "${WGC1STATE}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc1_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC1STATE" && unset WGC1STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC1STATE: ${WGC1STATE}"
     fi
 	
     # WGC1IFNAME
     if [[ -z "${WGC1IFNAME+x}" ]] &>/dev/null;then
       WGC1IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc1.log 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC1IFNAME: ${WGC1IFNAME}"
     fi
   
     # WGC1IPADDR
     if [[ -z "${WGC1IPADDR+x}" ]] &>/dev/null;then
       WGC1IPADDR="$(nvram get wgc1_addr & nvramcheck)"
       { [[ -n "${WGC1IPADDR}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc1_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC1IPADDR" && unset WGC1IPADDR && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC1IPADDR: ${WGC1IPADDR}"
     fi
 
     # WGC1IPV6ADDR
     if [[ -z "${WGC1IPV6ADDR+x}" ]] &>/dev/null;then
       WGC1IPV6ADDR="$(ifconfig wgc1 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC1IPV6ADDR: ${WGC1IPV6ADDR}"
     fi
   fi
 
@@ -7252,22 +7306,26 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${WGC2STATE+x}" ]] &>/dev/null;then
       WGC2STATE="$(nvram get wgc2_enable & nvramcheck)"
       { [[ -n "${WGC2STATE}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc2_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC2STATE" && unset WGC2STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC2STATE: ${WGC2STATE}"
     fi
 	
     # WGC2IFNAME
     if [[ -z "${WGC2IFNAME+x}" ]] &>/dev/null;then
       WGC2IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc2.log 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC2IFNAME: ${WGC2IFNAME}"
     fi
 
     # WGC2IPADDR
     if [[ -z "${WGC2IPADDR+x}" ]] &>/dev/null;then
       WGC2IPADDR="$(nvram get wgc2_addr & nvramcheck)"
       { [[ -n "${WGC2IPADDR}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc2_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC2IPADDR" && unset WGC2IPADDR && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC2IPADDR: ${WGC2IPADDR}"
     fi
 
     # WGC2IPV6ADDR
     if [[ -z "${WGC2IPV6ADDR+x}" ]] &>/dev/null;then
       WGC2IPV6ADDR="$(ifconfig wgc2 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC2IPV6ADDR: ${WGC2IPV6ADDR}"
     fi
   fi
 
@@ -7276,22 +7334,26 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${WGC3STATE+x}" ]] &>/dev/null;then
       WGC3STATE="$(nvram get wgc3_enable & nvramcheck)"
       { [[ -n "${WGC3STATE}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc3_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC3STATE" && unset WGC3STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC3STATE: ${WGC3STATE}"
     fi
 	
     # WGC3IFNAME
     if [[ -z "${WGC3IFNAME+x}" ]] &>/dev/null;then
       WGC3IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc3.log 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC3IFNAME: ${WGC3IFNAME}"
     fi
 
     # WGC3IPADDR
     if [[ -z "${WGC3IPADDR+x}" ]] &>/dev/null;then
       WGC3IPADDR="$(nvram get wgc3_addr & nvramcheck)"
       { [[ -n "${WGC3IPADDR}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc3_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC3IPADDR" && unset WGC3IPADDR && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC3IPADDR: ${WGC3IPADDR}"
     fi
 
     # WGC3IPV6ADDR
     if [[ -z "${WGC3IPV6ADDR+x}" ]] &>/dev/null;then
       WGC3IPV6ADDR="$(ifconfig wgc3 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC3IPV6ADDR: ${WGC3IPV6ADDR}"
     fi
   fi
 
@@ -7300,22 +7362,26 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${WGC4STATE+x}" ]] &>/dev/null;then
       WGC4STATE="$(nvram get wgc4_enable & nvramcheck)"
       { [[ -n "${WGC4STATE}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc4_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC4STATE" && unset WGC4STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC4STATE: ${WGC4STATE}"
     fi
 	
     # WGC4IFNAME
     if [[ -z "${WGC4IFNAME+x}" ]] &>/dev/null;then
       WGC4IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc4.log 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC4IFNAME: ${WGC4IFNAME}"
     fi
 
     # WGC4IPADDR
     if [[ -z "${WGC4IPADDR+x}" ]] &>/dev/null;then
       WGC4IPADDR="$(nvram get wgc4_addr & nvramcheck)"
       { [[ -n "${WGC4IPADDR}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc4_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC4IPADDR" && unset WGC4IPADDR && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC4IPADDR: ${WGC4IPADDR}"
     fi
 
     # WGC4IPV6ADDR
     if [[ -z "${WGC4IPV6ADDR+x}" ]] &>/dev/null;then
       WGC4IPV6ADDR="$(ifconfig wgc4 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC4IPV6ADDR: ${WGC4IPV6ADDR}"
     fi
   fi
 
@@ -7324,37 +7390,45 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     if [[ -z "${WGC5STATE+x}" ]] &>/dev/null;then
       WGC5STATE="$(nvram get wgc5_enable & nvramcheck)"
       { [[ -n "${WGC5STATE}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc5_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC5STATE" && unset WGC5STATE && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC5STATE: ${WGC5STATE}"
     fi
 	
     # WGC5IFNAME
     if [[ -z "${WGC5IFNAME+x}" ]] &>/dev/null;then
       WGC5IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc5.log 2>/dev/null)"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC5IFNAME: ${WGC5IFNAME}"
     fi
 
     # WGC5IPADDR
     if [[ -z "${WGC5IPADDR+x}" ]] &>/dev/null;then
       WGC5IPADDR="$(nvram get wgc5_addr & nvramcheck)"
       { [[ -n "${WGC5IPADDR}" ]] &>/dev/null || [[ ! -s "/etc/wg/wgc5_status" ]] &>/dev/null ;} || { logger -p 6 -t "${ALIAS}" "Debug - failed to set WGC5IPADDR" && unset WGC5IPADDR && continue ;}
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC5IPADDR: ${WGC5IPADDR}"
     fi
 
     # WGC5IPV6ADDR
     if [[ -z "${WGC5IPV6ADDR+x}" ]] &>/dev/null;then
       WGC5IPV6ADDR="$(ifconfig wgc5 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
+	  logger -p 6 -t "${ALIAS}" "Debug - WGC5IPV6ADDR: ${WGC5IPV6ADDR}"
     fi
   fi
 
   # DNSLOGGINGENABLED
   if [[ -n "$(awk '$0 == "log-queries" {print}' "${DNSMASQCONFIGFILE}")" ]] &>/dev/null;then
     DNSLOGGINGENABLED="1"
+	logger -p 6 -t "${ALIAS}" "Debug - DNSLOGGINGENABLED: ${DNSLOGGINGENABLED}"
   else
     DNSLOGGINGENABLED="0"
+	logger -p 6 -t "${ALIAS}" "Debug - DNSLOGGINGENABLED: ${DNSLOGGINGENABLED}"
   fi
 
   # DNSLOGPATH
   if [[ -n "$(awk -F "=" '$1 == "log-facility" {print $2}' "${DNSMASQCONFIGFILE}")" ]] &>/dev/null;then
     DNSLOGPATH="$(awk -F "=" '$1 == "log-facility" {print $2}' "${DNSMASQCONFIGFILE}")"
+	logger -p 6 -t "${ALIAS}" "Debug - DNSLOGPATH: ${DNSLOGPATH}"
   else
     DNSLOGPATH=""
+	logger -p 6 -t "${ALIAS}" "Debug - DNSLOGPATH: ${DNSLOGPATH}"
   fi
 
   # ENTWAREINSTALLED
@@ -7378,51 +7452,67 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     done
     unset i
     [[ "${ENTWAREMOUNTED}" == "0" ]] &>/dev/null && logger -p 2 -t "${ALIAS}" "Entware - ***Error*** Entware failed to mount to /opt/bin"
+	logger -p 6 -t "${ALIAS}" "Debug - ENTWAREINSTALLED: ${ENTWAREINSTALLED}"
+	logger -p 6 -t "${ALIAS}" "Debug - ENTWAREMOUNTED: ${ENTWAREMOUNTED}"
   else
     ENTWAREINSTALLED="0"
     ENTWAREPATH=""
     ENTWAREMOUNTED="0"
+	logger -p 6 -t "${ALIAS}" "Debug - ENTWAREINSTALLED: ${ENTWAREINSTALLED}"
+	logger -p 6 -t "${ALIAS}" "Debug - ENTWAREPATH: ${ENTWAREPATH}"
+	logger -p 6 -t "${ALIAS}" "Debug - ENTWAREMOUNTED: ${ENTWAREMOUNTED}"
   fi
   
   # DIGINSTALLED
   if [[ "${ENTWAREMOUNTED}" == "1" ]] &>/dev/null && [[ -f "/opt/bin/dig" ]] &>/dev/null;then
     DIGINSTALLED="1"
+	logger -p 6 -t "${ALIAS}" "Debug - DIGINSTALLED: ${DIGINSTALLED}"
   else
     DIGINSTALLED="0"
+	logger -p 6 -t "${ALIAS}" "Debug - DIGINSTALLED: ${DIGINSTALLED}"
   fi
   
   # JQINSTALLED
   if [[ "${ENTWAREMOUNTED}" == "1" ]] &>/dev/null && [[ -f "/opt/bin/jq" ]] &>/dev/null;then
     JQINSTALLED="1"
+	logger -p 6 -t "${ALIAS}" "Debug - JQINSTALLED: ${JQINSTALLED}"
   else
     JQINSTALLED="0"
+	logger -p 6 -t "${ALIAS}" "Debug - JQINSTALLED: ${JQINSTALLED}"
   fi
   
   # PYTHON3INSTALLED
   if [[ "${ENTWAREMOUNTED}" == "1" ]] &>/dev/null && [[ -f "/opt/bin/python3" ]] &>/dev/null;then
     PYTHON3INSTALLED="1"
+	logger -p 6 -t "${ALIAS}" "Debug - PYTHON3INSTALLED: ${PYTHON3INSTALLED}"
   else
     PYTHON3INSTALLED="0"
+	logger -p 6 -t "${ALIAS}" "Debug - PYTHON3INSTALLED: ${PYTHON3INSTALLED}"
   fi
 
   # ADGUARDHOMEACTIVE
   if [[ -n "$(pidof AdGuardHome)" ]] &>/dev/null || { [[ -f "/opt/etc/AdGuardHome/.config" ]] &>/dev/null && [[ -n "$(awk -F "=" '/ADGUARD_LOCAL/ {print $2}' "/opt/etc/AdGuardHome/.config" | sed -e 's/^"//' -e 's/"$//' | grep -w ^"YES")" ]] &>/dev/null ;};then
     ADGUARDHOMEACTIVE="1"
+	logger -p 6 -t "${ALIAS}" "Debug - ADGUARDHOMEACTIVE: ${ADGUARDHOMEACTIVE}"
   else
     ADGUARDHOMEACTIVE="0"
+	logger -p 6 -t "${ALIAS}" "Debug - ADGUARDHOMEACTIVE: ${ADGUARDHOMEACTIVE}"
   fi
   
   # ADGUARDHOMELOGENABLED
   if [[ "${ADGUARDHOMEACTIVE}" == "1" ]] &>/dev/null && [[ -f "${ADGUARDHOMELOGFILE}" ]] &>/dev/null;then
     ADGUARDHOMELOGENABLED="1"
+	logger -p 6 -t "${ALIAS}" "Debug - ADGUARDHOMELOGENABLED: ${ADGUARDHOMELOGENABLED}"
   else
     ADGUARDHOMELOGENABLED="0"
+	logger -p 6 -t "${ALIAS}" "Debug - ADGUARDHOMELOGENABLED: ${ADGUARDHOMELOGENABLED}"
   fi
   
   # DOTENABLED
   if [[ -z "${DOTENABLED+x}" ]] &>/dev/null;then
     DOTENABLED="$(nvram get dnspriv_enable & nvramcheck)"
     [[ -n "${DOTENABLED}" ]] &>/dev/null || { logger -p 6 -t "${ALIAS}" "Debug - failed to set DOTENABLED" && unset DOTENABLED && continue ;}
+	logger -p 6 -t "${ALIAS}" "Debug - DOTENABLED: ${DOTENABLED}"
   fi
   
   # DOTDNSSERVERS
@@ -7434,6 +7524,7 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
       else
         DOTDNSSERVERS="$(echo ${dotdnsservers} | grep -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
       fi
+	  logger -p 6 -t "${ALIAS}" "Debug - DOTDNSSERVERS: ${DOTDNSSERVERS}"
       unset dotdnsservers
 	else
       logger -p 6 -t "${ALIAS}" "Debug - failed to set DOTDNSSERVERS"
@@ -7442,6 +7533,7 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
     fi
   else
     DOTDNSSERVERS=""
+	logger -p 6 -t "${ALIAS}" "Debug - DOTDNSSERVERS: ${DOTDNSSERVERS}"
   fi
 
  systemparameterssync="1"
