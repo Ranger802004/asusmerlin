@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 04/29/2025
-# Version: v3.1.1
+# Date: 05/12/2025
+# Version: v3.2.0-beta1
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -10,6 +10,7 @@ Requirements:
 - JFFS custom scripts and configs enabled
 - OpenVPN or WireGuard clients configured.
 - (Optional) Entware installed.
+- (Optional) Grep installed via Entware, this is required for ASN querying.  It also allows for faster processing of queried policies.
 - (Optional) Dig installed via Entware, this allows more optimized DNS querying as well as support for adding CNAMES to policies.  Dig will also allow the capability to configure DNS-over-TLS on an interface.
 - (Optional) Jq installed via Entware, this is required for ASN querying and AdGuardHome log querying.
 - (Optional) Python3 installed via Entware, this is required for AdGuardHome log querying.
@@ -106,6 +107,19 @@ Global Configuration Options (/jffs/configs/domain_vpn_routing/global.conf)
 - WAN0DOT: This defines if the DNS Server configured for WAN0 will use DNS-over-TLS. Default: Disabled
 - WAN1DNSSERVER: This defines the DNS server override for WAN1 (Dual WAN Mode).  Default: N/A
 - WAN1DOT: This defines if the DNS Server configured for WAN1 will use DNS-over-TLS. Default: Disabled
+- OVPNC1PRIORITY: This defines the priority value for the OpenVPN Client 1. Default: 1000
+- OVPNC2PRIORITY: This defines the priority value for the OpenVPN Client 2. Default: 2000
+- OVPNC3PRIORITY: This defines the priority value for the OpenVPN Client 3. Default: 3000
+- OVPNC4PRIORITY: This defines the priority value for the OpenVPN Client 4. Default: 4000
+- OVPNC5PRIORITY: This defines the priority value for the OpenVPN Client 5. Default: 5000
+- WGC1PRIORITY: This defines the priority value for the WireGuard Client 1. Default: 6000
+- WGC2PRIORITY: This defines the priority value for the WireGuard Client 2. Default: 7000
+- WGC3PRIORITY: This defines the priority value for the WireGuard Client 3. Default: 8000
+- WGC4PRIORITY: This defines the priority value for the WireGuard Client 4. Default: 9000
+- WGC5PRIORITY: This defines the priority value for the WireGuard Client 5. Default: 100000
+- WANPRIORITY: This defines the priority value for the Active WAN. Default: 150
+- WAN0PRIORITY: This defines the priority value for WAN0. Default: 150
+- WAN1PRIORITY: This defines the priority value for WAN1. Default: 150
 
 Creating a Policy:
 Step 1: Create a policy by running the following command: /jffs/scripts/domain_vpn_routing.sh createpolicy
@@ -217,6 +231,21 @@ Considerations:
 - Enabling AdGuardHome log querying can take a long time to process if the AdGuardHome log file is large.  The log file rotation interval can be lowered within AdGuardHome to reduce the size of the log file. 
 
 Release Notes:
+v3.2.0-beta1 - 05/12/2025
+Enhancements:
+- Added custom priority settings for interfaces that can be modified using the configuration menu.
+- Enhance Query ASN logic to handle larger ASNs and optimize query time.  This requires grep to be installed from Entware.
+- Querying policies now can use grep from Entware to efficiently process new IP addresses.
+- Enhanced interface state detection logic.
+- Showing policies now displays the associated interfaces and the connected state status.
+- Minor optimization and performance enhancements.
+
+Fixes:
+- Querying policies will now properly delete temporary files generated under /tmp.
+- Fixed UI bugs not allowing return in certain menus.
+- Fixed configuration menu bug that was not showing Dual WAN DNS Settings when router was configured for Dual WAN.
+
+
 v3.1.1 - 04/29/2025
 Enhancements:
 - If DNS-over-TLS is enabled and servers are configured on the system DNS-over-TLS DNS server list, dig will configure use for DNS-over-TLS by randomly selecting a DNS-over-TLS DNS server.  
