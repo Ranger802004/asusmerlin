@@ -3,7 +3,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 05/12/2025
-# Version: v3.2.0-beta1
+# Version: v3.2.0-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.2.0-beta1"
+VERSION="v3.2.0-beta2"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -283,58 +283,58 @@ menu ()
             POLICY="all"
             clear
             showpolicy
-			while true &>/dev/null;do
-                          printf "\n"
-                          read -r -p "Select the Policy You Want to View: " value
-                          for policysel in ${policiesnum};do
-                            if [[ -z "${value}" ]] &>/dev/null;then
-                              POLICY=""
-                              break 2
-                            elif [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
-                              POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
-                              break 2
-                            elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
-                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
-                              break 1
-                            else
-                              continue
-                            fi
-                          done
-                        done
-                        printf "\n"
-                        if [[ -n "${POLICY}" ]] &>/dev/null;then
-                          showpolicy ${POLICY}
-                        fi
-                        unset value policysel
+			while [[ -n "${policiesnum+x}" ]] &>/dev/null;do
+              printf "\n"
+              read -r -p "Select the Policy You Want to View: " value
+              for policysel in ${policiesnum};do
+                if [[ -z "${value}" ]] &>/dev/null;then
+                  POLICY=""
+                  break 2
+                elif [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                  POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
+                  break 2
+                elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                  echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                  break 1
+                else
+                  continue
+                fi
+              done
+            done
+            printf "\n"
+            if [[ -n "${POLICY}" ]] &>/dev/null && [[ -n "${policiesnum+x}" ]] &>/dev/null;then
+              showpolicy ${POLICY}
+            fi
+            unset value policysel policiesnum
 		;;
 		'3')    # showasn
 			mode="showasn"
             ASN="all"
             clear
             showasn
-			while true &>/dev/null;do
-                          printf "\n"
-                          read -r -p "Select the ASN You Want to View: " value
-                          for asnsel in ${asnsnum};do
-                            if [[ -z "${value}" ]] &>/dev/null;then
-                              ASN=""
-                              break 2
-                            elif [[ "${value}" == "$(echo ${asnsel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
-                              ASN="$(echo ${asnsel} | awk -F "|" '{print $2}')"
-                              break 2
-                            elif [[ -z "$(echo ${asnsnum} | grep -o "${value}|")" ]] &>/dev/null;then
-                              echo -e "${RED}***Select a valid number***${NOCOLOR}"
-                              break 1
-                            else
-                              continue
-                            fi
-                          done
-                        done
-                        printf "\n"
-                        if [[ -n "${ASN}" ]] &>/dev/null;then
-                          showasn ${ASN}
-                        fi
-                        unset value asnsel
+			while [[ -n "${asnsnum+x}" ]] &>/dev/null;do
+              printf "\n"
+              read -r -p "Select the ASN You Want to View: " value
+              for asnsel in ${asnsnum};do
+                if [[ -z "${value}" ]] &>/dev/null;then
+                  ASN=""
+                  break 2
+                elif [[ "${value}" == "$(echo ${asnsel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+                  ASN="$(echo ${asnsel} | awk -F "|" '{print $2}')"
+                  break 2
+                elif [[ -z "$(echo ${asnsnum} | grep -o "${value}|")" ]] &>/dev/null;then
+                  echo -e "${RED}***Select a valid number***${NOCOLOR}"
+                  break 1
+                else
+                  continue
+                fi
+              done
+            done
+            printf "\n"
+            if [[ -n "${ASN}" ]] &>/dev/null && [[ -n "${asnsnum+x}" ]] &>/dev/null;then
+              showasn ${ASN}
+            fi
+            unset value asnsel asnsnum
 		;;
 		'4')    # install
 			mode="install"
@@ -3192,11 +3192,11 @@ if [[ -n "${NEWVARIABLES}" ]] &>/dev/null;then
     INTERFACE="${interface}"
 	routingdirector
 	PRIORITY="${priority}"
-	zPRIORITY="${zpriority}"
-	createipmarkrules \
-	&& deleteipmarkrules
+	createipmarkrules
+	PRIORITY="${zpriority}"
+	deleteipmarkrules
 	
-	unset INTERFACE PRIORITY zPRIORITY interface priority zpriority
+	unset INTERFACE PRIORITY interface priority zpriority
   fi
 
   # Check if cron job needs to be updated
@@ -3416,10 +3416,7 @@ return
 # Delete IP FWMark Rules
 deleteipmarkrules ()
 {
-if [[ "${ENABLE}" == "0" ]] &>/dev/null || [[ -n "${zPRIORITY+x}" ]] &>/dev/null || { [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(awk -F "|" '$4 == "'${INTERFACE}'" {print $4}' "${CONFIGFILE}" | sort -u)" ]] &>/dev/null && [[ -z "$(awk -F "|" '$2 == "'${INTERFACE}'" {print $2}' "${ASNFILE}" | sort -u)" ]] &>/dev/null ;};then
-  # Set flag for deleting old priority  
-  PRIORITY="${zPRIORITY}"
-
+if [[ "${ENABLE}" == "0" ]] &>/dev/null || { [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(awk -F "|" '$4 == "'${INTERFACE}'" {print $4}' "${CONFIGFILE}" | sort -u)" ]] &>/dev/null && [[ -z "$(awk -F "|" '$2 == "'${INTERFACE}'" {print $2}' "${ASNFILE}" | sort -u)" ]] &>/dev/null ;};then
   # Delete IPv6
   # Delete FWMark IPv6 Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} table ${IPV6ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip -6 rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${IPV6ROUTETABLE}'") {print}')" ]] &>/dev/null;then
@@ -3669,7 +3666,6 @@ elif [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
   if [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null;then
     STATE="${WAN0STATE}"
     GATEWAY="${WAN0GATEWAY}"
-    PRIMARY="${WAN0PRIMARY}"
     IFNAME="${WAN0GWIFNAME}"
     IPV6ADDR="$(ifconfig ${WAN0GWIFNAME} 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
     FWMARK="${WAN0FWMARK}"
@@ -4196,12 +4192,9 @@ elif [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})"
   done
   
   unset INTERFACE STATE_DESC DOMAINS state_desc
-
   return
 else
   echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
-
-  return
 fi
 
 return
@@ -4210,24 +4203,38 @@ return
 # Show ASN
 showasn ()
 {
-if [[ "${ASN}" == "all" ]] &>/dev/null;then
+if [[ "${ASN}" == "all" ]] &>/dev/null && [[ -f "${ASNFILE}" ]] &>/dev/null;then
   [[ -z "${asnsnum+x}" ]] &>/dev/null && asnsnum=""
   asns="all $(awk -F "|" '{print $1}' ${ASNFILE})"
   asnnum="1"
+  echo -e "${BOLD}ASN:                        Interface:${NOCOLOR}"
   for asn in ${asns};do
-    if [[ "${asn}" == "all" ]] &>/dev/null;then
+    if [[ "${asn}" == "all" ]] &>/dev/null && { [[ "${mode}" == "showasn" ]] &>/dev/null || [[ "${mode}" == "editasn" ]] &>/dev/null || [[ "${mode}" == "addasn" ]] &>/dev/null || [[ "${mode}" == "deleteasn" ]] &>/dev/null ;};then
+      continue
+    elif [[ "${asn}" == "all" ]] &>/dev/null;then
       echo -e "${BOLD}${asnnum}:${NOCOLOR} (All ASNs)"
     else
-      echo -e "${BOLD}${asnnum}:${NOCOLOR} ${asn}"
+      INTERFACE="$(awk -F "|" '/^'${asn}'/ {print $2}' ${ASNFILE})"
+      routingdirector || continue
+      # Set UI menu spacing
+	  num_spaces_interface="$((25-${#asn}))"
+      space_string_interface=$(printf "%*s" "${num_spaces_interface}" "")
+      num_spaces_state="$((8-${#INTERFACE}))"
+      space_string_state=$(printf "%*s" "${num_spaces_state}" "")
+	  # Display ASN
+      echo -e "${BOLD}${asnnum}:${NOCOLOR} ${asn}${space_string_interface}${INTERFACE}${space_string_state}(${state_desc})"
     fi
 	asnsnum="${asnsnum} ${asnnum}|${asn}"
     asnnum="$((${asnnum}+1))"
   done
-  unset asnnum
+  
+  unset asnnum INTERFACE STATE_DESC num_spaces_interface space_string_interface num_spaces_state space_string_state state_desc
   return
-elif [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})" ]] &>/dev/null;then
+elif [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE} 2>/dev/null)" ]] &>/dev/null && [[ -f "${ASNFILE}" ]] &>/dev/null;then
+  INTERFACE="$(awk -F "|" '/^'${ASN}'/ {print $2}' ${ASNFILE})"
+  routingdirector || continue
   echo -e "${BOLD}ASN:${NOCOLOR} $(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})"
-  echo -e "${BOLD}Interface:${NOCOLOR} $(awk -F "|" '/^'${ASN}'/ {print $2}' ${ASNFILE})"
+  echo -e "${BOLD}Interface:${NOCOLOR} ${INTERFACE}  (${state_desc})"
   if [[ -f "/tmp/${ASN}_query.tmp" ]] &>/dev/null;then
     echo -e "${BOLD}Status: ${NOCOLOR}${YELLOW}Querying${NOCOLOR}"
   elif [[ ! -f "/tmp/${ASN}_query.tmp" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${ASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${ASN}-v4 -n 2>/dev/null)" ]] &>/dev/null;then
@@ -4235,11 +4242,17 @@ elif [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})" ]] &>/de
   else
     echo -e "${BOLD}Status: ${NOCOLOR}${GREEN}Active${NOCOLOR}"
   fi
+  
+  unset INTERFACE STATE_DESC ASN state_desc
+  return
+elif [[ ! -f "${ASNFILE}" ]] &>/dev/null;then
+  echo -e "${RED}***No ASNs are configured***${NOCOLOR}"
   return
 else
   echo -e "${RED}ASN: ${ASN} not found${NOCOLOR}"
   return
 fi
+
 return
 }
 
