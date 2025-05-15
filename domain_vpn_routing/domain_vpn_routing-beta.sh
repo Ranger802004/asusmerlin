@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/12/2025
-# Version: v3.2.0-beta2
+# Date: 05/15/2025
+# Version: v3.2.0-beta3
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.2.0-beta2"
+VERSION="v3.2.0-beta3"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -305,7 +305,7 @@ menu ()
             if [[ -n "${POLICY}" ]] &>/dev/null && [[ -n "${policiesnum+x}" ]] &>/dev/null;then
               showpolicy ${POLICY}
             fi
-            unset value policysel policiesnum
+            unset value policysel policiesnum POLICY
 		;;
 		'3')    # showasn
 			mode="showasn"
@@ -334,7 +334,7 @@ menu ()
             if [[ -n "${ASN}" ]] &>/dev/null && [[ -n "${asnsnum+x}" ]] &>/dev/null;then
               showasn ${ASN}
             fi
-            unset value asnsel asnsnum
+            unset value asnsel asnsnum ASN
 		;;
 		'4')    # install
 			mode="install"
@@ -494,7 +494,7 @@ menu ()
                         if [[ -n "${POLICY}" ]] &>/dev/null;then
                           editpolicy ${POLICY}
                         fi
-                        unset value policysel
+                        unset value policiesnum policysel POLICY
 		;;
 		'17')   # editasn
 			mode="editasn"
@@ -521,7 +521,7 @@ menu ()
                         if [[ -n "${ASN}" ]] &>/dev/null;then
                           editasn ${ASN}
                         fi
-                        unset value asnsel
+                        unset value asnsnum asnsel ASN
 		;;
 		'18')   # deletepolicy
 			mode="deletepolicy"
@@ -548,7 +548,7 @@ menu ()
                         if [[ -n "${POLICY}" ]] &>/dev/null;then
                           deletepolicy ${POLICY}
                         fi
-                        unset value policysel
+                        unset value policiesnum policysel POLICY
 		;;
 		'19')   # deleteasn
 			mode="deleteasn"
@@ -575,7 +575,7 @@ menu ()
                         if [[ -n "${ASN}" ]] &>/dev/null;then
                           deleteasn ${ASN}
                         fi
-                        unset value asnsel
+                        unset value asnsnum asnsel ASN
 		;;
 		'20')   # adddomain
 			mode="adddomain"
@@ -608,7 +608,7 @@ menu ()
                         if [[ -n "${POLICY}" ]] &>/dev/null;then
                           adddomain ${DOMAIN}
                         fi
-                        unset value DOMAIN policysel
+                        unset value DOMAIN policiesnum policysel
 		;;
 		'21')   # deletedomain
 			mode="deletedomain"
@@ -641,7 +641,7 @@ menu ()
                         if [[ -n "${POLICY}" ]] &>/dev/null;then
                           deletedomain ${DOMAIN}
                         fi
-                        unset value DOMAIN policysel
+                        unset value DOMAIN policiesnum policysel
 		;;
 		'22')   # deleteip
 			mode="deleteip"
@@ -674,7 +674,7 @@ menu ()
                         if [[ -n "${POLICY}" ]] &>/dev/null;then
                           deleteip ${IP}
                         fi
-                        unset value IP policysel
+                        unset value IP policiesnum policysel
 		;;
 		'e'|'E'|'exit')
 			exit 0
@@ -3304,12 +3304,12 @@ OVPNCONFIGFILES='
 /etc/openvpn/server2/config.ovpn
 '
 
-WGFILES='
-/etc/wg/wgc1_status
-/etc/wg/wgc2_status
-/etc/wg/wgc3_status
-/etc/wg/wgc4_status
-/etc/wg/wgc5_status
+WGINTERFACES='
+wgc1
+wgc2
+wgc3
+wgc4
+wgc5
 '
 
 INTERFACES=""
@@ -3326,21 +3326,61 @@ INTERFACES=""
   done
 
   # Check if Wireguard Interfaces are Active
-  for WGFILE in ${WGFILES};do
-    if [[ -f "${WGFILE}" ]] &>/dev/null && [[ -s "${WGFILE}" ]] &>/dev/null;then
-      INTERFACE="wgc"$(echo ${WGFILE} | grep -o '[0-9]')""
-      INTERFACES="${INTERFACES} ${INTERFACE}"
+  for WGINTERFACE in ${WGINTERFACES};do
+	if [[ -n "$(ifconfig ${WGINTERFACE} 2>/dev/null | grep -o "${WGINTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${WGINTERFACE}" ]] &>/dev/null || [[ "${WGINTERFACE}" == "$(/usr/sbin/wg show ${WGINTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
+      INTERFACE="${WGINTERFACE}"
+    elif [[ -n "$(awk '$1 == "interface:" {print $2}' /etc/wg/${WGINTERFACE}.log 2>/dev/null)" ]] &>/dev/null;then
+      INTERFACE="${WGINTERFACE}"
+    else
+      continue
     fi
+	INTERFACES="${INTERFACES} ${INTERFACE}"
   done
   
   # Generate available WAN interfaces
   if [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null;then
     INTERFACES="${INTERFACES} wan"
   elif [[ "${WANSDUALWANENABLE}" == "1" ]] &>/dev/null;then
-    INTERFACES="${INTERFACES} wan"
-    INTERFACES="${INTERFACES} wan0"
-    INTERFACES="${INTERFACES} wan1"
+    INTERFACES="${INTERFACES} wan wan0 wan1"
   fi
+  
+  # Generate Interface List
+  interfacesnum=""
+  interfacenum="1"
+  echo -e "${BOLD}Interfaces:${NOCOLOR}"
+  for INTERFACE in ${INTERFACES};do
+    routingdirector || continue
+	
+    # Set UI menu spacing
+	num_spaces_state="$((8-${#INTERFACE}))"
+    space_string_state=$(printf "%*s" "${num_spaces_state}" "")
+	
+    # Display policy
+    echo -e "${BOLD}${interfacenum}:${NOCOLOR} ${INTERFACE}${space_string_state}(${state_desc})"
+	interfacesnum="${interfacesnum} ${interfacenum}|${INTERFACE}"
+    interfacenum="$((${interfacenum}+1))"
+    unset STATE_DESC state_desc num_spaces_state space_string_state
+  done
+  # User Input for Interface
+  while [[ -n "${interfacesnum+x}" ]] &>/dev/null;do  
+    read -r -p "Select an Interface for this Policy: " value
+    for interfacesel in ${interfacesnum};do
+      if [[ -z "${value}" ]] &>/dev/null;then
+        echo -e "${RED}***No interface selected***${NOCOLOR}"
+		unset value
+        return 1
+      elif [[ "${value}" == "$(echo ${interfacesel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+        selectedinterface="$(echo ${interfacesel} | awk -F "|" '{print $2}')"
+        break 2
+      elif [[ -z "$(echo ${interfacesnum} | grep -o "${value}|")" ]] &>/dev/null;then
+        echo -e "${RED}***Select a valid number***${NOCOLOR}"
+        break 1
+      else
+        continue
+      fi
+    done
+  done
+  unset interfacesnum interfacenum interfacesel
   
   return
 }
@@ -3470,6 +3510,7 @@ MASK=""
 PRIMARY=""
 STATE=""
 TYPE=""
+CLASS=""
 
 # Set paramaeters based on interface
 if [[ "${INTERFACE}" == "ovpnc1" ]] &>/dev/null;then
@@ -3491,6 +3532,7 @@ if [[ "${INTERFACE}" == "ovpnc1" ]] &>/dev/null;then
   FWMARK="${OVPNC1FWMARK}"
   MASK="${OVPNC1MASK}"
   TYPE="VPN"
+  CLASS="OVPN"
 elif [[ "${INTERFACE}" == "ovpnc2" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client2/config.ovpn 2>/dev/null)"
   IPADDR="$(ifconfig ${IFNAME} | grep -oE "inet addr:\S*" | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
@@ -3510,6 +3552,7 @@ elif [[ "${INTERFACE}" == "ovpnc2" ]] &>/dev/null;then
   FWMARK="${OVPNC2FWMARK}"
   MASK="${OVPNC2MASK}"
   TYPE="VPN"
+  CLASS="OVPN"
 elif [[ "${INTERFACE}" == "ovpnc3" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client3/config.ovpn 2>/dev/null)"
   IPADDR="$(ifconfig ${IFNAME} | grep -oE "inet addr:\S*" | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
@@ -3529,6 +3572,7 @@ elif [[ "${INTERFACE}" == "ovpnc3" ]] &>/dev/null;then
   FWMARK="${OVPNC3FWMARK}"
   MASK="${OVPNC3MASK}"
   TYPE="VPN"
+  CLASS="OVPN"
 elif [[ "${INTERFACE}" == "ovpnc4" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client4/config.ovpn 2>/dev/null)"
   IPADDR="$(ifconfig ${IFNAME} | grep -oE "inet addr:\S*" | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
@@ -3548,6 +3592,7 @@ elif [[ "${INTERFACE}" == "ovpnc4" ]] &>/dev/null;then
   FWMARK="${OVPNC4FWMARK}"
   MASK="${OVPNC4MASK}"
   TYPE="VPN"
+  CLASS="OVPN"
 elif [[ "${INTERFACE}" == "ovpnc5" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/client5/config.ovpn 2>/dev/null)"
   IPADDR="$(ifconfig ${IFNAME} | grep -oE "inet addr:\S*" | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
@@ -3567,6 +3612,7 @@ elif [[ "${INTERFACE}" == "ovpnc5" ]] &>/dev/null;then
   FWMARK="${OVPNC5FWMARK}"
   MASK="${OVPNC5MASK}"
   TYPE="VPN"
+  CLASS="OVPN"
 elif [[ "${INTERFACE}" == "ovpns1" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/server1/config.ovpn 2>/dev/null)"
   ROUTETABLE="main"
@@ -3580,7 +3626,18 @@ elif [[ "${INTERFACE}" == "ovpns2" ]] &>/dev/null;then
   RGW="0"
   PRIORITY="0"
 elif [[ "${INTERFACE}" == "wgc1" ]] &>/dev/null;then
-  IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc1.log 2>/dev/null)"
+  if [[ -n "$(ifconfig ${INTERFACE} 2>/dev/null | grep -o "${INTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${INTERFACE}" ]] &>/dev/null || [[ "${INTERFACE}" == "$(/usr/sbin/wg show ${INTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
+    IFNAME="${INTERFACE}"
+  elif [[ -n "$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)" ]] &>/dev/null;then
+    IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)"
+  elif [[ -n "$(nvram get ${INTERFACE}_addr & nvramcheck)" ]] &>/dev/null || [[ -s "/etc/wg/${INTERFACE}_status" ]] &>/dev/null;then
+    ipaddr=""
+    while [[ -z "${ipaddr}" ]] &>/dev/null;do
+      ipaddr="$(nvram get ${INTERFACE}_addr & nvramcheck)"
+	done
+	IFNAME="$(${ipbinpath}ip -br addr show to ${ipaddr} | awk '{print $1}')"
+	unset ipaddr
+  fi  
   IPADDR="$(ifconfig ${IFNAME} | grep -oE "inet addr:\S*" | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
   IPV6ADDR="$(ifconfig ${IFNAME} 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
   RGW="2"
@@ -3595,8 +3652,20 @@ elif [[ "${INTERFACE}" == "wgc1" ]] &>/dev/null;then
   FWMARK="${WGC1FWMARK}"
   MASK="${WGC1MASK}"
   TYPE="VPN"
+  CLASS="WG"
 elif [[ "${INTERFACE}" == "wgc2" ]] &>/dev/null;then
-  IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc2.log 2>/dev/null)"
+  if [[ -n "$(ifconfig ${INTERFACE} 2>/dev/null | grep -o "${INTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${INTERFACE}" ]] &>/dev/null || [[ "${INTERFACE}" == "$(/usr/sbin/wg show ${INTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
+    IFNAME="${INTERFACE}"
+  elif [[ -n "$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)" ]] &>/dev/null;then
+    IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)"
+  elif [[ -n "$(nvram get ${INTERFACE}_addr & nvramcheck)" ]] &>/dev/null || [[ -s "/etc/wg/${INTERFACE}_status" ]] &>/dev/null;then
+    ipaddr=""
+    while [[ -z "${ipaddr}" ]] &>/dev/null;do
+      ipaddr="$(nvram get ${INTERFACE}_addr & nvramcheck)"
+	done
+	IFNAME="$(${ipbinpath}ip -br addr show to ${ipaddr} | awk '{print $1}')"
+	unset ipaddr
+  fi    
   IPADDR="$(ifconfig ${IFNAME} | grep -oE "inet addr:\S*" | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
   IPV6ADDR="$(ifconfig ${IFNAME} 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
   RGW="2"
@@ -3611,8 +3680,20 @@ elif [[ "${INTERFACE}" == "wgc2" ]] &>/dev/null;then
   FWMARK="${WGC2FWMARK}"
   MASK="${WGC2MASK}"
   TYPE="VPN"
+  CLASS="WG"
 elif [[ "${INTERFACE}" == "wgc3" ]] &>/dev/null;then
-  IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc3.log 2>/dev/null)"
+  if [[ -n "$(ifconfig ${INTERFACE} 2>/dev/null | grep -o "${INTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${INTERFACE}" ]] &>/dev/null || [[ "${INTERFACE}" == "$(/usr/sbin/wg show ${INTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
+    IFNAME="${INTERFACE}"
+  elif [[ -n "$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)" ]] &>/dev/null;then
+    IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)"
+  elif [[ -n "$(nvram get ${INTERFACE}_addr & nvramcheck)" ]] &>/dev/null || [[ -s "/etc/wg/${INTERFACE}_status" ]] &>/dev/null;then
+    ipaddr=""
+    while [[ -z "${ipaddr}" ]] &>/dev/null;do
+      ipaddr="$(nvram get ${INTERFACE}_addr & nvramcheck)"
+	done
+	IFNAME="$(${ipbinpath}ip -br addr show to ${ipaddr} | awk '{print $1}')"
+	unset ipaddr
+  fi  
   IPADDR="$(ifconfig ${IFNAME} | grep -oE "inet addr:\S*" | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
   IPV6ADDR="$(ifconfig ${IFNAME} 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
   RGW="2"
@@ -3627,8 +3708,20 @@ elif [[ "${INTERFACE}" == "wgc3" ]] &>/dev/null;then
   FWMARK="${WGC3FWMARK}"
   MASK="${WGC3MASK}"
   TYPE="VPN"
+  CLASS="WG"
 elif [[ "${INTERFACE}" == "wgc4" ]] &>/dev/null;then
-  IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc4.log 2>/dev/null)"
+  if [[ -n "$(ifconfig ${INTERFACE} 2>/dev/null | grep -o "${INTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${INTERFACE}" ]] &>/dev/null || [[ "${INTERFACE}" == "$(/usr/sbin/wg show ${INTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
+    IFNAME="${INTERFACE}"
+  elif [[ -n "$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)" ]] &>/dev/null;then
+    IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)"
+  elif [[ -n "$(nvram get ${INTERFACE}_addr & nvramcheck)" ]] &>/dev/null || [[ -s "/etc/wg/${INTERFACE}_status" ]] &>/dev/null;then
+    ipaddr=""
+    while [[ -z "${ipaddr}" ]] &>/dev/null;do
+      ipaddr="$(nvram get ${INTERFACE}_addr & nvramcheck)"
+	done
+	IFNAME="$(${ipbinpath}ip -br addr show to ${ipaddr} | awk '{print $1}')"
+	unset ipaddr
+  fi  
   IPADDR="$(ifconfig ${IFNAME} | grep -oE "inet addr:\S*" | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
   IPV6ADDR="$(ifconfig ${IFNAME} 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
   RGW="2"
@@ -3643,8 +3736,20 @@ elif [[ "${INTERFACE}" == "wgc4" ]] &>/dev/null;then
   FWMARK="${WGC4FWMARK}"
   MASK="${WGC4MASK}"
   TYPE="VPN"
+  CLASS="WG"
 elif [[ "${INTERFACE}" == "wgc5" ]] &>/dev/null;then
-  IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/wgc5.log 2>/dev/null)"
+  if [[ -n "$(ifconfig ${INTERFACE} 2>/dev/null | grep -o "${INTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${INTERFACE}" ]] &>/dev/null || [[ "${INTERFACE}" == "$(/usr/sbin/wg show ${INTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
+    IFNAME="${INTERFACE}"
+  elif [[ -n "$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)" ]] &>/dev/null;then
+    IFNAME="$(awk '$1 == "interface:" {print $2}' /etc/wg/${INTERFACE}.log 2>/dev/null)"
+  elif [[ -n "$(nvram get ${INTERFACE}_addr & nvramcheck)" ]] &>/dev/null || [[ -s "/etc/wg/${INTERFACE}_status" ]] &>/dev/null;then
+    ipaddr=""
+    while [[ -z "${ipaddr}" ]] &>/dev/null;do
+      ipaddr="$(nvram get ${INTERFACE}_addr & nvramcheck)"
+	done
+	IFNAME="$(${ipbinpath}ip -br addr show to ${ipaddr} | awk '{print $1}')"
+	unset ipaddr
+  fi   
   IPADDR="$(ifconfig ${IFNAME} | grep -oE "inet addr:\S*" | grep -m 1 -oE "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")"
   IPV6ADDR="$(ifconfig ${IFNAME} 2>/dev/null | grep "inet6 addr.*Scope:Global" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})")"
   RGW="2"
@@ -3659,6 +3764,7 @@ elif [[ "${INTERFACE}" == "wgc5" ]] &>/dev/null;then
   FWMARK="${WGC5FWMARK}"
   MASK="${WGC5MASK}"
   TYPE="VPN"
+  CLASS="WG"
 elif [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
   # Check WAN Status
   checkwanstatus
@@ -3702,6 +3808,7 @@ elif [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
   IPV6ROUTETABLE="main"
   RGW="2"
   TYPE="WAN"
+  CLASS="WAN"
 elif [[ "${INTERFACE}" == "wan0" ]] &>/dev/null;then
   # Check WAN Status
   checkwanstatus
@@ -3722,6 +3829,7 @@ elif [[ "${INTERFACE}" == "wan0" ]] &>/dev/null;then
   MASK="${WAN0MASK}"
   PRIMARY="${WAN0PRIMARY}"
   TYPE="WAN"
+  CLASS="WAN"
 elif [[ "${INTERFACE}" == "wan1" ]] &>/dev/null;then
   # Check WAN Status
   checkwanstatus
@@ -3742,6 +3850,7 @@ elif [[ "${INTERFACE}" == "wan1" ]] &>/dev/null;then
   MASK="${WAN1MASK}"
   PRIMARY="${WAN1PRIMARY}"
   TYPE="WAN"
+  CLASS="WAN"
 else
   echo -e "${RED}Policy: Unable to query Interface${NOCOLOR}"
   return
@@ -3750,6 +3859,8 @@ fi
 # Set VPN Interface State
 if [[ "${TYPE}" == "VPN" ]] &>/dev/null && [[ -s "/sys/class/net/${IFNAME}/operstate" ]] &>/dev/null;then
   if [[ "$(cat /sys/class/net/${IFNAME}/operstate 2>/dev/null)" == "up" ]] &>/dev/null;then
+    STATE="2"
+  elif [[ "${CLASS}" == "WG" ]] &>/dev/null && [[ "$(cat /sys/class/net/${IFNAME}/operstate 2>/dev/null)" == "unknown" ]] &>/dev/null;then
     STATE="2"
   elif [[ "$(cat /sys/class/net/${IFNAME}/operstate 2>/dev/null)" == "unknown" ]] &>/dev/null;then
     STATE="1"
@@ -3862,26 +3973,10 @@ if [[ "${mode}" == "createpolicy" ]] &>/dev/null;then
 
   # Generate Interfaces
   generateinterfacelist || return
-
-  echo -e "Interfaces:"
-  for INTERFACE in ${INTERFACES};do
-    echo -e "${INTERFACE}"
-  done
-  # User Input for Interface
-  while true;do  
-    read -r -p "Select an Interface for this Policy: " NEWPOLICYINTERFACE
-    for INTERFACE in ${INTERFACES};do
-      if [[ "${NEWPOLICYINTERFACE}" == "${INTERFACE}" ]] &>/dev/null;then
-        CREATEPOLICYINTERFACE="${NEWPOLICYINTERFACE}"
-        break 2
-      elif [[ -n "$(echo "${INTERFACES}" | grep -w "${NEWPOLICYINTERFACE}")" ]] &>/dev/null;then
-        continue
-      else
-        echo -e "${RED}***Enter a valid VPN Interface***${NOCOLOR}"
-        break 1
-      fi
-    done
-  done
+  
+  # Set interface from selection
+  CREATEPOLICYINTERFACE="${selectedinterface}"
+  unset selectedinterface
 
   # Enable Verbose Logging
   while true;do  
@@ -3970,27 +4065,11 @@ if [[ "${mode}" == "addasn" ]] &>/dev/null;then
 
   # Generate Interfaces
   generateinterfacelist || return
-
-  echo -e "Interfaces:"
-  for INTERFACE in ${INTERFACES};do
-    echo -e "${INTERFACE}"
-  done
-  # User Input for Interface
-  while true;do  
-    read -r -p "Select an Interface for this ASN: " NEWASNINTERFACE
-    for INTERFACE in ${INTERFACES};do
-      if [[ "${NEWASNINTERFACE}" == "${INTERFACE}" ]] &>/dev/null;then
-        ADDASNINTERFACE="${NEWASNINTERFACE}"
-        break 2
-      elif [[ -n "$(echo "${INTERFACES}" | grep -w "${NEWASNINTERFACE}")" ]] &>/dev/null;then
-        continue
-      else
-        echo -e "${RED}***Enter a valid Interface***${NOCOLOR}"
-        break 1
-      fi
-    done
-  done
-
+  
+  # Set interface from selection
+  ADDASNINTERFACE="${selectedinterface}"
+  unset selectedinterface
+  
   # Create ASN File
   if [[ ! -f ${ASNFILE} ]] &>/dev/null;then
     logger -p 5 -st "${ALIAS}" "Add ASN - Creating ${ASNFILE}"
@@ -4023,10 +4102,10 @@ setprocesspriority
 # Prompt for confirmation
 if [[ "${mode}" == "deleteasn" ]] &>/dev/null || [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   if [[ "${ASN}" == "all" ]] &>/dev/null;then
-    [[ "${mode}" != "uninstall" ]] &>/dev/null && read -n 1 -s -r -p "Press any key to continue to delete all ASNs"
+    [[ "${mode}" != "uninstall" ]] &>/dev/null && read -n 1 -s -r -p "Press any key to continue to delete all ASNs" && printf "\n"
     ASNS="$(awk -F"|" '{print $1}' ${ASNFILE})"
   elif [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})" ]] &>/dev/null;then
-    read -n 1 -s -r -p "Press any key to continue to delete ASN: ${ASN}"
+    read -n 1 -s -r -p "Press any key to continue to delete ASN: ${ASN}" && printf "\n"
     ASNS=${ASN}
   else
     echo -e "${RED}Policy: ${ASN} not found${NOCOLOR}"
@@ -4131,7 +4210,7 @@ return
 showpolicy ()
 {
 if [[ "${POLICY}" == "all" ]] &>/dev/null;then
-  [[ -z "${policiesnum+x}" ]] &>/dev/null && policiesnum=""
+  policiesnum=""
   policies="all $(awk -F "|" '{print $1}' ${CONFIGFILE})"
   policynum="1"
   echo -e "${BOLD}Policy:                     Interface:${NOCOLOR}"
@@ -4611,7 +4690,7 @@ editpolicy ()
 # Prompt for confirmation to edit policy
 if [[ "${mode}" == "editpolicy" ]] &>/dev/null;then
   if [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
-    read -n 1 -s -r -p "Press any key to continue to edit Policy: ${POLICY}"
+    read -n 1 -s -r -p "Press any key to continue to edit Policy: ${POLICY}" && printf "\n"
     EDITPOLICY="${POLICY}"
   else
     echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
@@ -4620,31 +4699,11 @@ if [[ "${mode}" == "editpolicy" ]] &>/dev/null;then
 
   # Generate Interfaces
   generateinterfacelist || return
-
-  # Display available interfaces
-  echo -e "\nInterfaces:"
-  for INTERFACE in ${INTERFACES};do
-    echo -e "${INTERFACE}"
-  done
-
-  # User input to select an interface
-  while true;do  
-    echo -e "Current Interface: $(awk -F "|" '/^'${EDITPOLICY}'/ {print $4}' ${CONFIGFILE})"
-    read -r -p "Select an Interface for this Policy: " EDITPOLICYINTERFACE
-    for INTERFACE in ${INTERFACES};do
-      if [[ "${EDITPOLICYINTERFACE}" == "${INTERFACE}" ]] &>/dev/null;then
-        NEWPOLICYINTERFACE=${EDITPOLICYINTERFACE}
-        break 2
-      elif [[ -n "$(echo "${INTERFACES}" | grep -w "${EDITPOLICYINTERFACE}")" ]] &>/dev/null;then
-        continue
-      else
-        echo -e "${RED}***Enter a valid Interface***${NOCOLOR}"
-        echo -e "Interfaces: \r\n${INTERFACES}"
-        break 1
-      fi
-    done
-  done
-
+  
+  # Set interface from selection
+  NEWPOLICYINTERFACE="${selectedinterface}"
+  unset selectedinterface
+  
   # Enable Verbose Logging
   while true;do  
     read -r -p "Enable verbose logging for this policy? ***Enter Y for Yes or N for No*** " yn
@@ -4967,7 +5026,7 @@ editasn ()
 # Prompt for confirmation to edit policy
 if [[ "${mode}" == "editasn" ]] &>/dev/null;then
   if [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})" ]] &>/dev/null;then
-    read -n 1 -s -r -p "Press any key to continue to edit ASN: ${ASN}"
+    read -n 1 -s -r -p "Press any key to continue to edit ASN: ${ASN}" && printf "\n"
     EDITASN="${ASN}"
   else
     echo -e "${RED}${ASN} not found${NOCOLOR}"
@@ -4976,30 +5035,10 @@ if [[ "${mode}" == "editasn" ]] &>/dev/null;then
 
   # Generate Interfaces
   generateinterfacelist || return
-
-  # Display available interfaces
-  echo -e "\nInterfaces:"
-  for INTERFACE in ${INTERFACES};do
-    echo -e "${INTERFACE}"
-  done
-
-  # User input to select an interface
-  while true;do  
-    echo -e "Current Interface: $(awk -F "|" '/^'${EDITASN}'/ {print $2}' ${ASNFILE})"
-    read -r -p "Select an Interface for this Policy: " EDITASNINTERFACE
-    for INTERFACE in ${INTERFACES};do
-      if [[ "${EDITASNINTERFACE}" == "${INTERFACE}" ]] &>/dev/null;then
-        NEWASNINTERFACE=${EDITASNINTERFACE}
-        break 2
-      elif [[ -n "$(echo "${INTERFACES}" | grep -w "${EDITASNINTERFACE}")" ]] &>/dev/null;then
-        continue
-      else
-        echo -e "${RED}***Enter a valid Interface***${NOCOLOR}"
-        echo -e "Interfaces: \r\n${INTERFACES}"
-        break 1
-      fi
-    done
-  done
+  
+  # Set interface from selection
+  NEWASNINTERFACE="${selectedinterface}"
+  unset selectedinterface
   
   # Set Process Priority
   setprocesspriority
@@ -5166,10 +5205,10 @@ deletepolicy ()
 # Prompt for confirmation
 if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   if [[ "${POLICY}" == "all" ]] &>/dev/null;then
-    [[ "${mode}" != "uninstall" ]] &>/dev/null && read -n 1 -s -r -p "Press any key to continue to delete all policies"
+    [[ "${mode}" != "uninstall" ]] &>/dev/null && read -n 1 -s -r -p "Press any key to continue to delete all policies" && printf "\n"
     DELETEPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
   elif [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
-    read -n 1 -s -r -p "Press any key to continue to delete Policy: ${POLICY}"
+    read -n 1 -s -r -p "Press any key to continue to delete Policy: ${POLICY}" && printf "\n"
     DELETEPOLICIES=${POLICY}
   else
     echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
@@ -5940,6 +5979,12 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 
   # Read Domain List File
   DOMAINS="$(cat ${POLICYDIR}/policy_${QUERYPOLICY}_domainlist)"
+  
+  # Check if Domains are empty
+  if [[ -z "${DOMAINS}" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Policy: ${QUERYPOLICY} has no domains configured"
+    continue
+  fi
   
   # Configure DNSSERVER for dig
   digdnsserver=""
