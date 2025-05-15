@@ -3359,7 +3359,6 @@ INTERFACES=""
     echo -e "${BOLD}${interfacenum}:${NOCOLOR} ${INTERFACE}${space_string_state}(${state_desc})"
 	interfacesnum="${interfacesnum} ${interfacenum}|${INTERFACE}"
     interfacenum="$((${interfacenum}+1))"
-    unset STATE_DESC state_desc num_spaces_state space_string_state
   done
   # User Input for Interface
   while [[ -n "${interfacesnum+x}" ]] &>/dev/null;do  
@@ -3380,7 +3379,7 @@ INTERFACES=""
       fi
     done
   done
-  unset interfacesnum interfacenum interfacesel
+  unset interfacesnum interfacenum interfacesel STATE_DESC state_desc num_spaces_state space_string_state
   
   return
 }
