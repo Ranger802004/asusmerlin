@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/15/2025
-# Version: v3.2.0-beta3
+# Date: 05/17/2025
+# Version: v3.2.0
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.2.0-beta3"
+VERSION="v3.2.0"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -1626,10 +1626,10 @@ return
 # Delete IPSets format prior to version 2.1.4
 deleteoldipsetsprev300 ()
 {
-  DELETEOLDIPSETPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+  DELETEOLDIPSETPOLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
   for DELETEOLDIPSETPOLICY in ${DELETEOLDIPSETPOLICIES};do
     # Determine Interface and Route Table for IP Routes to delete.
-    INTERFACE="$(awk -F "|" '/^'${DELETEOLDIPSETPOLICY}'/ {print $4}' ${CONFIGFILE})"
+    INTERFACE="$(awk -F "|" '$1 == "'${DELETEOLDIPSETPOLICY}'" {print $4}' ${CONFIGFILE})"
     routingdirector || return
     # Delete IPv6 IP6Tables OUTPUT Rule
     if [[ -n "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "DomainVPNRouting-'${DELETEOLDIPSETPOLICY}'-ipv6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
@@ -3312,52 +3312,61 @@ wgc4
 wgc5
 '
 
-INTERFACES=""
+interfaces=""
   # Check if OpenVPN Interfaces are Active
   for OVPNCONFIGFILE in ${OVPNCONFIGFILES};do
     if [[ -f "${OVPNCONFIGFILE}" ]] &>/dev/null;then
       if [[ -n "$(echo ${OVPNCONFIGFILE} | grep -e "client")" ]] &>/dev/null;then
-        INTERFACE="ovpnc"$(echo ${OVPNCONFIGFILE} | grep -o '[0-9]')""
+        interface="ovpnc"$(echo ${OVPNCONFIGFILE} | grep -o '[0-9]')""
       elif [[ -n "$(echo ${OVPNCONFIGFILE} | grep -e "server")" ]] &>/dev/null;then
-        INTERFACE="ovpns"$(echo ${OVPNCONFIGFILE} | grep -o '[0-9]')""
+        interface="ovpns"$(echo ${OVPNCONFIGFILE} | grep -o '[0-9]')""
       fi
-      INTERFACES="${INTERFACES} ${INTERFACE}"
+      interfaces="${interfaces} ${interface}"
     fi
   done
 
   # Check if Wireguard Interfaces are Active
   for WGINTERFACE in ${WGINTERFACES};do
 	if [[ -n "$(ifconfig ${WGINTERFACE} 2>/dev/null | grep -o "${WGINTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${WGINTERFACE}" ]] &>/dev/null || [[ "${WGINTERFACE}" == "$(/usr/sbin/wg show ${WGINTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
-      INTERFACE="${WGINTERFACE}"
+      interface="${WGINTERFACE}"
     elif [[ -n "$(awk '$1 == "interface:" {print $2}' /etc/wg/${WGINTERFACE}.log 2>/dev/null)" ]] &>/dev/null;then
-      INTERFACE="${WGINTERFACE}"
+      interface="${WGINTERFACE}"
     else
       continue
     fi
-	INTERFACES="${INTERFACES} ${INTERFACE}"
+	interfaces="${interfaces} ${interface}"
   done
   
   # Generate available WAN interfaces
   if [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null;then
-    INTERFACES="${INTERFACES} wan"
+    interfaces="${interfaces} wan"
   elif [[ "${WANSDUALWANENABLE}" == "1" ]] &>/dev/null;then
-    INTERFACES="${INTERFACES} wan wan0 wan1"
+    interfaces="${interfaces} wan wan0 wan1"
   fi
+  
+  # Convert string to new line list
+  interfaces=${interfaces// /$'\n'}
+  interfaces="$(echo "${interfaces}" | sort -u)"
   
   # Generate Interface List
   interfacesnum=""
   interfacenum="1"
+  interfacecount="$(echo "${interfaces}" | wc -w)"
+  interfacemaxlen="$(($(echo "${interfaces}" | awk '{ print length }' | sort -n | tail -1)+1))"
   echo -e "${BOLD}Interfaces:${NOCOLOR}"
-  for INTERFACE in ${INTERFACES};do
+  for interface in ${interfaces};do
+    # Get Interface Status
+    INTERFACE="${interface}"
     routingdirector || continue
+    unset INTERFACE
 	
     # Set UI menu spacing
-	num_spaces_state="$((8-${#INTERFACE}))"
-    space_string_state=$(printf "%*s" "${num_spaces_state}" "")
+    interfacenumlenstring=$(printf "%*s" "$(((${#interfacecount}+1)-${#interfacenum}))" "")
+    space_string_state=$(printf "%*s" "$((${interfacemaxlen}-${#interface}))" "")
 	
     # Display policy
-    echo -e "${BOLD}${interfacenum}:${NOCOLOR} ${INTERFACE}${space_string_state}(${state_desc})"
-	interfacesnum="${interfacesnum} ${interfacenum}|${INTERFACE}"
+    echo -e "${BOLD}${interfacenum}:${NOCOLOR}${interfacenumlenstring}${interface}${space_string_state}(${state_desc})"
+	interfacesnum="${interfacesnum} ${interfacenum}|${interface}"
     interfacenum="$((${interfacenum}+1))"
   done
   # User Input for Interface
@@ -3379,7 +3388,7 @@ INTERFACES=""
       fi
     done
   done
-  unset interfacesnum interfacenum interfacesel STATE_DESC state_desc num_spaces_state space_string_state
+  unset interfaces interfacesnum interfacenum interfacesel STATE_DESC state_desc space_string_state interfacecount interfacenumlenstring interfacemaxlen OVPNCONFIGFILES WGINTERFACES
   
   return
 }
@@ -3956,11 +3965,18 @@ if [[ "${mode}" == "createpolicy" ]] &>/dev/null;then
   while true;do  
     read -r -p "Policy Name (Maximum Length: ${POLICYNAMEMAXLENGTH} characters):" NEWPOLICYNAME
 	  # Check Policy Name Length
-      if [[ "${#NEWPOLICYNAME}" -gt "${POLICYNAMEMAXLENGTH}" ]] &>/dev/null;then
+      if [[ -z "${NEWPOLICYNAME}" ]] &>/dev/null;then
+        echo -e "${RED}***No Policy name was entered***${NOCOLOR}"
+        unset NEWPOLICYNAME
+        return 1
+      elif [[ "${#NEWPOLICYNAME}" -gt "${POLICYNAMEMAXLENGTH}" ]] &>/dev/null;then
         echo -e "${RED}***Enter a policy name that is less than ${POLICYNAMEMAXLENGTH} characters***${NOCOLOR}"
         continue
       elif [[ "${NEWPOLICYNAME}" == "all" ]] &>/dev/null;then
         echo -e "${RED}***Policy name reserved for ${FRIENDLYNAME}***${NOCOLOR}"
+        continue
+      elif [[ -n "$(awk -F "|" '$1 == "'${NEWPOLICYNAME}'" {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+        echo -e "${RED}***Policy already exists***${NOCOLOR}"
         continue
       fi
 	  # Check Policy Name Characters
@@ -4023,13 +4039,16 @@ if [[ "${mode}" == "createpolicy" ]] &>/dev/null;then
     || logger -p 2 -st "${ALIAS}" "Create Policy - ***Error*** Failed to create ${POLICYDIR}/policy_${CREATEPOLICYNAME}_domaintoIP"
   fi
   # Adding Policy to Config File
-  if [[ -z "$(awk -F "|" '/^'${CREATEPOLICYNAME}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+  if [[ -z "$(awk -F "|" '$1 == "'${CREATEPOLICYNAME}'" {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
     logger -p 5 -st "${ALIAS}" "Create Policy - Adding ${CREATEPOLICYNAME} to ${CONFIGFILE}"
     echo -e "${CREATEPOLICYNAME}|${POLICYDIR}/policy_${CREATEPOLICYNAME}_domainlist|${POLICYDIR}/policy_${CREATEPOLICYNAME}_domaintoIP|${CREATEPOLICYINTERFACE}|${SETVERBOSELOGGING}|${SETPRIVATEIPS}|${SETADDCNAMES}" >> ${CONFIGFILE} \
     && logger -p 4 -st "${ALIAS}" "Create Policy - Added ${CREATEPOLICYNAME} to ${CONFIGFILE}" \
     || logger -p 2 -st "${ALIAS}" "Create Policy - ***Error*** Failed to add ${CREATEPOLICYNAME} to ${CONFIGFILE}"
+  else
+    logger -p 2 -st "${ALIAS}" "Create Policy - ***Error*** Policy already exists"
   fi
 fi
+
 return
 }
 
@@ -4078,7 +4097,7 @@ if [[ "${mode}" == "addasn" ]] &>/dev/null;then
     || { logger -p 2 -st "${ALIAS}" "Add ASN - ***Error*** Failed to create ${ASNFILE}" && return 1 ;}
   fi
   # Adding Policy to Config File
-  if [[ -z "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})" ]] &>/dev/null;then
+  if [[ -z "$(awk -F "|" '$1 == "'${ASN}'" {print $1}' ${ASNFILE})" ]] &>/dev/null;then
     logger -p 5 -st "${ALIAS}" "Add ASN - Adding ${ASN} to ${ASNFILE}"
     echo -e "${ASN}|${ADDASNINTERFACE}" >> ${ASNFILE} \
     && logger -p 4 -st "${ALIAS}" "Add ASN - Added ${ASN} to ${ASNFILE}" \
@@ -4102,17 +4121,18 @@ setprocesspriority
 if [[ "${mode}" == "deleteasn" ]] &>/dev/null || [[ "${mode}" == "uninstall" ]] &>/dev/null;then
   if [[ "${ASN}" == "all" ]] &>/dev/null;then
     [[ "${mode}" != "uninstall" ]] &>/dev/null && read -n 1 -s -r -p "Press any key to continue to delete all ASNs" && printf "\n"
-    ASNS="$(awk -F"|" '{print $1}' ${ASNFILE})"
-  elif [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})" ]] &>/dev/null;then
+    ASNS="$(awk -F "|" '{print $1}' ${ASNFILE})"
+  elif [[ -n "$(awk -F "|" '$1 == "'${ASN}'" {print $1}' ${ASNFILE})" ]] &>/dev/null;then
     read -n 1 -s -r -p "Press any key to continue to delete ASN: ${ASN}" && printf "\n"
     ASNS=${ASN}
   else
     echo -e "${RED}Policy: ${ASN} not found${NOCOLOR}"
-    return
+    unset ASN
+    return 1
   fi
   for ASN in ${ASNS};do
     # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
-    INTERFACE="$(awk -F "|" '/^'${ASN}'/ {print $2}' ${ASNFILE})"
+    INTERFACE="$(awk -F "|" '$1 == "'${ASN}'" {print $2}' ${ASNFILE})"
     routingdirector || return
 
     # Delete IP FWMark Rules
@@ -4210,55 +4230,72 @@ showpolicy ()
 {
 if [[ "${POLICY}" == "all" ]] &>/dev/null;then
   policiesnum=""
-  policies="all $(awk -F "|" '{print $1}' ${CONFIGFILE})"
+  policies="all $(awk -F "|" '{print $1}' ${CONFIGFILE} | sort -u)"
+  policies=${policies// /$'\n'}
+  interfaces="$(awk -F "|" '{print $4}' ${CONFIGFILE} | sort -u)"
+  interfacemaxlen="$(($(echo "${interfaces}" | grep -v "all" | awk '{ print length }' | sort -n | tail -1)+1))"
+  policycount="$(echo "${policies}" | grep -v "all" | wc -w)"
+  policymaxlen="$(($(echo "${policies}" | grep -v "all" | awk '{ print length }' | sort -n | tail -1)+1))"
   policynum="1"
-  echo -e "${BOLD}Policy:                     Interface:${NOCOLOR}"
+  header="Policy:"
+  space_string_header=$(printf "%*s" "$(((${#policycount}+${policymaxlen}+2)-${#header}))" "")
+  interfaces_status=""
+  echo -e "${BOLD}${header}${space_string_header}Interface:${NOCOLOR}"
   for policy in ${policies};do
+    # Set UI menu spacing
+	policynumlenstring=$(printf "%*s" "$(((${#policycount}+1)-${#policynum}))" "")
+
     if [[ "${policy}" == "all" ]] &>/dev/null && { [[ "${mode}" == "showpolicy" ]] &>/dev/null || [[ "${mode}" == "editpolicy" ]] &>/dev/null || [[ "${mode}" == "adddomain" ]] &>/dev/null || [[ "${mode}" == "deletedomain" ]] &>/dev/null || [[ "${mode}" == "deleteip" ]] &>/dev/null ;};then
       continue
     elif [[ "${policy}" == "all" ]] &>/dev/null;then
-	  echo -e "${BOLD}${policynum}:${NOCOLOR} (All Policies)"
+	  echo -e "${BOLD}${policynum}:${policynumlenstring}(All Policies)${NOCOLOR}"
     else
+      # Get Interface Status
       INTERFACE="$(awk -F "|" '$1 == "'${policy}'" {print $4}' ${CONFIGFILE})"
-      routingdirector || continue
+      if [[ -z "$(echo "${interfaces_status}" | grep -o "${INTERFACE}")" ]] &>/dev/null;then 
+        routingdirector || continue
+        interfaces_status="${interfaces_status} ${INTERFACE}|${state_desc}"
+      else
+        state_desc="$(echo "${interfaces_status}" | grep -Eo "${INTERFACE}|\S*" | awk -F "|" '$1 == "'${INTERFACE}'" {print $2}')"
+      fi
+	  
       # Set UI menu spacing
-	  num_spaces_interface="$((25-${#policy}))"
-      space_string_interface=$(printf "%*s" "${num_spaces_interface}" "")
-      num_spaces_state="$((8-${#INTERFACE}))"
-      space_string_state=$(printf "%*s" "${num_spaces_state}" "")
+      space_string_interface=$(printf "%*s" "$((${policymaxlen}-${#policy}))" "")
+      space_string_state=$(printf "%*s" "$((${interfacemaxlen}-${#INTERFACE}))" "")
+
       # Display policy
-      echo -e "${BOLD}${policynum}:${NOCOLOR} ${policy}${space_string_interface}${INTERFACE}${space_string_state}(${state_desc})"
+      echo -e "${BOLD}${policynum}:${NOCOLOR}${policynumlenstring}${policy}${space_string_interface}${INTERFACE}${space_string_state}(${state_desc})"
     fi
 	policiesnum="${policiesnum} ${policynum}|${policy}"
     policynum="$((${policynum}+1))"
   done
-  unset policynum INTERFACE STATE_DESC num_spaces_interface space_string_interface num_spaces_state space_string_state state_desc
+  unset policynum INTERFACE STATE_DESC header space_string_header space_string_interface space_string_state state_desc policynumlenstring policycount policymaxlen interfaces_status interfaces interfacemaxlen
   return
-elif [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+elif [[ "${POLICY}" == "$(awk -F "|" '$1 == "'${POLICY}'" {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
   INTERFACE="$(awk -F "|" '$1 == "'${POLICY}'" {print $4}' ${CONFIGFILE})"
   routingdirector || continue
   # Display policy details
   echo -e "${BOLD}Policy Name:${NOCOLOR} ${POLICY}"
   echo -e "${BOLD}Interface:${NOCOLOR} ${INTERFACE}  (${state_desc})"
-  if [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
+  if [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
     echo -e "${BOLD}Verbose Logging:${NOCOLOR} Enabled"
-  elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
     echo -e "${BOLD}Verbose Logging:${NOCOLOR} Disabled"
-  elif [[ -z "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
+  elif [[ -z "$(awk -F "|" '$1 == "'${POLICY}'" {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
     echo -e "${BOLD}Verbose Logging:${NOCOLOR} Not Configured"
   fi
-  if [[ "$(awk -F "|" '/^'${POLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=1" ]] &>/dev/null;then
+  if [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=1" ]] &>/dev/null;then
     echo -e "${BOLD}Private IP Addresses:${NOCOLOR} Enabled"
-  elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=0" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=0" ]] &>/dev/null;then
     echo -e "${BOLD}Private IP Addresses:${NOCOLOR} Disabled"
-  elif [[ -z "$(awk -F "|" '/^'${POLICY}'/ {print $6}' ${CONFIGFILE})" ]] &>/dev/null;then
+  elif [[ -z "$(awk -F "|" '$1 == "'${POLICY}'" {print $6}' ${CONFIGFILE})" ]] &>/dev/null;then
     echo -e "${BOLD}Private IP Addresses:${NOCOLOR} Not Configured"
   fi
-  if [[ "$(awk -F "|" '/^'${POLICY}'/ {print $7}' ${CONFIGFILE})" == "ADDCNAMES=1" ]] &>/dev/null;then
+  if [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $7}' ${CONFIGFILE})" == "ADDCNAMES=1" ]] &>/dev/null;then
     echo -e "${BOLD}Add CNAMES:${NOCOLOR} Enabled"
-  elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $7}' ${CONFIGFILE})" == "ADDCNAMES=0" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $7}' ${CONFIGFILE})" == "ADDCNAMES=0" ]] &>/dev/null;then
     echo -e "${BOLD}Add CNAMES:${NOCOLOR} Disabled"
-  elif [[ -z "$(awk -F "|" '/^'${POLICY}'/ {print $7}' ${CONFIGFILE})" ]] &>/dev/null;then
+  elif [[ -z "$(awk -F "|" '$1 == "'${POLICY}'" {print $7}' ${CONFIGFILE})" ]] &>/dev/null;then
     echo -e "${BOLD}Add CNAMES:${NOCOLOR} Not Configured"
   fi
   DOMAINS="$(cat ${POLICYDIR}/policy_${POLICY}_domainlist | sort -u)"
@@ -4283,22 +4320,39 @@ showasn ()
 {
 if [[ "${ASN}" == "all" ]] &>/dev/null && [[ -f "${ASNFILE}" ]] &>/dev/null;then
   [[ -z "${asnsnum+x}" ]] &>/dev/null && asnsnum=""
-  asns="all $(awk -F "|" '{print $1}' ${ASNFILE})"
+  asns="all $(awk -F "|" '{print $1}' ${ASNFILE} | sort -u)"
+  asns=${asns// /$'\n'}
   asnnum="1"
-  echo -e "${BOLD}ASN:                        Interface:${NOCOLOR}"
+  interfaces="$(awk -F "|" '{print $2}' ${ASNFILE} | sort -u)"
+  interfacemaxlen="$(($(echo "${interfaces}" | grep -v "all" | awk '{ print length }' | sort -n | tail -1)+1))"
+  asncount="$(echo "${asns}" | grep -v "all" | wc -w)"
+  asnmaxlen="$(($(echo "${asns}" | grep -v "all" | awk '{ print length }' | sort -n | tail -1)+1))"
+  header="ASN:"
+  space_string_header=$(printf "%*s" "$(((${#asncount}+${asnmaxlen}+2)-${#header}))" "")
+  interfaces_status=""
+  echo -e "${BOLD}${header}${space_string_header}Interface:${NOCOLOR}"
   for asn in ${asns};do
+    # Set UI menu spacing
+    asnnumlenstring=$(printf "%*s" "$(((${#asncount}+1)-${#asnnum}))" "")  
+
     if [[ "${asn}" == "all" ]] &>/dev/null && { [[ "${mode}" == "showasn" ]] &>/dev/null || [[ "${mode}" == "editasn" ]] &>/dev/null || [[ "${mode}" == "addasn" ]] &>/dev/null || [[ "${mode}" == "deleteasn" ]] &>/dev/null ;};then
       continue
     elif [[ "${asn}" == "all" ]] &>/dev/null;then
-      echo -e "${BOLD}${asnnum}:${NOCOLOR} (All ASNs)"
+      echo -e "${BOLD}${asnnum}:${asnnumlenstring}(All ASNs)${NOCOLOR}"
     else
-      INTERFACE="$(awk -F "|" '/^'${asn}'/ {print $2}' ${ASNFILE})"
-      routingdirector || continue
+      # Get Interface Status
+      INTERFACE="$(awk -F "|" '$1 == "'${asn}'" {print $2}' ${ASNFILE})"
+      if [[ -z "$(echo "${interfaces_status}" | grep -o "${INTERFACE}")" ]] &>/dev/null;then 
+        routingdirector || continue
+        interfaces_status="${interfaces_status} ${INTERFACE}|${state_desc}"
+      else
+        state_desc="$(echo "${interfaces_status}" | grep -Eo "${INTERFACE}|\S*" | awk -F "|" '$1 == "'${INTERFACE}'" {print $2}')"
+      fi
+	  
       # Set UI menu spacing
-	  num_spaces_interface="$((25-${#asn}))"
-      space_string_interface=$(printf "%*s" "${num_spaces_interface}" "")
-      num_spaces_state="$((8-${#INTERFACE}))"
-      space_string_state=$(printf "%*s" "${num_spaces_state}" "")
+      space_string_interface=$(printf "%*s" "$((${asnmaxlen}-${#asn}))" "")
+      space_string_state=$(printf "%*s" "$((${interfacemaxlen}-${#INTERFACE}))" "")
+	  
 	  # Display ASN
       echo -e "${BOLD}${asnnum}:${NOCOLOR} ${asn}${space_string_interface}${INTERFACE}${space_string_state}(${state_desc})"
     fi
@@ -4306,12 +4360,12 @@ if [[ "${ASN}" == "all" ]] &>/dev/null && [[ -f "${ASNFILE}" ]] &>/dev/null;then
     asnnum="$((${asnnum}+1))"
   done
   
-  unset asnnum INTERFACE STATE_DESC num_spaces_interface space_string_interface num_spaces_state space_string_state state_desc
+  unset asnnum INTERFACE STATE_DESC space_string_interface space_string_state state_desc interfaces interfacemaxlen asncount asnmaxlen asnnumlenstring interfaces_status header
   return
-elif [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE} 2>/dev/null)" ]] &>/dev/null && [[ -f "${ASNFILE}" ]] &>/dev/null;then
-  INTERFACE="$(awk -F "|" '/^'${ASN}'/ {print $2}' ${ASNFILE})"
+elif [[ "${ASN}" == "$(awk -F "|" '$1 == "'${ASN}'" {print $1}' ${ASNFILE} 2>/dev/null)" ]] &>/dev/null && [[ -f "${ASNFILE}" ]] &>/dev/null;then
+  INTERFACE="$(awk -F "|" '$1 == "'${ASN}'" {print $2}' ${ASNFILE})"
   routingdirector || continue
-  echo -e "${BOLD}ASN:${NOCOLOR} $(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})"
+  echo -e "${BOLD}ASN:${NOCOLOR} $(awk -F "|" '$1 == "'${ASN}'" {print $1}' ${ASNFILE})"
   echo -e "${BOLD}Interface:${NOCOLOR} ${INTERFACE}  (${state_desc})"
   if [[ -f "/tmp/${ASN}_query.tmp" ]] &>/dev/null;then
     echo -e "${BOLD}Status: ${NOCOLOR}${YELLOW}Querying${NOCOLOR}"
@@ -4362,14 +4416,14 @@ if [[ ! -f "${ASNFILE}" ]] &>/dev/null;then
   fi
   return
 elif [[ "${ASN}" == "all" ]] &>/dev/null;then
-  QUERYASNS="$(awk -F"|" '{print $1}' ${ASNFILE})"
+  QUERYASNS="$(awk -F "|" '{print $1}' ${ASNFILE} | sort -u)"
   if [[ -z "${QUERYASNS}" ]] &>/dev/null;then
     if [[ "${mode}" == "queryasn" ]] &>/dev/null;then
       logger -p 3 -st "${ALIAS}" "Query ASN - ***No ASNs Detected***"
     fi
     return
   fi
-elif [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})" ]] &>/dev/null;then
+elif [[ "${ASN}" == "$(awk -F "|" '$1 == "'${ASN}'" {print $1}' ${ASNFILE})" ]] &>/dev/null;then
   QUERYASNS="${ASN}"
 else
   echo -e "${RED}ASN: ${ASN} not found${NOCOLOR}"
@@ -4404,7 +4458,7 @@ fi
 # Query ASNs
 for QUERYASN in ${QUERYASNS};do
   # Get Interface for ASN
-  INTERFACE="$(grep -w "${QUERYASN}" "${ASNFILE}" | awk -F"|" '{print $2}')"
+  INTERFACE="$(grep -w "${QUERYASN}" "${ASNFILE}" | awk -F "|" '{print $2}')"
   routingdirector || return
   
   # Query ASN for IP Subnets
@@ -4480,7 +4534,7 @@ for QUERYASN in ${QUERYASNS};do
     # Add ASN IPv6 Subnets to IPSET
     if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "/tmp/${QUERYASN}-IPv6.tmp" ]] &>/dev/null;then
       # Create IPv6 IPSET temporary file
-      ipset list ${IPSETPREFIX}-${QUERYASN}-v6 2>/dev/null | grep -E "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" > /tmp/${IPSETPREFIX}-${QUERYASN}-addv6.tmp ; { tempfile="/tmp/${IPSETPREFIX}-${QUERYASN}-addv6.tmp" && tempfiles="${tempfiles} ${tempfile}" ;}
+      ipset list ${IPSETPREFIX}-${QUERYASN}-v6 2>/dev/null | grep -E "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" | sort -u > /tmp/${IPSETPREFIX}-${QUERYASN}-addv6.tmp ; { tempfile="/tmp/${IPSETPREFIX}-${QUERYASN}-addv6.tmp" && tempfiles="${tempfiles} ${tempfile}" ;}
 
       # Check if ASN IPv6 Subnets match IPSET
 	  if ! diff "/tmp/${IPSETPREFIX}-${QUERYASN}-addv6.tmp" "/tmp/${QUERYASN}-IPv6.tmp" &>/dev/null;then
@@ -4505,7 +4559,7 @@ for QUERYASN in ${QUERYASNS};do
     # Cleanup IPv6 IPSET
     if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "/tmp/${QUERYASN}-IPv6.tmp" ]] &>/dev/null;then
       # Create IPv6 IPSET temporary file
-      ipset list ${IPSETPREFIX}-${QUERYASN}-v6 2>/dev/null | grep -E "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" > /tmp/${IPSETPREFIX}-${QUERYASN}-removev6.tmp ; { tempfile="/tmp/${IPSETPREFIX}-${QUERYASN}-removev6.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
+      ipset list ${IPSETPREFIX}-${QUERYASN}-v6 2>/dev/null | grep -E "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" | sort -u > /tmp/${IPSETPREFIX}-${QUERYASN}-removev6.tmp ; { tempfile="/tmp/${IPSETPREFIX}-${QUERYASN}-removev6.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
 
       # Check if ASN IPv6 Subnets match IPSET
       if ! diff "/tmp/${QUERYASN}-IPv6.tmp" "/tmp/${IPSETPREFIX}-${QUERYASN}-removev6.tmp" &>/dev/null;then
@@ -4597,7 +4651,7 @@ for QUERYASN in ${QUERYASNS};do
   # Add ASN IPv4 Subnets to IPSET
   if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "/tmp/${QUERYASN}-IPv4.tmp" ]] &>/dev/null;then
     # Create IPv4 IPSET temporary file
-    ipset list ${IPSETPREFIX}-${QUERYASN}-v4 2>/dev/null | grep -E "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" > /tmp/${IPSETPREFIX}-${QUERYASN}-addv4.tmp ; { tempfile="/tmp/${IPSETPREFIX}-${QUERYASN}-addv4.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
+    ipset list ${IPSETPREFIX}-${QUERYASN}-v4 2>/dev/null | grep -E "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | sort -u > /tmp/${IPSETPREFIX}-${QUERYASN}-addv4.tmp ; { tempfile="/tmp/${IPSETPREFIX}-${QUERYASN}-addv4.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
 	
     # Check if ASN IPv6 Subnets match IPSET
 	if ! diff "/tmp/${IPSETPREFIX}-${QUERYASN}-addv4.tmp" "/tmp/${QUERYASN}-IPv4.tmp" &>/dev/null;then
@@ -4622,7 +4676,7 @@ for QUERYASN in ${QUERYASNS};do
   # Cleanup IPv4 IPSET
   if [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "/tmp/${QUERYASN}-IPv4.tmp" ]] &>/dev/null;then
     # Create IPv4 IPSET temporary file
-    ipset list ${IPSETPREFIX}-${QUERYASN}-v4 2>/dev/null | grep -E "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" > /tmp/${IPSETPREFIX}-${QUERYASN}-removev4.tmp ; { tempfile="/tmp/${IPSETPREFIX}-${QUERYASN}-removev4.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
+    ipset list ${IPSETPREFIX}-${QUERYASN}-v4 2>/dev/null | grep -E "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | sort -u > /tmp/${IPSETPREFIX}-${QUERYASN}-removev4.tmp ; { tempfile="/tmp/${IPSETPREFIX}-${QUERYASN}-removev4.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
 	
     # Check if ASN IPv4 Subnets match IPSET
 	if ! diff "/tmp/${QUERYASN}-IPv4.tmp" "/tmp/${IPSETPREFIX}-${QUERYASN}-removev4.tmp" &>/dev/null;then
@@ -4688,12 +4742,17 @@ editpolicy ()
 {
 # Prompt for confirmation to edit policy
 if [[ "${mode}" == "editpolicy" ]] &>/dev/null;then
-  if [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+  if [[ -z "${POLICY}" ]] &>/dev/null;then
+    echo -e "${RED}***No Policy name was entered***${NOCOLOR}"
+    unset POLICY
+    return 1
+  elif [[ -n "$(awk -F "|" '$1 == "'${POLICY}'" {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
     read -n 1 -s -r -p "Press any key to continue to edit Policy: ${POLICY}" && printf "\n"
     EDITPOLICY="${POLICY}"
   else
     echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
-    return
+    unset POLICY
+    return 1
   fi
 
   # Generate Interfaces
@@ -4737,9 +4796,9 @@ if [[ "${mode}" == "editpolicy" ]] &>/dev/null;then
   setprocesspriority
   
   # Editing Policy in Config File
-  if [[ -n "$(awk -F "|" '/^'${EDITPOLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+  if [[ -n "$(awk -F "|" '$1 == "'${EDITPOLICY}'" {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Edit Policy - Modifying ${EDITPOLICY} in ${CONFIGFILE}"
-    OLDINTERFACE="$(awk -F "|" '/^'${EDITPOLICY}'/ {print $4}' ${CONFIGFILE})"
+    OLDINTERFACE="$(awk -F "|" '$1 == "'${EDITPOLICY}'" {print $4}' ${CONFIGFILE})"
     sed -i "\:"${EDITPOLICY}":d" "${CONFIGFILE}"
     echo -e "${EDITPOLICY}|${POLICYDIR}/policy_${EDITPOLICY}_domainlist|${POLICYDIR}/policy_${EDITPOLICY}_domaintoIP|${NEWPOLICYINTERFACE}|${SETVERBOSELOGGING}|${SETPRIVATEIPS}|${SETADDCNAMES}" >> ${CONFIGFILE} \
     && logger -p 4 -st "${ALIAS}" "Edit Policy - Modified ${EDITPOLICY} in ${CONFIGFILE}" \
@@ -5024,12 +5083,12 @@ editasn ()
 {
 # Prompt for confirmation to edit policy
 if [[ "${mode}" == "editasn" ]] &>/dev/null;then
-  if [[ "${ASN}" == "$(awk -F "|" '/^'${ASN}'/ {print $1}' ${ASNFILE})" ]] &>/dev/null;then
+  if [[ -n "$(awk -F "|" '$1 == "'${ASN}'" {print $1}' ${ASNFILE})" ]] &>/dev/null;then
     read -n 1 -s -r -p "Press any key to continue to edit ASN: ${ASN}" && printf "\n"
     EDITASN="${ASN}"
   else
     echo -e "${RED}${ASN} not found${NOCOLOR}"
-    return
+    return 1
   fi
 
   # Generate Interfaces
@@ -5043,9 +5102,9 @@ if [[ "${mode}" == "editasn" ]] &>/dev/null;then
   setprocesspriority
   
   # Editing Policy in Config File
-  if [[ -n "$(awk -F "|" '/^'${EDITASN}'/ {print $1}' ${ASNFILE})" ]] &>/dev/null;then
+  if [[ -n "$(awk -F "|" '$1 == "'${EDITASN}'" {print $1}' ${ASNFILE})" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Edit ASN - Modifying ${EDITASN} in ${ASNFILE}"
-    OLDINTERFACE="$(awk -F "|" '/^'${EDITASN}'/ {print $2}' ${ASNFILE})"
+    OLDINTERFACE="$(awk -F "|" '$1 == "'${EDITASN}'" {print $2}' ${ASNFILE})"
     sed -i "\:"${EDITASN}":d" "${ASNFILE}"
     echo -e "${EDITASN}|${NEWASNINTERFACE}" >> ${ASNFILE} \
     && logger -p 4 -st "${ALIAS}" "Edit ASN - Modified ${EDITASN} in ${ASNFILE}" \
@@ -5203,19 +5262,24 @@ deletepolicy ()
 {
 # Prompt for confirmation
 if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" ]] &>/dev/null;then
-  if [[ "${POLICY}" == "all" ]] &>/dev/null;then
+  if [[ -z "${POLICY}" ]] &>/dev/null;then
+    echo -e "${RED}***No Policy name was entered***${NOCOLOR}"
+    unset POLICY
+    return 1
+  elif [[ "${POLICY}" == "all" ]] &>/dev/null;then
     [[ "${mode}" != "uninstall" ]] &>/dev/null && read -n 1 -s -r -p "Press any key to continue to delete all policies" && printf "\n"
-    DELETEPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
-  elif [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+    DELETEPOLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
+  elif [[ -n "$(awk -F "|" '$1 == "'${POLICY}'" {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
     read -n 1 -s -r -p "Press any key to continue to delete Policy: ${POLICY}" && printf "\n"
     DELETEPOLICIES=${POLICY}
   else
     echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
-    return
+    unset POLICY
+    return 1
   fi
   for DELETEPOLICY in ${DELETEPOLICIES};do
     # Determine Interface and Route Table for IP Routes to delete.
-    INTERFACE="$(awk -F "|" '/^'${DELETEPOLICY}'/ {print $4}' ${CONFIGFILE})"
+    INTERFACE="$(awk -F "|" '$1 == "'${DELETEPOLICY}'" {print $4}' ${CONFIGFILE})"
     routingdirector || return
 
     # Create IPv4 and IPv6 Arrays from Policy File. 
@@ -5343,7 +5407,7 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" 
       || logger -p 2 -st "${ALIAS}" "Delete Policy - ***Error*** Failed to delete ${POLICYDIR}/policy_${DELETEPOLICY}_domaintoIP"
     fi
     # Removing Policy from Config File
-    if [[ -n "$(awk -F "|" '/^'${DELETEPOLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+    if [[ -n "$(awk -F "|" '$1 == "'${DELETEPOLICY}'" {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
       logger -p 5 -st "${ALIAS}" "Delete Policy - Deleting ${DELETEPOLICY} to ${CONFIGFILE}"
       POLICYTODELETE="$(grep -w "${DELETEPOLICY}" ${CONFIGFILE})"
       sed -i "\:"${POLICYTODELETE}":d" "${CONFIGFILE}" \
@@ -5352,6 +5416,9 @@ if [[ "${mode}" == "deletepolicy" ]] &>/dev/null || [[ "${mode}" == "uninstall" 
     fi
   done
 fi
+
+unset DELETEPOLICIES POLICY
+
 return
 }
 
@@ -5369,7 +5436,11 @@ if [[ -n "${DOMAIN}" ]] &>/dev/null;then
       printf "\n"
       read -r -p "Select the Policy where you want to add ${DOMAIN}: " value
       for policysel in ${policiesnum};do
-        if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+        if [[ -z "${value}" ]] &>/dev/null;then
+          echo -e "${RED}***No policy selected***${NOCOLOR}"
+		  unset value
+          return 1
+        elif [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
           POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
           break 2
         elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
@@ -5412,7 +5483,11 @@ if [[ -z "${POLICY+x}" ]] &>/dev/null;then
     printf "\n"
     read -r -p "Select the Policy where you want to delete ${DOMAIN}: " value
     for policysel in ${policiesnum};do
-      if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+      if [[ -z "${value}" ]] &>/dev/null;then
+        echo -e "${RED}***No policy selected***${NOCOLOR}"
+		unset value
+        return 1
+      elif [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
         POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
         break 2
       elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
@@ -5432,15 +5507,15 @@ setprocesspriority
 if [[ -n "${DOMAIN}" ]] &>/dev/null;then
   if [[ -n "$(awk '$0 == "'${DOMAIN}'" {print}' "${POLICYDIR}/policy_${POLICY}_domainlist")" ]] &>/dev/null;then
     # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
-    DOMAINLIST="$(awk -F "|" '/^'${POLICY}'/ {print $2}' ${CONFIGFILE})"
-    DOMAINIPLIST="$(awk -F "|" '/^'${POLICY}'/ {print $3}' ${CONFIGFILE})"
-    INTERFACE="$(awk -F "|" '/^'${POLICY}'/ {print $4}' ${CONFIGFILE})"
+    DOMAINLIST="$(awk -F "|" '$1 == "'${POLICY}'" {print $2}' ${CONFIGFILE})"
+    DOMAINIPLIST="$(awk -F "|" '$1 == "'${POLICY}'" {print $3}' ${CONFIGFILE})"
+    INTERFACE="$(awk -F "|" '$1 == "'${POLICY}'" {print $4}' ${CONFIGFILE})"
     # Check if Verbose Logging is Enabled
-    if [[ -z "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
+    if [[ -z "$(awk -F "|" '$1 == "'${POLICY}'" {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
       VERBOSELOGGING="1"
-    elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
+    elif [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
       VERBOSELOGGING="0"
-    elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
+    elif [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
       VERBOSELOGGING="1"
     fi
     routingdirector || return
@@ -5583,7 +5658,11 @@ if [[ -z "${POLICY+x}" ]] &>/dev/null;then
     printf "\n"
     read -r -p "Select the Policy where you want to delete ${IP}: " value
     for policysel in ${policiesnum};do
-      if [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
+      if [[ -z "${value}" ]] &>/dev/null;then
+        echo -e "${RED}***No policy selected***${NOCOLOR}"
+		unset value
+        return 1
+      elif [[ "${value}" == "$(echo ${policysel} | awk -F "|" '{print $1}')" ]] &>/dev/null;then
         POLICY="$(echo ${policysel} | awk -F "|" '{print $2}')"
         break 2
       elif [[ -z "$(echo ${policiesnum} | grep -o "${value}|")" ]] &>/dev/null;then
@@ -5603,14 +5682,14 @@ setprocesspriority
 if [[ -n "${IP}" ]] &>/dev/null;then
   if [[ -n "$(grep -w "${IP}" "${POLICYDIR}/policy_${POLICY}_domaintoIP" | grep -oE "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))")" ]] &>/dev/null;then
     # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
-    DOMAINIPLIST="$(awk -F"|" '/^'${POLICY}'/ {print $3}' ${CONFIGFILE})"
-    INTERFACE="$(awk -F"|" '/^'${POLICY}'/ {print $4}' ${CONFIGFILE})"
+    DOMAINIPLIST="$(awk -F "|" '$1 == "'${POLICY}'" {print $3}' ${CONFIGFILE})"
+    INTERFACE="$(awk -F "|" '$1 == "'${POLICY}'" {print $4}' ${CONFIGFILE})"
     # Check if Verbose Logging is Enabled
-    if [[ -z "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
+    if [[ -z "$(awk -F "|" '$1 == "'${POLICY}'" {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
       VERBOSELOGGING="1"
-    elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
+    elif [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
       VERBOSELOGGING="0"
-    elif [[ "$(awk -F "|" '/^'${POLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
+    elif [[ "$(awk -F "|" '$1 == "'${POLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
       VERBOSELOGGING="1"
     fi
     routingdirector || return
@@ -5897,7 +5976,7 @@ checkwanstatus || return 1
 
 # Query Policies
 if [[ "${POLICY}" == "all" ]] &>/dev/null;then
-  QUERYPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+  QUERYPOLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE} | sort -u)"
   if [[ -z "${QUERYPOLICIES}" ]] &>/dev/null;then
     logger -p 3 -st "${ALIAS}" "Query Policy - ***No Policies Detected***"
     return
@@ -5908,7 +5987,7 @@ if [[ "${POLICY}" == "all" ]] &>/dev/null;then
   else
     adguardhomelogcheckpoint="0"
   fi
-elif [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+elif [[ "${POLICY}" == "$(awk -F "|" '$1 == "'${POLICY}'" {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
   QUERYPOLICIES="${POLICY}"
   adguardhomelogcheckpoint="0"
 else
@@ -5925,7 +6004,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   tempfiles=""
 
   # Check for DNS Override Configuration
-  INTERFACE="$(grep -w "${QUERYPOLICY}" "${CONFIGFILE}" | awk -F"|" '{print $4}')"
+  INTERFACE="$(grep -w "${QUERYPOLICY}" "${CONFIGFILE}" | awk -F "|" '{print $4}')"
   dnsdirector || return
 
   # Check if IPv6 IP Addresses are in policy file if IPv6 is Disabled and delete them
@@ -5947,29 +6026,29 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
 
   # Check if Verbose Logging is Enabled
-  if [[ -z "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
+  if [[ -z "$(awk -F "|" '$1 == "'${QUERYPOLICY}'" {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
     VERBOSELOGGING="1"
-  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${QUERYPOLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
     VERBOSELOGGING="0"
-  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${QUERYPOLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
     VERBOSELOGGING="1"
   fi
 
   # Check if Private IPs are Enabled
-  if [[ -z "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $6}' ${CONFIGFILE})" ]] &>/dev/null;then
+  if [[ -z "$(awk -F "|" '$1 == "'${QUERYPOLICY}'" {print $6}' ${CONFIGFILE})" ]] &>/dev/null;then
     PRIVATEIPS="0"
-  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=0" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${QUERYPOLICY}'" {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=0" ]] &>/dev/null;then
     PRIVATEIPS="0"
-  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=1" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${QUERYPOLICY}'" {print $6}' ${CONFIGFILE})" == "PRIVATEIPS=1" ]] &>/dev/null;then
     PRIVATEIPS="1"
   fi
   
   # Check if ADDCNAMES are Enabled
-  if [[ -z "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $7}' ${CONFIGFILE})" ]] &>/dev/null;then
+  if [[ -z "$(awk -F "|" '$1 == "'${QUERYPOLICY}'" {print $7}' ${CONFIGFILE})" ]] &>/dev/null;then
     ADDCNAMES="0"
-  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $7}' ${CONFIGFILE})" == "ADDCNAMES=0" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${QUERYPOLICY}'" {print $7}' ${CONFIGFILE})" == "ADDCNAMES=0" ]] &>/dev/null;then
     ADDCNAMES="0"
-  elif [[ "$(awk -F "|" '/^'${QUERYPOLICY}'/ {print $7}' ${CONFIGFILE})" == "ADDCNAMES=1" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${QUERYPOLICY}'" {print $7}' ${CONFIGFILE})" == "ADDCNAMES=1" ]] &>/dev/null;then
     ADDCNAMES="1"
   fi
 
@@ -6315,8 +6394,8 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
   
   # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
-  DOMAINIPLIST="$(grep -w "${QUERYPOLICY}" "${CONFIGFILE}" | awk -F"|" '{print $3}')"
-  INTERFACE="$(grep -w "${QUERYPOLICY}" "${CONFIGFILE}" | awk -F"|" '{print $4}')"
+  DOMAINIPLIST="$(grep -w "${QUERYPOLICY}" "${CONFIGFILE}" | awk -F "|" '{print $3}')"
+  INTERFACE="$(grep -w "${QUERYPOLICY}" "${CONFIGFILE}" | awk -F "|" '{print $4}')"
   routingdirector || return
 
   # Check if Interface State is Up or Down
@@ -6384,7 +6463,6 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     && sort -u "/tmp/${IPSETPREFIX}-${QUERYPOLICY}.tmp" -o "/tmp/${IPSETPREFIX}-${QUERYPOLICY}.tmp" \
     && { tempfile="/tmp/${IPSETPREFIX}-${QUERYPOLICY}.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
     awk -F ">>" '{print $2}' ${POLICYDIR}/policy_${QUERYPOLICY}_domaintoIP | sort -u > /tmp/${QUERYPOLICY}_domaintoIP.tmp \
-    && sort -u "/tmp/${QUERYPOLICY}_domaintoIP.tmp" -o "/tmp/${QUERYPOLICY}_domaintoIP.tmp" \
     && { tempfile="/tmp/${QUERYPOLICY}_domaintoIP.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
 	
     # Check if temporary files match
@@ -6737,9 +6815,9 @@ logger -p 5 -t "${ALIAS}" "Enable Script - Enabling ${FRIENDLYNAME}"
 setprocesspriority
 
 # Check for FWMark Rules to enable
-POLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+POLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
 for POLICY in ${POLICIES};do
-  INTERFACE="$(grep -w "${POLICY}" "${CONFIGFILE}" | awk -F"|" '{print $4}')"
+  INTERFACE="$(grep -w "${POLICY}" "${CONFIGFILE}" | awk -F "|" '{print $4}')"
   routingdirector || return
   
   # Create IP FWMark Rules
@@ -6763,9 +6841,9 @@ logger -p 5 -t "${ALIAS}" "Disable Script - Disabling ${FRIENDLYNAME}"
 setprocesspriority
 
 # Check for FWMark Rules to enable
-POLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+POLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE})"
 for POLICY in ${POLICIES};do
-  INTERFACE="$(grep -w "${POLICY}" "${CONFIGFILE}" | awk -F"|" '{print $4}')"
+  INTERFACE="$(grep -w "${POLICY}" "${CONFIGFILE}" | awk -F "|" '{print $4}')"
   routingdirector || return
   
   # Delete IP FWMark Rules
@@ -6809,7 +6887,7 @@ setprocesspriority
 
 # Generate Restore ASN Cache List
 if [[ -f "${ASNFILE}" ]] &>/dev/null;then
-  RESTOREASNS="$(awk -F"|" '{print $1}' ${ASNFILE})"
+  RESTOREASNS="$(awk -F "|" '{print $1}' ${ASNFILE} | sort -u)"
   if [[ -z "${RESTOREASNS}" ]] &>/dev/null;then
     logger -p 3 -t "${ALIAS}" "Restore ASN Cache - ***No ASNs Detected***"
     return
@@ -6827,7 +6905,7 @@ for RESTOREASN in ${RESTOREASNS};do
   fi
 
   # Get Interface for ASN
-  INTERFACE="$(grep -w "${RESTOREASN}" "${ASNFILE}" | awk -F"|" '{print $2}')"
+  INTERFACE="$(grep -w "${RESTOREASN}" "${ASNFILE}" | awk -F "|" '{print $2}')"
   routingdirector || return
   
   # Restore ASN for IP Subnets
@@ -6928,12 +7006,12 @@ setprocesspriority
 
 # Restore Policies
 if [[ "${POLICY}" == "all" ]] &>/dev/null;then
-  RESTOREPOLICIES="$(awk -F"|" '{print $1}' ${CONFIGFILE})"
+  RESTOREPOLICIES="$(awk -F "|" '{print $1}' ${CONFIGFILE} | sort -u)"
   if [[ -z "${RESTOREPOLICIES}" ]] &>/dev/null;then
     logger -p 3 -st "${ALIAS}" "Restore Policy - ***No Policies Detected***"
     return
   fi
-elif [[ "${POLICY}" == "$(awk -F "|" '/^'${POLICY}'/ {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
+elif [[ "${POLICY}" == "$(awk -F "|" '$1 == "'${POLICY}'" {print $1}' ${CONFIGFILE})" ]] &>/dev/null;then
   RESTOREPOLICIES="${POLICY}"
 else
   echo -e "${RED}Policy: ${POLICY} not found${NOCOLOR}"
@@ -6947,17 +7025,17 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   fi
   
   # Check if Verbose Logging is Enabled
-  if [[ -z "$(awk -F "|" '/^'${RESTOREPOLICY}'/ {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
+  if [[ -z "$(awk -F "|" '$1 == "'${RESTOREPOLICY}'" {print $5}' ${CONFIGFILE})" ]] &>/dev/null;then
     VERBOSELOGGING="1"
-  elif [[ "$(awk -F "|" '/^'${RESTOREPOLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${RESTOREPOLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=0" ]] &>/dev/null;then
     VERBOSELOGGING="0"
-  elif [[ "$(awk -F "|" '/^'${RESTOREPOLICY}'/ {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
+  elif [[ "$(awk -F "|" '$1 == "'${RESTOREPOLICY}'" {print $5}' ${CONFIGFILE})" == "VERBOSELOGGING=1" ]] &>/dev/null;then
     VERBOSELOGGING="1"
   fi
 
   # Determine Domain Policy Files and Interface and Route Table for IP Routes to delete.
-  DOMAINIPLIST="$(grep -w "${RESTOREPOLICY}" "${CONFIGFILE}" | awk -F"|" '{print $3}')"
-  INTERFACE="$(grep -w "${RESTOREPOLICY}" "${CONFIGFILE}" | awk -F"|" '{print $4}')"
+  DOMAINIPLIST="$(grep -w "${RESTOREPOLICY}" "${CONFIGFILE}" | awk -F "|" '{print $3}')"
+  INTERFACE="$(grep -w "${RESTOREPOLICY}" "${CONFIGFILE}" | awk -F "|" '{print $4}')"
   routingdirector || return
 
   # Check if Interface State is Up or Down
