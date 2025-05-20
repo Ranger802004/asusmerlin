@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/17/2025
-# Version: v3.2.0
+# Date: 05/19/2025
+# Version: v3.2.1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.2.0"
+VERSION="v3.2.1"
 MAJORVERSION="${VERSION:0:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -1153,7 +1153,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # OVPNC1PRIORITY
-  if [[ -z "$(sed -n '/\OVPNC1PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC1PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating OVPNC1PRIORITY Default: 1000"
     echo -e "OVPNC1PRIORITY=1000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1183,7 +1183,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # OVPNC2PRIORITY
-  if [[ -z "$(sed -n '/\OVPNC2PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC2PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating OVPNC2PRIORITY Default: 2000"
     echo -e "OVPNC2PRIORITY=2000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1213,7 +1213,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # OVPNC3PRIORITY
-  if [[ -z "$(sed -n '/\OVPNC3PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC3PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating OVPNC3PRIORITY Default: 3000"
     echo -e "OVPNC3PRIORITY=3000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1243,7 +1243,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # OVPNC4PRIORITY
-  if [[ -z "$(sed -n '/\OVPNC4PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC4PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating OVPNC4PRIORITY Default: 4000"
     echo -e "OVPNC4PRIORITY=4000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1273,7 +1273,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # OVPNC5PRIORITY
-  if [[ -z "$(sed -n '/\OVPNC5PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bOVPNC5PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating OVPNC5PRIORITY Default: 5000"
     echo -e "OVPNC5PRIORITY=5000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1303,7 +1303,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # WGC1PRIORITY
-  if [[ -z "$(sed -n '/\WGC1PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC1PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating WGC1PRIORITY Default: 6000"
     echo -e "WGC1PRIORITY=6000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1333,7 +1333,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
 
   # WGC2PRIORITY
-  if [[ -z "$(sed -n '/\WGC2PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC2PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating WGC2PRIORITY Default: 7000"
     echo -e "WGC2PRIORITY=7000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1363,7 +1363,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # WGC3PRIORITY
-  if [[ -z "$(sed -n '/\WGC3PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC3PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating WGC3PRIORITY Default: 8000"
     echo -e "WGC3PRIORITY=8000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1393,7 +1393,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # WGC4PRIORITY
-  if [[ -z "$(sed -n '/\WGC4PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC4PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating WGC4PRIORITY Default: 9000"
     echo -e "WGC4PRIORITY=9000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1423,7 +1423,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # WGC5PRIORITY
-  if [[ -z "$(sed -n '/\WGC5PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWGC5PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating WGC5PRIORITY Default: 10000"
     echo -e "WGC5PRIORITY=10000" >> ${GLOBALCONFIGFILE}
   fi
@@ -1441,7 +1441,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # WANPRIORITY
-  if [[ -z "$(sed -n '/\WANPRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWANPRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating WANPRIORITY Default: 150"
     echo -e "WANPRIORITY=150" >> ${GLOBALCONFIGFILE}
   fi
@@ -1459,7 +1459,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # WAN0PRIORITY
-  if [[ -z "$(sed -n '/\WAN0PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWAN0PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating WAN0PRIORITY Default: 150"
     echo -e "WAN0PRIORITY=150" >> ${GLOBALCONFIGFILE}
   fi
@@ -1477,7 +1477,7 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   fi
   
   # WAN1PRIORITY
-  if [[ -z "$(sed -n '/\WAN1PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
+  if [[ -z "$(sed -n '/\bWAN1PRIORITY\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Creating WAN1PRIORITY Default: 150"
     echo -e "WAN1PRIORITY=150" >> ${GLOBALCONFIGFILE}
   fi
@@ -1492,6 +1492,14 @@ if [[ "${globalconfigsync}" == "0" ]] &>/dev/null;then
   if [[ -z "$(sed -n '/\bWAN1DOT=\b/p' "${GLOBALCONFIGFILE}")" ]] &>/dev/null;then
     logger -p 6 -t "${ALIAS}" "Debug - Setting WAN1DOT Default: Disabled"
     echo -e "WAN1DOT=0" >> ${GLOBALCONFIGFILE}
+  fi
+  
+  # Check for duplicate lines
+  if [[ -n "$(sort ${GLOBALCONFIGFILE} | uniq -d)" ]] &>/dev/null;then
+    logger -p 6 -t "${ALIAS}" "Debug - Removing duplicate configuration entries from ${GLOBALCONFIGFILE}"
+    sort -u ${GLOBALCONFIGFILE} > /tmp/domain_vpn_routing_global.conf \
+    && cat /tmp/domain_vpn_routing_global.conf > ${GLOBALCONFIGFILE} \
+    && rm -f /tmp/domain_vpn_routing_global.conf
   fi
 
   # Reading updated Global Configuration
