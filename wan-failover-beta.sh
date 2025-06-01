@@ -5546,6 +5546,10 @@ elif [[ "${ACTIVEWAN}" == "${WAN1}" ]] &>/dev/null;then
   SWITCHWANMODE="Failover"
 fi
 
+# Emit failover/back event hook
+EVENT_TOKEN=$(echo ${SWITCHWANMODE} | tr '[A-Z]' '[a-z]' | sed 's/fail/failing-/')
+[[ -f /jffs/scripts/wan-failover-event ]] && /jffs/scripts/wan-failover-event "${ACTIVEWAN#wan}" "${EVENT_TOKEN}"
+
 # Execute Failback Delay Timer
 if [[ "${SWITCHWANMODE}" == "Failback" ]] &>/dev/null && [[ "${FAILBACKDELAYTIMER}" -gt "0" ]] &>/dev/null;then
   sleep ${FAILBACKDELAYTIMER}
@@ -5694,6 +5698,8 @@ until { [[ "$(nvram get ${INACTIVEWAN}_primary & nvramcheck)" == "0" ]] &>/dev/n
 done
 if [[ "$(nvram get ${ACTIVEWAN}_primary & nvramcheck)" == "1" ]] &>/dev/null && [[ "$(nvram get ${INACTIVEWAN}_primary & nvramcheck)" == "0" ]] &>/dev/null;then
   [[ "${SWITCHPRIMARY}" == "1" ]] &>/dev/null && logger -p 1 -st "${ALIAS}" "${SWITCHWANMODE} - Switched ${ACTIVEWAN} to Primary WAN"
+  EVENT_TOKEN=$(echo ${SWITCHWANMODE} | tr '[A-Z]' '[a-z]' | sed 's/fail/failed-/')
+  [[ -f /jffs/scripts/wan-failover-event ]] && /jffs/scripts/wan-failover-event "${ACTIVEWAN#wan}" "${EVENT_TOKEN}"
 else
   debuglog || return 1
 fi
