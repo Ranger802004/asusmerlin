@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 05/19/2025
-# Version: v3.2.1
+# Date: 06/18/2025
+# Version: v3.2.2-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,8 +12,8 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.2.1"
-MAJORVERSION="${VERSION:0:1}"
+VERSION="v3.2.2-beta1"
+MAJORVERSION="${VERSION:1:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
 CONFIGFILE="/jffs/configs/domain_vpn_routing/domain_vpn_routing.conf"
@@ -3333,7 +3333,7 @@ interfaces=""
     fi
   done
 
-  # Check if Wireguard Interfaces are Active
+  # Check if Wireguard Client Interfaces are Active
   for WGINTERFACE in ${WGINTERFACES};do
 	if [[ -n "$(ifconfig ${WGINTERFACE} 2>/dev/null | grep -o "${WGINTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${WGINTERFACE}" ]] &>/dev/null || [[ "${WGINTERFACE}" == "$(/usr/sbin/wg show ${WGINTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
       interface="${WGINTERFACE}"
@@ -3635,12 +3635,16 @@ elif [[ "${INTERFACE}" == "ovpns1" ]] &>/dev/null;then
   IPV6ROUTETABLE="main"
   RGW="0"
   PRIORITY="0"
+  TYPE="SERVER"
+  CLASS="OVPN"
 elif [[ "${INTERFACE}" == "ovpns2" ]] &>/dev/null;then
   IFNAME="$(awk '$1 == "dev" {print $2}' /etc/openvpn/server2/config.ovpn 2>/dev/null)"
   ROUTETABLE="main"
   IPV6ROUTETABLE="main"
   RGW="0"
   PRIORITY="0"
+  TYPE="SERVER"
+  CLASS="OVPN"
 elif [[ "${INTERFACE}" == "wgc1" ]] &>/dev/null;then
   if [[ -n "$(ifconfig ${INTERFACE} 2>/dev/null | grep -o "${INTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${INTERFACE}" ]] &>/dev/null || [[ "${INTERFACE}" == "$(/usr/sbin/wg show ${INTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
     IFNAME="${INTERFACE}"
@@ -3781,6 +3785,26 @@ elif [[ "${INTERFACE}" == "wgc5" ]] &>/dev/null;then
   MASK="${WGC5MASK}"
   TYPE="VPN"
   CLASS="WG"
+elif [[ "${INTERFACE}" == "wgs1" ]] &>/dev/null;then
+  if [[ -n "$(ifconfig ${INTERFACE} 2>/dev/null | grep -o "${INTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${INTERFACE}" ]] &>/dev/null || [[ "${INTERFACE}" == "$(/usr/sbin/wg show ${INTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
+    IFNAME="${INTERFACE}"
+  fi   
+  ROUTETABLE="main"
+  IPV6ROUTETABLE="main"
+  RGW="0"
+  PRIORITY="0"
+  TYPE="SERVER"
+  CLASS="WG"
+elif [[ "${INTERFACE}" == "wgs2" ]] &>/dev/null;then
+  if [[ -n "$(ifconfig ${INTERFACE} 2>/dev/null | grep -o "${INTERFACE}")" ]] &>/dev/null || [[ -d "/proc/sys/net/ipv4/conf/${INTERFACE}" ]] &>/dev/null || [[ "${INTERFACE}" == "$(/usr/sbin/wg show ${INTERFACE} 2>/dev/null | grep -oE "interface:\s*\S*" | awk '{print $2}')" ]] &>/dev/null;then
+    IFNAME="${INTERFACE}"
+  fi  
+  ROUTETABLE="main"
+  IPV6ROUTETABLE="main"
+  RGW="0"
+  PRIORITY="0"
+  TYPE="SERVER"
+  CLASS="WG"
 elif [[ "${INTERFACE}" == "wan" ]] &>/dev/null;then
   # Check WAN Status
   checkwanstatus
@@ -3873,7 +3897,7 @@ else
 fi
 
 # Set VPN Interface State
-if [[ "${TYPE}" == "VPN" ]] &>/dev/null && [[ -s "/sys/class/net/${IFNAME}/operstate" ]] &>/dev/null;then
+if { [[ "${TYPE}" == "VPN" ]] &>/dev/null || [[ "${TYPE}" == "SERVER" ]] &>/dev/null ;} && [[ -s "/sys/class/net/${IFNAME}/operstate" ]] &>/dev/null;then
   if [[ "$(cat /sys/class/net/${IFNAME}/operstate 2>/dev/null)" == "up" ]] &>/dev/null;then
     STATE="2"
   elif [[ "${CLASS}" == "WG" ]] &>/dev/null && [[ "$(cat /sys/class/net/${IFNAME}/operstate 2>/dev/null)" == "unknown" ]] &>/dev/null;then
@@ -3893,7 +3917,7 @@ fi
 logger -p 6 -t "${ALIAS}" "Debug - State: ${STATE}"
 
 # Set State Description
-if [[ "${TYPE}" == "VPN" ]] &>/dev/null;then
+if { [[ "${TYPE}" == "VPN" ]] &>/dev/null || [[ "${TYPE}" == "SERVER" ]] &>/dev/null ;};then
   if [[ "${STATE}" == "2" ]] &>/dev/null;then
     STATE_DESC="Connected"
     state_desc="${GREEN}${STATE_DESC}${NOCOLOR}"
@@ -3902,6 +3926,9 @@ if [[ "${TYPE}" == "VPN" ]] &>/dev/null;then
     state_desc="${YELLOW}${STATE_DESC}${NOCOLOR}"
   elif [[ "${STATE}" == "0" ]] &>/dev/null;then
     STATE_DESC="Disconnected"
+    state_desc="${RED}${STATE_DESC}${NOCOLOR}"
+  else
+    STATE_DESC="Unknown"
     state_desc="${RED}${STATE_DESC}${NOCOLOR}"
   fi
 elif [[ "${TYPE}" == "WAN" ]] &>/dev/null;then
@@ -3926,23 +3953,21 @@ elif [[ "${TYPE}" == "WAN" ]] &>/dev/null;then
   elif [[ "${STATE}" == "0" ]] &>/dev/null;then
     STATE_DESC="Initializing"
     state_desc="${YELLOW}${STATE_DESC}${NOCOLOR}"
+  else
+    STATE_DESC="Unknown"
+    state_desc="${RED}${STATE_DESC}${NOCOLOR}"
   fi
 fi
 
-# Adjust Reverse Path Filter to Loose Filtering if enabled for Interface if FWMark is set
-if [[ -n "${FWMARK}" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter 2>/dev/null)" == "1" ]] &>/dev/null;then
-  logger -p 5 -t "${ALIAS}" "Routing Director - Setting Reverse Path Filter for ${IFNAME} to Loose Filtering"
-  echo 2 > /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter \
-  && logger -p 4 -t "${ALIAS}" "Routing Director - Set Reverse Path Filter for ${IFNAME} to Loose Filtering" \
-  || logger -p 2 -st "${ALIAS}" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${IFNAME} to Loose Filtering"
-fi
+# Adjust Reverse Path Filters
+checkrpfilters
 
 # Create Default Route for WAN Interface Routing Tables
 if [[ -n "${GATEWAY}" ]] &>/dev/null;then
   logger -p 6 -t "${ALIAS}" "Debug - Checking ${INTERFACE} for Default Route in Routing Table ${ROUTETABLE}"
   if [[ -z "$(${ipbinpath}ip route list default table ${ROUTETABLE} | grep -w "${IFNAME}")" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Routing Director - Adding default route for ${INTERFACE} Routing Table via ${GATEWAY} dev ${IFNAME}"
-    ${ipbinpath}ip route add default via ${GATEWAY} dev ${IFNAME} table ${ROUTETABLE} \
+    ${ipbinpath}ip route add default via ${GATEWAY} dev ${IFNAME} table ${ROUTETABLE} &>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Routing Director - Added default route for ${INTERFACE} Routing Table via ${GATEWAY} dev ${IFNAME}" \
     || logger -p 2 -st "${ALIAS}" "Routing Director - ***Error*** Failed to add default route for ${INTERFACE} Routing Table via ${GATEWAY} dev ${IFNAME}"
   fi
@@ -3961,6 +3986,42 @@ fi
 
 # Unset temporary variables
 unset wan0primary wan1primary
+
+return
+}
+
+# Check Reverse Path Filtering
+checkrpfilters ()
+{
+# Set RPINTERFACES
+if [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null;then
+  RPINTERFACES="wan0"
+else
+  RPINTERFACES="wan0 wan1"
+fi
+
+for RPINTERFACE in ${RPINTERFACES};do
+  if [[ "${RPINTERFACE}" == "wan0" ]] &>/dev/null;then
+    RPIFNAME="${WAN0GWIFNAME}"
+  elif [[ "${RPINTERFACE}" == "wan1" ]] &>/dev/null;then
+    RPIFNAME="${WAN1GWIFNAME}"
+  fi
+  
+  # Adjust Reverse Path Filter to Loose Filtering if enabled for Interface if FWMark is set
+  if [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter 2>/dev/null)" != "2" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Routing Director - Setting Reverse Path Filter for ${RPIFNAME} to Loose Filtering"
+    echo 2 > /proc/sys/net/ipv4/conf/${RPIFNAME}/rp_filter \
+    && logger -p 4 -t "${ALIAS}" "Routing Director - Set Reverse Path Filter for ${RPIFNAME} to Loose Filtering" \
+    || logger -p 2 -st "${ALIAS}" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${RPIFNAME} to Loose Filtering"
+  elif [[ "${WANSDUALWANENABLE}" == "1" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${RPIFNAME}/rp_filter 2>/dev/null)" != "0" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Routing Director - Setting Reverse Path Filter for ${RPIFNAME} to Disabled"
+    echo 0 > /proc/sys/net/ipv4/conf/${RPIFNAME}/rp_filter \
+    && logger -p 4 -t "${ALIAS}" "Routing Director - Set Reverse Path Filter for ${RPIFNAME} to Disabled" \
+    || logger -p 2 -st "${ALIAS}" "Routing Director - ***Error*** Failed to set Reverse Path Filter for ${RPIFNAME} to Disabled"
+  fi
+done
+
+unset RPINTERFACES RPIFNAME
 
 return
 }
@@ -4475,23 +4536,29 @@ for QUERYASN in ${QUERYASNS};do
   # Create tempfiles
   tempfiles=""
   
+  # Attempt to Query ASN using API with 10 retry attempts
   logger -p 5 -t "${ALIAS}" "Query ASN - Querying ASN: ${QUERYASN}"
-  /usr/sbin/curl --connect-timeout 60 --max-time 300 --url "https://api.bgpview.io/asn/${QUERYASN}/prefixes" --ssl-reqd 2>/dev/null | /opt/bin/jq 2>/dev/null > /tmp/${QUERYASN}_query.tmp \
-  && { tempfile="/tmp/${QUERYASN}_query.tmp" ; tempfiles="${tempfiles} ${tempfile}" ;} \
-  || { logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to query ASN: ${QUERYASN}" && continue ;}
+  i="1"
+  while [[ "${i}" -le "10" ]] &>/dev/null;do
+    [[ "${i}" -ge "2" ]] &>/dev/null && sleep 1
+    /usr/sbin/curl --connect-timeout 60 --max-time 300 --url "https://api.bgpview.io/asn/${QUERYASN}/prefixes" --ssl-reqd 2>/dev/null | /opt/bin/jq 2>/dev/null > /tmp/${QUERYASN}_query.tmp \
+    && { { tempfile="/tmp/${QUERYASN}_query.tmp" ; tempfiles="${tempfiles} ${tempfile}" ;} && break ;} \
+    || { logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Attempt ${i} failed to query ASN: ${QUERYASN}" && i="$((${i}+1))" && continue ;}
+  done
+  unset i
   
   # Check if IPv6 is enabled and query for IPv6 subnets
   if [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
   
     # Create IPv6 IPSET
     # Check for saved IPSET if ASNCACHE is enabled
-    if [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null;then
+    if [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -s "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Query ASN - Restoring IPv6 IPSET for ${QUERYASN}"
       ipset restore -! <"${POLICYDIR}/asn_${QUERYASN}-v6.ipset" \
       && logger -p 4 -t "${ALIAS}" "Query ASN - Restored IPv6 IPSET for ${QUERYASN}" \
       || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to restore IPv6 IPSET for ${QUERYASN}"
     # Create saved IPv6 IPSET file if IPSET exists and ASNCACHE is enabled
-    elif [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null;then
+    elif [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && { [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null ;};then
       logger -p 5 -t "${ALIAS}" "Query ASN - Saving IPv6 IPSET for ${QUERYASN}"
       ipset save ${IPSETPREFIX}-${QUERYASN}-v6 -file ${POLICYDIR}/asn_${QUERYASN}-v6.ipset 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Query ASN - Saved IPv6 IPSET for ${QUERYASN}" \
@@ -4591,7 +4658,7 @@ for QUERYASN in ${QUERYASNS};do
 
     # Save IPv6 IPSET if modified or does not exist if ASNCACHE is enabled
     [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-    if { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ "${saveipv6ipset}" == "1" ]] &>/dev/null ;} || { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null ;};then
+    if { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ "${saveipv6ipset}" == "1" ]] &>/dev/null ;} || { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && { [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/asn_${QUERYASN}-v6.ipset" ]] &>/dev/null ;} ;};then
       logger -p 5 -t "${ALIAS}" "Query ASN - Saving IPv6 IPSET for ${QUERYASN}"
       ipset save ${IPSETPREFIX}-${QUERYASN}-v6 -file ${POLICYDIR}/asn_${QUERYASN}-v6.ipset 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Query ASN - Save IPv6 IPSET for ${QUERYASN}" \
@@ -4602,13 +4669,13 @@ for QUERYASN in ${QUERYASNS};do
   
   # Create IPv4 IPSET
   # Check for saved IPv4 IPSET if ASNCACHE is enabled
-  if [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null;then
+  if [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -s "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query ASN - Restoring IPv4 IPSET for ${QUERYASN}"
     ipset restore -! <"${POLICYDIR}/asn_${QUERYASN}-v4.ipset" \
     && logger -p 4 -t "${ALIAS}" "Query ASN - Restored IPv4 IPSET for ${QUERYASN}" \
     || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to restore IPv4 IPSET for ${QUERYASN}"
   # Create saved IPv4 IPSET file if IPSET exists and ASNCACHE is enabled
-  elif [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null;then
+  elif [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && { [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null ;};then
     logger -p 5 -t "${ALIAS}" "Query ASN - Saving IPv4 IPSET for ${QUERYASN}"
     ipset save ${IPSETPREFIX}-${QUERYASN}-v4 -file ${POLICYDIR}/asn_${QUERYASN}-v4.ipset 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query ASN - Saved IPv4 IPSET for ${QUERYASN}" \
@@ -4708,7 +4775,7 @@ for QUERYASN in ${QUERYASNS};do
 
   # Save IPv4 IPSET if modified or does not exist if ASNCACHE is enabled
   [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-  if { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ "${saveipv4ipset}" == "1" ]] &>/dev/null ;} || { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null ;};then
+  if { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && [[ "${saveipv4ipset}" == "1" ]] &>/dev/null ;} || { [[ "${ASNCACHE}" == "1" ]] &>/dev/null && { [[ ! -f "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/asn_${QUERYASN}-v4.ipset" ]] &>/dev/null ;} ;};then
     logger -p 5 -t "${ALIAS}" "Query ASN - Saving IPv4 IPSET for ${QUERYASN}"
     ipset save ${IPSETPREFIX}-${QUERYASN}-v4 -file ${POLICYDIR}/asn_${QUERYASN}-v4.ipset 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query ASN - Save IPv4 IPSET for ${QUERYASN}" \
@@ -5023,8 +5090,8 @@ if [[ "${mode}" == "editpolicy" ]] &>/dev/null;then
         fi
       done
 
-      # Save IPv6 IPSET if save file does not exist
-      if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-v6.ipset" ]] &>/dev/null;then
+      # Save IPv6 IPSET if save file does not exist or file is empty
+      if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-v6.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${EDITPOLICY}-v6.ipset" ]] &>/dev/null;then
         logger -p 5 -t "${ALIAS}" "Edit Policy - Saving IPv6 IPSET for ${EDITPOLICY}"
         ipset save ${IPSETPREFIX}-${EDITPOLICY}-v6 -file ${POLICYDIR}/policy_${EDITPOLICY}-v6.ipset 2>/dev/null \
         && logger -p 4 -st "${ALIAS}" "Edit Policy - Save IPv6 IPSET for ${EDITPOLICY}" \
@@ -5073,8 +5140,8 @@ if [[ "${mode}" == "editpolicy" ]] &>/dev/null;then
         fi
       fi
     done
-    # Save IPv4 IPSET if save file does not exist
-    if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-v4.ipset" ]] &>/dev/null;then
+    # Save IPv4 IPSET if save file does not exist or file is empty
+    if [[ ! -f "${POLICYDIR}/policy_${EDITPOLICY}-v4.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${EDITPOLICY}-v4.ipset" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Edit Policy - Saving IPv4 IPSET for ${EDITPOLICY}"
       ipset save ${IPSETPREFIX}-${EDITPOLICY}-v4 -file ${POLICYDIR}/policy_${EDITPOLICY}-v4.ipset 2>/dev/null \
       && logger -p 4 -st "${ALIAS}" "Edit Policy - Save IPv4 IPSET for ${EDITPOLICY}" \
@@ -5568,9 +5635,9 @@ if [[ -n "${DOMAIN}" ]] &>/dev/null;then
       fi
     done
 
-    # Save IPv6 IPSET if modified or does not exist
+    # Save IPv6 IPSET if modified or does not exist or file is empty
     [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-v6.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || { [[ ! -f "${POLICYDIR}/policy_${POLICY}-v6.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${POLICY}-v6.ipset" ]] &>/dev/null ;};then
       logger -p 5 -t "${ALIAS}" "Delete Domain - Saving IPv6 IPSET for ${POLICY}"
       ipset save ${IPSETPREFIX}-${POLICY}-v6 -file ${POLICYDIR}/policy_${POLICY}-v6.ipset 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Delete Domain - Saved IPv6 IPSET for ${POLICY}" \
@@ -5607,9 +5674,9 @@ if [[ -n "${DOMAIN}" ]] &>/dev/null;then
       fi
     done
 
-    # Save IPv4 IPSET if modified or does not exist
+    # Save IPv4 IPSET if modified or does not exist or file is empty
     [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-    if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-v4.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || { [[ ! -f "${POLICYDIR}/policy_${POLICY}-v4.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${POLICY}-v4.ipset" ]] &>/dev/null ;};then
       logger -p 5 -t "${ALIAS}" "Delete Domain - Saving IPv4 IPSET for ${POLICY}"
       ipset save ${IPSETPREFIX}-${POLICY}-v4 -file ${POLICYDIR}/policy_${POLICY}-v4.ipset 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Delete Domain - Saved IPv4 IPSET for ${POLICY}" \
@@ -5743,9 +5810,9 @@ if [[ -n "${IP}" ]] &>/dev/null;then
 
     done
 
-    # Save IPv6 IPSET if modified or does not exist
+    # Save IPv6 IPSET if modified or does not exist or file is empty
     [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-v6.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || { [[ ! -f "${POLICYDIR}/policy_${POLICY}-v6.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${POLICY}-v6.ipset" ]] &>/dev/null ;};then
       logger -p 5 -t "${ALIAS}" "Delete IP - Saving IPv6 IPSET for ${POLICY}"
       ipset save ${IPSETPREFIX}-${POLICY}-v6 -file ${POLICYDIR}/policy_${POLICY}-v6.ipset 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Delete IP - Saved IPv6 IPSET for ${POLICY}" \
@@ -5782,9 +5849,9 @@ if [[ -n "${IP}" ]] &>/dev/null;then
       fi
     done
 
-    # Save IPv4 IPSET if modified or does not exist
+    # Save IPv4 IPSET if modified or does not exist or file is empty
     [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-    if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${POLICY}-v4.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || { [[ ! -f "${POLICYDIR}/policy_${POLICY}-v4.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${POLICY}-v4.ipset" ]] &>/dev/null ;};then
       logger -p 5 -t "${ALIAS}" "Delete IP - Saving IPv4 IPSET for ${POLICY}"
       ipset save ${IPSETPREFIX}-${POLICY}-v4 -file ${POLICYDIR}/policy_${POLICY}-v4.ipset 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Delete IP - Saved IPv4 IPSET for ${POLICY}" \
@@ -6417,13 +6484,13 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
 
   # Create IPv6 IPSET
   # Check for saved IPSET
-  if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -s "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query Policy - Restoring IPv6 IPSET for ${QUERYPOLICY}"
     ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" \
     && logger -p 4 -t "${ALIAS}" "Query Policy - Restored IPv6 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to restore IPv6 IPSET for ${QUERYPOLICY}"
   # Create saved IPv6 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && { [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null ;};then
     logger -p 5 -t "${ALIAS}" "Query Policy - Saving IPv6 IPSET for ${QUERYPOLICY}"
     ipset save ${IPSETPREFIX}-${QUERYPOLICY}-v6 -file ${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query Policy - Saved IPv6 IPSET for ${QUERYPOLICY}" \
@@ -6437,13 +6504,13 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   fi
   # Create IPv4 IPSET
   # Check for saved IPv4 IPSET
-  if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -s "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query Policy - Restoring IPv4 IPSET for ${QUERYPOLICY}"
     ipset restore -! <"${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" \
     && logger -p 4 -t "${ALIAS}" "Query Policy - Restored IPv4 IPSET for ${QUERYPOLICY}" \
     || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to restore IPv4 IPSET for ${QUERYPOLICY}"
   # Create saved IPv4 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${QUERYPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && { [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null ;};then
     logger -p 5 -t "${ALIAS}" "Query Policy - Saving IPv4 IPSET for ${QUERYPOLICY}"
     ipset save ${IPSETPREFIX}-${QUERYPOLICY}-v4 -file ${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query Policy - Saved IPv4 IPSET for ${QUERYPOLICY}" \
@@ -6658,9 +6725,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
       done
     fi
 
-    # Save IPv6 IPSET if modified or does not exist
+    # Save IPv6 IPSET if modified or does not exist or file is empty
     [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || { [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset" ]] &>/dev/null ;};then
       logger -p 5 -t "${ALIAS}" "Query Policy - Saving IPv6 IPSET for ${QUERYPOLICY}"
       ipset save ${IPSETPREFIX}-${QUERYPOLICY}-v6 -file ${POLICYDIR}/policy_${QUERYPOLICY}-v6.ipset 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Query Policy - Save IPv6 IPSET for ${QUERYPOLICY}" \
@@ -6777,9 +6844,9 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     done
   fi
 
-  # Save IPv4 IPSET if modified or does not exist
+  # Save IPv4 IPSET if modified or does not exist or file is empty
   [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-  if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null;then
+  if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || { [[ ! -f "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset" ]] &>/dev/null ;};then
     logger -p 5 -t "${ALIAS}" "Query Policy - Saving IPv4 IPSET for ${QUERYPOLICY}"
     ipset save ${IPSETPREFIX}-${QUERYPOLICY}-v4 -file ${POLICYDIR}/policy_${QUERYPOLICY}-v4.ipset 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query Policy - Save IPv4 IPSET for ${QUERYPOLICY}" \
@@ -6911,21 +6978,30 @@ for RESTOREASN in ${RESTOREASNS};do
   if [[ ! -f "${POLICYDIR}/asn_${RESTOREASN}-v6.ipset" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/asn_${RESTOREASN}-v4.ipset" ]] &>/dev/null;then
     continue
   fi
+  
+  # Restore ASN for IP Subnets
+  if [[ "${ttymode}" == "1" ]] &>/dev/null && { [[ "${mode}" == "restoreasncache" ]] &>/dev/null || [[ "${mode}" == "restorepolicy" ]] &>/dev/null ;};then
+    printf '\033[K%b\r' "${BOLD}${UNDERLINE}Restore ASN: ${RESTOREASN}...${NOCOLOR}\n"
+  fi
 
   # Get Interface for ASN
   INTERFACE="$(grep -w "${RESTOREASN}" "${ASNFILE}" | awk -F "|" '{print $2}')"
   routingdirector || return
   
-  # Restore ASN for IP Subnets
-  if [[ "${ttymode}" == "1" ]] &>/dev/null && [[ "${mode}" == "restoreasncache" ]] &>/dev/null;then
-    printf '\033[K%b\r' "${UNDERLINE}Restore ASN: ${RESTOREASN}...${NOCOLOR}\n"
+  # Check if Interface State is Up or Down
+  if [[ "${TYPE}" == "VPN" ]] &>/dev/null && [[ "${STATE}" == "0" ]] &>/dev/null;then
+    logger -p 3 -st "${ALIAS}" "Restore ASN Cache - Interface ${INTERFACE} for ${RESTOREASN} is ${STATE_DESC}"
+    continue
+  elif [[ "${TYPE}" == "WAN" ]] &>/dev/null && [[ "${STATE}" != "2" ]] &>/dev/null;then
+    logger -p 3 -st "${ALIAS}" "Restore ASN Cache - Interface ${INTERFACE} for ${RESTOREASN} is ${STATE_DESC}"
+    continue
   fi
   
   # Check if IPv6 is enabled and query for IPv6 subnets
   if [[ "${IPV6SERVICE}" != "disabled" ]] &>/dev/null;then
   
     # Restore IPv6 IPSET
-    if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/asn_${RESTOREASN}-v6.ipset" ]] &>/dev/null;then
+    if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREASN}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -s "${POLICYDIR}/asn_${RESTOREASN}-v6.ipset" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Restoring IPv6 IPSET for ${RESTOREASN}"
       ipset restore -! <"${POLICYDIR}/asn_${RESTOREASN}-v6.ipset" \
       && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Restored IPv6 IPSET for ${RESTOREASN}" \
@@ -6949,7 +7025,7 @@ for RESTOREASN in ${RESTOREASNS};do
     fi
 
     # Create IPv6 IP6Tables POSTROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
       ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
@@ -6958,7 +7034,7 @@ for RESTOREASN in ${RESTOREASNS};do
   fi
 	
   # Restore IPv4 IPSET
-  if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/asn_${RESTOREASN}-v4.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREASN}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -s "${POLICYDIR}/asn_${RESTOREASN}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Restoring IPv4 IPSET for ${RESTOREASN}"
     ipset restore -! <"${POLICYDIR}/asn_${RESTOREASN}-v4.ipset" \
     && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Restored IPv4 IPSET for ${RESTOREASN}" \
@@ -6982,7 +7058,7 @@ for RESTOREASN in ${RESTOREASNS};do
   fi
 
   # Create IPv4 IPTables POSTROUTING Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
     iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
@@ -7061,14 +7137,14 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
 
   # Create IPv6 IPSET
   # Check for saved IPSET
-  if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ -s "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Restoring IPv6 IPSET for ${RESTOREPOLICY}"
     ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Restored IPv6 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to restore IPv6 IPSET for ${RESTOREPOLICY}"
 	[[ "${restoreipv6mode}" == "0" ]] &>/dev/null && restoreipv6mode="1"
   # Create saved IPv6 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -n 2>/dev/null)" ]] &>/dev/null && { [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null ;};then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Saving IPv6 IPSET for ${RESTOREPOLICY}"
     ipset save ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Saved IPv6 IPSET for ${RESTOREPOLICY}" \
@@ -7087,14 +7163,14 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   fi
   # Create IPv4 IPSET
   # Check for saved IPv4 IPSET
-  if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null;then
+  if [[ -z "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ -s "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Restoring IPv4 IPSET for ${RESTOREPOLICY}"
     ipset restore -! <"${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Restored IPv4 IPSET for ${RESTOREPOLICY}" \
     || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to restore IPv4 IPSET for ${RESTOREPOLICY}"
 	[[ "${restoreipv4mode}" == "0" ]] &>/dev/null && restoreipv4mode="1"
   # Create saved IPv4 IPSET file if IPSET exists
-  elif [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null;then
+  elif [[ -n "$(ipset list ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -n 2>/dev/null)" ]] &>/dev/null && { [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null ;};then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Saving IPv4 IPSET for ${RESTOREPOLICY}"
     ipset save ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Saved IPv4 IPSET for ${RESTOREPOLICY}" \
@@ -7168,7 +7244,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     fi
 
     # Create IPv6 IP6Tables POSTROUTING Rule
-    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+    if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Restore Policy - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
       ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Restore Policy - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
@@ -7317,9 +7393,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
       done
     fi
 
-    # Save IPv6 IPSET if modified or does not exist
+    # Save IPv6 IPSET if modified or does not exist or file is empty
     [[ -z "${saveipv6ipset+x}" ]] &>/dev/null && saveipv6ipset="0"
-    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null;then
+    if [[ "${saveipv6ipset}" == "1" ]] &>/dev/null || { [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset" ]] &>/dev/null ;};then
       logger -p 5 -t "${ALIAS}" "Restore Policy - Saving IPv6 IPSET for ${RESTOREPOLICY}"
       ipset save ${IPSETPREFIX}-${RESTOREPOLICY}-v6 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-v6.ipset 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Restore Policy - Save IPv6 IPSET for ${RESTOREPOLICY}" \
@@ -7374,7 +7450,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   fi
 
   # Create IPv4 IPTables POSTROUTING Rule
-  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Adding IPTables rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
     iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Added IPTables rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
@@ -7464,9 +7540,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     done
   fi
 
-  # Save IPv4 IPSET if modified or does not exist
+  # Save IPv4 IPSET if modified or does not exist or file is empty
   [[ -z "${saveipv4ipset+x}" ]] &>/dev/null && saveipv4ipset="0"
-  if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null;then
+  if [[ "${saveipv4ipset}" == "1" ]] &>/dev/null || { [[ ! -f "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null || [[ ! -s "${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset" ]] &>/dev/null ;};then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Saving IPv4 IPSET for ${RESTOREPOLICY}"
     ipset save ${IPSETPREFIX}-${RESTOREPOLICY}-v4 -file ${POLICYDIR}/policy_${RESTOREPOLICY}-v4.ipset 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Save IPv4 IPSET for ${RESTOREPOLICY}" \
