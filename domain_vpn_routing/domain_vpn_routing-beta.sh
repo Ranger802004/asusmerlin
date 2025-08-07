@@ -3,7 +3,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 06/18/2025
-# Version: v3.2.2-beta1
+# Version: v3.2.2
 
 # Cause the script to exit if errors are encountered
 set -e
