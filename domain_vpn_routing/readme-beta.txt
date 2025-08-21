@@ -1,7 +1,7 @@
 # Domain VPN Routing for ASUS Routers using Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/06/2025
-# Version: v3.2.2
+# Date: 08/20/2025
+# Version: v3.2.3-beta1
 
 Domain VPN Routing allows you to create policies to add domains and select which VPN interface you want them routed to, the script will query the Domains via cronjob and add the queried IPs to a Policy File that will create the routes necessary.
 
@@ -231,6 +231,14 @@ Considerations:
 - Enabling AdGuardHome log querying can take a long time to process if the AdGuardHome log file is large.  The log file rotation interval can be lowered within AdGuardHome to reduce the size of the log file. 
 
 Release Notes:
+v3.2.3-beta1 - 08/20/2025
+Enhancements:
+- Added a prompt to ask if running instances of Domain VPN Routing should be killed before an update takes place.
+- Added alternative detection of Entware being installed.
+
+Fixes:
+- Fixed issue where some update processes would not clean up the lock file.
+
 v3.2.2 - 08/06/2025
 Fixes:
 - Fixed state_desc error in generateinterfacelist function.

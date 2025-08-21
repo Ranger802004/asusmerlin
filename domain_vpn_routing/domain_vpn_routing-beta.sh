@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 06/18/2025
-# Version: v3.2.2
+# Date: 08/20/2025
+# Version: v3.2.3-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.2.2-beta1"
+VERSION="v3.2.3-beta1"
 MAJORVERSION="${VERSION:1:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -7659,6 +7659,9 @@ if [[ -n "${PIDS+x}" ]] &>/dev/null && [[ -n "${PIDS}" ]] &>/dev/null;then
       || PIDS="${PIDS//[${PID}$'\t\r\n']/}" && continue
     done
   done
+# Perform cleanup if there are no running processes
+elif [[ -n "${PIDS+x}" ]] &>/dev/null && [[ -z "${PIDS}" ]] &>/dev/null;then
+  cleanup
 elif [[ "${mode}" != "update" ]] &>/dev/null && { [[ -z "${PIDS+x}" ]] &>/dev/null || [[ -z "${PIDS}" ]] &>/dev/null ;};then
   # Log no PIDs found and return
   logger -p 2 -st "${ALIAS}" "Restart - ***${ALIAS} is not running*** No Process ID Detected"
@@ -7732,10 +7735,26 @@ if [[ "${version}" -lt "${remoteversion}" ]] &>/dev/null;then
     fi
     case ${yn} in
       [Yy]* ) break;;
-      [Nn]* ) unset passiveupdate && return;;
+      [Nn]* ) return;;
       * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
     esac
   done
+
+  # Check for Lock File
+  logger -p 6 -t "${ALIAS}" "Debug - Checking for Lock File: ${LOCKFILE}"
+  if [[ -f "${LOCKFILE}" ]] &>/dev/null;then
+    # Prompt for Confirmation
+    while true &>/dev/null;do
+      read -p "${FRIENDLYNAME} is currently running.  Do you want to kill currently running instances before the update? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
+      case ${yn} in
+        [Yy]* ) killscript && break;;
+        [Nn]* ) break;;
+        * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
+      esac
+    done
+  fi
+  
+  # Update Domain VPN Routing
   /usr/sbin/curl -s "${DOWNLOADPATH}" -o "${0}" 2>/dev/null && chmod 755 ${0} \
   && { logger -p 4 -st "${ALIAS}" "Update - ${ALIAS} has been updated to version: ${REMOTEVERSION}" && killscript ;} \
   || logger -p 2 -st "${ALIAS}" "Update - ***Error*** Failed to update ${ALIAS} to version: ${REMOTEVERSION}"
@@ -7750,7 +7769,7 @@ elif [[ "${version}" == "${remoteversion}" ]] &>/dev/null;then
     read -r -p "${ALIAS} is up to date. Do you want to reinstall ${ALIAS} Version: ${VERSION}? ***Enter Y for Yes or N for No*** $(echo $'\n> ')" yn
     case ${yn} in
       [Yy]* ) break;;
-      [Nn]* ) unset passiveupdate && return;;
+      [Nn]* ) return;;
       * ) echo -e "${RED}Invalid Selection!!! ***Enter Y for Yes or N for No***${NOCOLOR}"
     esac
   done
@@ -7892,7 +7911,7 @@ while [[ -z "${systemparameterssync+x}" ]] &>/dev/null || [[ "${systemparameters
   fi
 
   # ENTWAREINSTALLED
-  if [[ -f "/jffs/scripts/post-mount" ]] &>/dev/null && [[ -n "$(grep -w ". /jffs/addons/amtm/mount-entware.mod # Added by amtm" /jffs/scripts/post-mount)" ]] &>/dev/null;then
+  if [[ -f "/jffs/scripts/post-mount" ]] &>/dev/null && { [[ -n "$(grep -w ". /jffs/addons/amtm/mount-entware.mod # Added by amtm" /jffs/scripts/post-mount)" ]] &>/dev/null || [[ -n "$(grep -w 'ln -nsf $1/entware /tmp/opt' /jffs/scripts/post-mount)" ]] &>/dev/null ;};then
     logger -p 6 -t "${ALIAS}" "Debug - Entware is installed"
     ENTWAREINSTALLED="1"
     ENTWAREMOUNTED="0"
