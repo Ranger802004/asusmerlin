@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 08/20/2025
-# Version: v3.2.3-beta1
+# Date: 08/28/2025
+# Version: v3.2.3-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -4008,7 +4008,7 @@ for RPINTERFACE in ${RPINTERFACES};do
   fi
   
   # Adjust Reverse Path Filter to Loose Filtering if enabled for Interface if FWMark is set
-  if [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${IFNAME}/rp_filter 2>/dev/null)" != "2" ]] &>/dev/null;then
+  if [[ "${WANSDUALWANENABLE}" == "0" ]] &>/dev/null && [[ "$(cat /proc/sys/net/ipv4/conf/${RPIFNAME}/rp_filter 2>/dev/null)" != "2" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Routing Director - Setting Reverse Path Filter for ${RPIFNAME} to Loose Filtering"
     echo 2 > /proc/sys/net/ipv4/conf/${RPIFNAME}/rp_filter \
     && logger -p 4 -t "${ALIAS}" "Routing Director - Set Reverse Path Filter for ${RPIFNAME} to Loose Filtering" \
