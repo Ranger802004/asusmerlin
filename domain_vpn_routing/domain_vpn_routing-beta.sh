@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 11/04/2025
-# Version: v3.2.3
+# Date: 12/12/2025
+# Version: v3.2.4-beta1
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.2.3"
+VERSION="v3.2.4-beta1"
 MAJORVERSION="${VERSION:1:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -4541,7 +4541,7 @@ for QUERYASN in ${QUERYASNS};do
   i="1"
   while [[ "${i}" -le "10" ]] &>/dev/null;do
     [[ "${i}" -ge "2" ]] &>/dev/null && sleep 1
-    /usr/sbin/curl --connect-timeout 60 --max-time 300 --url "https://api.bgpview.io/asn/${QUERYASN}/prefixes" --ssl-reqd 2>/dev/null | /opt/bin/jq 2>/dev/null > /tmp/${QUERYASN}_query.tmp \
+    /usr/sbin/curl -sL -A "Mozilla/5.0" --connect-timeout 60 --max-time 300 --url "https://bgp.he.net/${QUERYASN}#_prefixes6" --ssl-reqd 2>/dev/null | awk -F '[<>]' '/net\//{gsub(/"/,"",$3); print $(NF-2)}' 2>/dev/null | grep -E "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})|((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" > /tmp/${QUERYASN}_query.tmp \
     && { { tempfile="/tmp/${QUERYASN}_query.tmp" ; tempfiles="${tempfiles} ${tempfile}" ;} && break ;} \
     || { logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Attempt ${i} failed to query ASN: ${QUERYASN}" && i="$((${i}+1))" && continue ;}
   done
@@ -4603,7 +4603,7 @@ for QUERYASN in ${QUERYASNS};do
 	
     # Create ASN IPv6 temporary file
 	if [[ -f "/tmp/${QUERYASN}_query.tmp" ]] &>/dev/null;then
-      cat /tmp/${QUERYASN}_query.tmp | /opt/bin/jq ".data.ipv6_prefixes[].prefix" 2>/dev/null | tr -d \" | sort -u > /tmp/${QUERYASN}-IPv6.tmp ; { tempfile="/tmp/${QUERYASN}-IPv6.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
+      cat /tmp/${QUERYASN}_query.tmp | grep -E "(([[:xdigit:]]{1,4}::?){1,7}[[:xdigit:]|::]{1,4})" 2>/dev/null | sort -u > /tmp/${QUERYASN}-IPv6.tmp ; { tempfile="/tmp/${QUERYASN}-IPv6.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
 	fi
 	
     # Add ASN IPv6 Subnets to IPSET
@@ -4720,7 +4720,7 @@ for QUERYASN in ${QUERYASNS};do
   
   # Create ASN IPv4 temporary files
   if [[ -f "/tmp/${QUERYASN}_query.tmp" ]] &>/dev/null;then
-    cat /tmp/${QUERYASN}_query.tmp | /opt/bin/jq ".data.ipv4_prefixes[].prefix" 2>/dev/null | tr -d \" | sort -u > /tmp/${QUERYASN}-IPv4.tmp ; { tempfile="/tmp/${QUERYASN}-IPv4.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
+    cat /tmp/${QUERYASN}_query.tmp | grep -E "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))" | sort -u > /tmp/${QUERYASN}-IPv4.tmp ; { tempfile="/tmp/${QUERYASN}-IPv4.tmp" && tempfiles="${tempfiles} ${tempfile}" ;} 
   fi
   
   # Add ASN IPv4 Subnets to IPSET
