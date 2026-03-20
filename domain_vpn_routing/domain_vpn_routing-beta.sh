@@ -2,8 +2,8 @@
 
 # Domain VPN Routing for ASUS Routers using Merlin Firmware v386.7 or newer
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/19/2026
-# Version: v3.2.5-beta1
+# Date: 03/20/2026
+# Version: v3.2.5-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="domain_vpn_routing"
 FRIENDLYNAME="Domain VPN Routing"
-VERSION="v3.2.5-beta1"
+VERSION="v3.2.5-beta2"
 MAJORVERSION="${VERSION:1:1}"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/domain_vpn_routing/"
 GLOBALCONFIGFILE="/jffs/configs/domain_vpn_routing/global.conf"
@@ -4580,7 +4580,7 @@ for QUERYASN in ${QUERYASNS};do
     # Create IPv6 IP6Tables OUTPUT Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${QUERYASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Query ASN - Adding IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Query ASN - Added IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v6 FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v6 FWMark: ${FWMARK}"
     fi
@@ -4588,7 +4588,7 @@ for QUERYASN in ${QUERYASNS};do
     # Create IPv6 IP6Tables PREROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${QUERYASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Query ASN - Adding IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Query ASN - Added IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v6 FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v6 FWMark: ${FWMARK}"
     fi
@@ -4596,7 +4596,7 @@ for QUERYASN in ${QUERYASNS};do
     # Create IPv6 IP6Tables POSTROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${QUERYASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Query ASN - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
-      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -I POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Query ASN - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
     fi
@@ -4697,7 +4697,7 @@ for QUERYASN in ${QUERYASNS};do
   # Create IPv4 IPTables OUTPUT Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${QUERYASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query ASN - Adding IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v4 FWMark: ${FWMARK}"
-    iptables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query ASN - Added IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v4 FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v4 FWMark: ${FWMARK}"
   fi
@@ -4705,7 +4705,7 @@ for QUERYASN in ${QUERYASNS};do
   # Create IPv4 IPTables PREROUTING Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${QUERYASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query ASN - Adding IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v4 FWMark: ${FWMARK}"
-    iptables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query ASN - Added IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v4 FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v4 FWMark: ${FWMARK}"
   fi
@@ -4713,7 +4713,7 @@ for QUERYASN in ${QUERYASNS};do
   # Create IPv4 IPTables POSTROUTING Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${QUERYASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query ASN - Adding IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
-    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -I POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query ASN - Added IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Failed to add IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
   fi
@@ -5281,21 +5281,21 @@ if [[ "${mode}" == "editasn" ]] &>/dev/null;then
           # Recreate IPv6 IP6Tables OUTPUT Rule
           if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${EDITASN}'-v6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
             logger -p 5 -t "${ALIAS}" "Edit ASN - Adding IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v6 FWMark: ${NEWFWMARK}"
-            ip6tables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${EDITASN}-v6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
+            ip6tables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${EDITASN}-v6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
             && logger -p 4 -st "${ALIAS}" "Edit ASN - Added IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v6 FWMark: ${NEWFWMARK}" \
             || logger -p 2 -st "${ALIAS}" "Edit ASN - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v6 FWMark: ${NEWFWMARK}"
           fi
           # Recreate IPv6 IP6Tables PREROUTING Rule
           if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${EDITASN}'-v6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
             logger -p 5 -t "${ALIAS}" "Edit ASN - Adding IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v6 FWMark: ${NEWFWMARK}"
-            ip6tables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${EDITASN}-v6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
+            ip6tables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${EDITASN}-v6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
             && logger -p 4 -st "${ALIAS}" "Edit ASN - Added IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v6 FWMark: ${NEWFWMARK}" \
             || logger -p 2 -st "${ALIAS}" "Edit ASN - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v6 FWMark: ${NEWFWMARK}"
           fi
           # Recreate IPv6 IP6Tables POSTROUTING Rule
           if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${NEWIFNAME}'" && $10 == "'${IPSETPREFIX}'-'${EDITASN}'-v6" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
             logger -p 5 -t "${ALIAS}" "Edit ASN - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v6 FWMark: ${NEWFWMARK}"
-            ip6tables -t mangle -A POSTROUTING -o ${NEWIFNAME} -m set --match-set ${IPSETPREFIX}-${EDITASN}-v6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
+            ip6tables -t mangle -I POSTROUTING -o ${NEWIFNAME} -m set --match-set ${IPSETPREFIX}-${EDITASN}-v6 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
             && logger -p 4 -st "${ALIAS}" "Edit ASN - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v6 FWMark: ${NEWFWMARK}" \
            || logger -p 2 -st "${ALIAS}" "Edit ASN - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v6 FWMark: ${NEWFWMARK}"
           fi
@@ -5305,21 +5305,21 @@ if [[ "${mode}" == "editasn" ]] &>/dev/null;then
         # Recreate IPv4 IPTables OUTPUT Rule
         if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${EDITASN}'-v4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
           logger -p 5 -t "${ALIAS}" "Edit ASN - Adding IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v4 FWMark: ${NEWFWMARK}"
-          iptables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${EDITASN}-v4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
+          iptables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${EDITASN}-v4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
           && logger -p 4 -st "${ALIAS}" "Edit ASN - Added IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v4 FWMark: ${NEWFWMARK}" \
           || logger -p 2 -st "${ALIAS}" "Edit ASN - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v4 FWMark: ${NEWFWMARK}"
         fi
         # Recreate IPv4 IPTables PREROUTING Rule
         if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${EDITASN}'-v4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
           logger -p 5 -t "${ALIAS}" "Edit ASN - Adding IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v4 FWMark: ${NEWFWMARK}"
-          iptables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${EDITASN}-v4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
+          iptables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${EDITASN}-v4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
           && logger -p 4 -st "${ALIAS}" "Edit ASN - Added IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v4 FWMark: ${NEWFWMARK}" \
           || logger -p 2 -st "${ALIAS}" "Edit ASN - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v4 FWMark: ${NEWFWMARK}"
         fi
         # Recreate IPv4 IPTables POSTROUTING Rule
         if [[ "${NEWSTATE}" != "0" ]] &>/dev/null && [[ -n "${NEWFWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${NEWIFNAME}'" && $11 == "'${IPSETPREFIX}'-'${EDITASN}'-v4" && ( $NF == "'${NEWFWMARK}'" || $NF == "'${NEWFWMARK}'/'${NEWMASK}'")')" ]] &>/dev/null;then
           logger -p 5 -t "${ALIAS}" "Edit ASN - Adding IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v4 FWMark: ${NEWFWMARK}"
-          iptables -t mangle -A POSTROUTING -o ${NEWIFNAME} -m set --match-set ${IPSETPREFIX}-${EDITASN}-v4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
+          iptables -t mangle -I POSTROUTING -o ${NEWIFNAME} -m set --match-set ${IPSETPREFIX}-${EDITASN}-v4 dst -j MARK --set-xmark ${NEWFWMARK}/${NEWMASK} 2>/dev/null \
           && logger -p 4 -st "${ALIAS}" "Edit ASN - Added IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v4 FWMark: ${NEWFWMARK}" \
           || logger -p 2 -st "${ALIAS}" "Edit ASN - ***Error*** Failed to add IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${EDITASN}-v4 FWMark: ${NEWFWMARK}"
         fi
@@ -6562,7 +6562,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     # Create IPv6 IP6Tables OUTPUT Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Query Policy - Adding IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Query Policy - Added IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}"
     fi
@@ -6570,7 +6570,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     # Create IPv6 IP6Tables PREROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Query Policy - Adding IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Query Policy - Added IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 FWMark: ${FWMARK}"
     fi
@@ -6578,7 +6578,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
     # Create IPv6 IP6Tables POSTROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Query Policy - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
-      ip6tables -t mangle -I POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Query Policy - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
     fi
@@ -6740,7 +6740,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # Create IPv4 IPTables OUTPUT Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query Policy - Adding IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}"
-    iptables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query Policy - Added IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}"
   fi
@@ -6748,7 +6748,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # Create IPv4 IPTables PREROUTING Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query Policy - Adding IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}"
-    iptables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query Policy - Added IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 FWMark: ${FWMARK}"
   fi
@@ -6756,7 +6756,7 @@ for QUERYPOLICY in ${QUERYPOLICIES};do
   # Create IPv4 IPTables POSTROUTING Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${QUERYPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Query Policy - Adding IPTables rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
-    iptables -t mangle -I POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${QUERYPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Query Policy - Added IPTables rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Query Policy - ***Error*** Failed to add IPTables rule for IPSET: ${IPSETPREFIX}-${QUERYPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
   fi
@@ -7011,7 +7011,7 @@ for RESTOREASN in ${RESTOREASNS};do
     # Create IPv6 IP6Tables OUTPUT Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}"
     fi
@@ -7019,7 +7019,7 @@ for RESTOREASN in ${RESTOREASNS};do
     # Create IPv6 IP6Tables PREROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 FWMark: ${FWMARK}"
     fi
@@ -7027,7 +7027,7 @@ for RESTOREASN in ${RESTOREASNS};do
     # Create IPv6 IP6Tables POSTROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
-      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -I POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
     fi
@@ -7044,7 +7044,7 @@ for RESTOREASN in ${RESTOREASNS};do
   # Create IPv4 IPTables OUTPUT Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}"
-    iptables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}"
   fi
@@ -7052,7 +7052,7 @@ for RESTOREASN in ${RESTOREASNS};do
   # Create IPv4 IPTables PREROUTING Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}"
-    iptables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 FWMark: ${FWMARK}"
   fi
@@ -7060,7 +7060,7 @@ for RESTOREASN in ${RESTOREASNS};do
   # Create IPv4 IPTables POSTROUTING Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${RESTOREASN}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore ASN Cache - Adding IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
-    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -I POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREASN}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore ASN Cache - Added IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Restore ASN Cache - ***Error*** Failed to add IPTables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREASN}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
   fi
@@ -7230,7 +7230,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     # Create IPv6 IP6Tables OUTPUT Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Restore Policy - Adding IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Restore Policy - Added IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add IP6Tables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}"
     fi
@@ -7238,7 +7238,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     # Create IPv6 IP6Tables PREROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $10 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Restore Policy - Adding IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}"
-      ip6tables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Restore Policy - Added IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add IP6Tables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 FWMark: ${FWMARK}"
     fi
@@ -7246,7 +7246,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
     # Create IPv6 IP6Tables POSTROUTING Rule
     if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(ip6tables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $6 == "'${IFNAME}'" && $10 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v6" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
       logger -p 5 -t "${ALIAS}" "Restore Policy - Adding IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
-      ip6tables -t mangle -I POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+      ip6tables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v6 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
       && logger -p 4 -t "${ALIAS}" "Restore Policy - Added IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}" \
       || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add IP6Tables POSTROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v6 Interface: ${IFNAME} FWMark: ${FWMARK}"
     fi
@@ -7436,7 +7436,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   # Create IPv4 IPTables OUTPUT Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL OUTPUT | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Adding IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}"
-    iptables -t mangle -I OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -A OUTPUT -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Added IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add IPTables OUTPUT rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}"
   fi
@@ -7444,7 +7444,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   # Create IPv4 IPTables PREROUTING Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL PREROUTING | awk '$3 == "MARK" && $4 == "all" && $11 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Adding IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}"
-    iptables -t mangle -I PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -A PREROUTING -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Added IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add IPTables PREROUTING rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 FWMark: ${FWMARK}"
   fi
@@ -7452,7 +7452,7 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   # Create IPv4 IPTables POSTROUTING Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "${IFNAME}" ]] &>/dev/null && [[ -z "$(iptables -t mangle -nvL POSTROUTING | awk '$3 == "MARK" && $4 == "all" && $7 == "'${IFNAME}'" && $11 == "'${IPSETPREFIX}'-'${RESTOREPOLICY}'-v4" && ( $NF == "'${FWMARK}'" || $NF == "'${FWMARK}'/'${MASK}'")')" ]] &>/dev/null;then
     logger -p 5 -t "${ALIAS}" "Restore Policy - Adding IPTables rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
-    iptables -t mangle -I POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
+    iptables -t mangle -A POSTROUTING -o ${IFNAME} -m set --match-set ${IPSETPREFIX}-${RESTOREPOLICY}-v4 dst -j MARK --set-xmark ${FWMARK}/${MASK} 2>/dev/null \
     && logger -p 4 -t "${ALIAS}" "Restore Policy - Added IPTables rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}" \
     || logger -p 2 -st "${ALIAS}" "Restore Policy - ***Error*** Failed to add IPTables rule for IPSET: ${IPSETPREFIX}-${RESTOREPOLICY}-v4 Interface: ${IFNAME} FWMark: ${FWMARK}"
   fi
