@@ -3,7 +3,7 @@
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
 # Date: 03/20/2026
-# Version: v2.2.1-beta1
+# Version: v2.2.1-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -6157,6 +6157,7 @@ if [[ -f "${AIPROTECTION_EMAILCONFIG}" ]] &>/dev/null || [[ -f "${AMTM_EMAILCONF
     echo "From: \"${MY_NAME}\"<${MY_EMAIL}>" >>"${TMPEMAILFILE}"
   fi
   echo "Date: $(date -R)" >>"${TMPEMAILFILE}"
+  echo "To: \"${TO_NAME}\"<${TO_ADDRESS}>" >>"${TMPEMAILFILE}"
   echo "" >>"${TMPEMAILFILE}"
 
   # Determine Email Header
