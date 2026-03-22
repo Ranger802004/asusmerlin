@@ -2,8 +2,8 @@
 
 # WAN Failover for ASUS Routers using ASUS Merlin Firmware
 # Author: Ranger802004 - https://github.com/Ranger802004/asusmerlin/
-# Date: 03/20/2026
-# Version: v2.2.1-beta1
+# Date: 03/22/2026
+# Version: v2.2.1-beta2
 
 # Cause the script to exit if errors are encountered
 set -e
@@ -12,7 +12,7 @@ set -u
 # Global Variables
 ALIAS="wan-failover"
 FRIENDLYNAME="WAN Failover"
-VERSION="v2.2.1-beta1"
+VERSION="v2.2.1-beta2"
 REPO="https://raw.githubusercontent.com/Ranger802004/asusmerlin/main/"
 CONFIGFILE="/jffs/configs/wan-failover.conf"
 DNSRESOLVFILE="/tmp/resolv.conf"
@@ -6150,9 +6150,10 @@ if [[ -f "${AIPROTECTION_EMAILCONFIG}" ]] &>/dev/null || [[ -f "${AMTM_EMAILCONF
   fi
 
   # Determine From Name
-  logger -p 6 -t "${ALIAS}" "Debug - Selecting From Name"
+  logger -p 6 -t "${ALIAS}" "Debug - Selecting From / To Name"
   if [[ -f "${AMTM_EMAILCONFIG}" ]] &>/dev/null;then
     echo "From: \"${FRIENDLYNAME}\"<${FROM_ADDRESS}>" >>"${TMPEMAILFILE}"
+	echo "To: \"${TO_NAME}\"<${TO_ADDRESS}>" >>"${TMPEMAILFILE}"
   elif [[ -f "${AIPROTECTION_EMAILCONFIG}" ]] &>/dev/null;then
     echo "From: \"${MY_NAME}\"<${MY_EMAIL}>" >>"${TMPEMAILFILE}"
   fi
