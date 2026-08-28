@@ -3920,6 +3920,7 @@ rr5---sn-5uaeznss.googlevideo.com
 rr5---sn-5ualdnlr.googlevideo.com
 rr5---sn-5ualdns6.googlevideo.com
 rr5---sn-5ualdns7.googlevideo.com
+rr5---sn-5ualdnse.googlevideo.com
 rr5---sn-5ualdnsl.googlevideo.com
 rr5---sn-5ualdnss.googlevideo.com
 rr5---sn-5ualdnzk.googlevideo.com
@@ -4239,6 +4240,7 @@ rr5.sn-5uaeznl6.googlevideo.com
 rr5.sn-5uaeznss.googlevideo.com
 rr5.sn-5ualdns6.googlevideo.com
 rr5.sn-5ualdns7.googlevideo.com
+rr5.sn-5ualdnse.googlevideo.com
 rr5.sn-5ualdnsl.googlevideo.com
 rr5.sn-5ualdnss.googlevideo.com
 rr5.sn-5ualdnzk.googlevideo.com
