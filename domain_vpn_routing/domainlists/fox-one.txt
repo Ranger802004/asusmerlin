@@ -20,3 +20,9 @@ prod.player.fox.digitalvideoplatform.com
 prod1.fes.kts.fox
 static-media.fox.com
 uplynk.com
+api2.fox.com
+player.fox.com
+static.fox.com
+static.foxsports.com
+www.fox.com
+www.foxsports.com
