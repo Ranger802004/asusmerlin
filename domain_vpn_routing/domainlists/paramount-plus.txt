@@ -13,3 +13,17 @@ splice.paramountplus.com
 thumbnails.cbsig.net
 vod.pplus.paramount.tech
 www.paramountplus.com
+availability-fastly.syncbak-mediastore-cedexis.cbsaavideo.com
+bakery.pplus.paramount.tech
+cbsallaccess.com
+cbsimaging.com
+js-prod-us.paramountplus.com
+saa.cbsi.com
+saa.paramountplus.com
+syncbak.com
+vod-gcs-cedexis.cbsaavideo.com
+vod-gcs-google.cbsaavideo.com
+vod-gcs-qwilt.cbsaavideo.com
+www.cbsstatic.com
+wwwimage-secure.cbsstatic.com
+wwwimage-us.pplusstatic.com
