@@ -1,0 +1,2 @@
+hulu.playback.edge.bamgrid.com
+hulustream.com

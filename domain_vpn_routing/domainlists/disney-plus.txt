@@ -1,0 +1,13 @@
+appconfigs.disney-plus.net
+cdn.registerdisney.go.com
+client-sdk-configs.bamgrid.com
+disney-plus.net
+disney.api.edge.bamgrid.com
+disney.connections.edge.bamgrid.com
+disney.images.edge.bamgrid.com
+disney.playback.edge.bamgrid.com
+dssott.com
+edgedatg.com
+linear-ftc-na-central-1.media.dssott.com
+pcs.bamgrid.com
+prod-frida-origin.bamgrid.com

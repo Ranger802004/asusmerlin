@@ -1,0 +1,3 @@
+hls.itunes.apple.com
+play-edge.itunes.apple.com
+uts-api.itunes.apple.com

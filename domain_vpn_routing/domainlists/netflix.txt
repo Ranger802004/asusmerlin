@@ -1,0 +1,12 @@
+assets.nflxext.com
+ipv4-cxxx.nflxvideo.net
+nflxext.com
+nflximg.com
+nflximg.net
+nflxso.net
+nflxvideo.net
+nrdp.prod.ftl.netflix.com
+nrdp26.prod.ftl.netflix.com
+oca-api.netflix.com
+oca.nflxvideo.net
+occ.nflxso.net
