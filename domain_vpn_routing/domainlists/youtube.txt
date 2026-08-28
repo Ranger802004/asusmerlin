@@ -2526,6 +2526,7 @@ rr2.sn-vgqsrnzz.googlevideo.com
 rr3---sn-1gi7znes.googlevideo.com
 rr3---sn-2imern76.googlevideo.com
 rr3---sn-2imern7d.googlevideo.com
+rr3---sn-2o5ua5-5b.googlevideo.com
 rr3---sn-2oab55-5i.googlevideo.com
 rr3---sn-2of5f5-5p.googlevideo.com
 rr3---sn-2ovgq5-cw.googlevideo.com
@@ -2860,6 +2861,7 @@ rr3---sn-vgqsrnzr.googlevideo.com
 rr3---sn-vgqsrnzs.googlevideo.com
 rr3---sn-vgqsrnzy.googlevideo.com
 rr3---sn-vgqsrnzz.googlevideo.com
+rr3.sn-2o5ua5-5b.googlevideo.com
 rr3.sn-2oab55-5i.googlevideo.com
 rr3.sn-2of5f5-5p.googlevideo.com
 rr3.sn-2ovgq5-cw.googlevideo.com
