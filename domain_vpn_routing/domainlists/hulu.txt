@@ -129,3 +129,7 @@ vod-ftc-sa-west-1.media.dssott.com
 vod-ftc-sa-west-2.media.dssott.com
 vortex.hulu.com
 www.hulu.com
+cws-hulu.conviva.com
+hulu.hb.omtrdc.net
+hulu.sc.omtrdc.net
+live-mediashield-ava-hulustream-com.akamaized.net
