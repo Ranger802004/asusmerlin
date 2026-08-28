@@ -123,3 +123,6 @@ vod-ftc-sa-east-1.media.dssott.com
 vod-ftc-sa-east-2.media.dssott.com
 vod-ftc-sa-west-1.media.dssott.com
 vod-ftc-sa-west-2.media.dssott.com
+disneyplus.com
+www.disneyplus.com
+dssedge.com
