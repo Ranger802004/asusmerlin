@@ -9,6 +9,7 @@ on:
       - "domain_vpn_routing/domainlists/**"
       - ".github/scripts/resolve_domains.py"
       - ".github/workflows/resolve-domainlists.yml"
+      - ".github/workflows/resolve-domainslists.yml"
 
 permissions:
   contents: write
@@ -22,16 +23,18 @@ jobs:
 
       - name: Resolve all domain lists
         run: |
+          mkdir -p domain_vpn_routing/iplists
           python3 .github/scripts/resolve_domains.py \
             --domain-dir domain_vpn_routing/domainlists \
-            --iplist-dir domain_vpn_routing/iplists \
-            --accumulate
+            --iplist-dir domain_vpn_routing/iplists
 
       - name: Commit IP lists if changed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add domain_vpn_routing/iplists/*.txt
+          mkdir -p domain_vpn_routing/iplists
+          touch domain_vpn_routing/iplists/.gitkeep
+          git add -A domain_vpn_routing/iplists
           if git diff --staged --quiet; then
             echo "No IP list changes"
           else

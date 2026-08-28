@@ -7,6 +7,16 @@ from pathlib import Path
 
 SKIP_NAMES = {".gitkeep", "readme.txt", "README.txt"}
 
+def usable_ip(addr: ipaddress._BaseAddress) -> bool:
+    return not (
+        addr.is_private
+        or addr.is_loopback
+        or addr.is_link_local
+        or addr.is_multicast
+        or addr.is_unspecified
+        or addr.is_reserved
+    )
+
 def load_lines(path: Path) -> set[str]:
     if not path.exists():
         return set()
@@ -22,12 +32,7 @@ def load_ips(path: Path, version: int) -> set[str]:
     for item in load_lines(path):
         try:
             addr = ipaddress.ip_address(item)
-            if addr.version == version and not (
-                addr.is_private
-                or addr.is_loopback
-                or addr.is_link_local
-                or addr.is_multicast
-            ):
+            if addr.version == version and usable_ip(addr):
                 ips.add(str(addr))
         except ValueError:
             continue
@@ -49,9 +54,8 @@ def resolve_one(name: str) -> tuple[set[str], set[str]]:
         try:
             for info in socket.getaddrinfo(name, None, family, socket.SOCK_STREAM):
                 addr = ipaddress.ip_address(info[4][0])
-                if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_multicast:
-                    continue
-                bucket.add(str(addr))
+                if usable_ip(addr):
+                    bucket.add(str(addr))
         except socket.gaierror:
             pass
     return v4, v6
@@ -69,31 +73,41 @@ def domain_files(domain_dir: Path) -> list[Path]:
         files.append(path)
     return files
 
-def resolve_file(in_path: Path, iplist_dir: Path, accumulate: bool, workers: int) -> None:
+def resolve_file(in_path: Path, iplist_dir: Path, workers: int) -> None:
     stem = in_path.stem
-    v4_path = iplist_dir / f"{stem}_ipv4.txt"
-    v6_path = iplist_dir / f"{stem}_ipv6.txt"
+    recent_v4 = iplist_dir / f"{stem}_ipv4_recent.txt"
+    recent_v6 = iplist_dir / f"{stem}_ipv6_recent.txt"
+    accum_v4 = iplist_dir / f"{stem}_ipv4_accumulative.txt"
+    accum_v6 = iplist_dir / f"{stem}_ipv6_accumulative.txt"
 
     domains = sorted(
         {n.rstrip(".").lower() for n in load_lines(in_path) if is_domain(n)}
     )
-    v4 = load_ips(v4_path, 4) if accumulate else set()
-    v6 = load_ips(v6_path, 6) if accumulate else set()
 
+    now_v4, now_v6 = set(), set()
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
         for new_v4, new_v6 in pool.map(resolve_one, domains):
-            v4.update(new_v4)
-            v6.update(new_v6)
+            now_v4.update(new_v4)
+            now_v6.update(new_v6)
 
-    write_ips(v4_path, v4)
-    write_ips(v6_path, v6)
-    print(f"{in_path.name}: domains={len(domains)} ipv4={len(v4)} ipv6={len(v6)}")
+    all_v4 = load_ips(accum_v4, 4) | now_v4
+    all_v6 = load_ips(accum_v6, 6) | now_v6
+
+    write_ips(recent_v4, now_v4)
+    write_ips(recent_v6, now_v6)
+    write_ips(accum_v4, all_v4)
+    write_ips(accum_v6, all_v6)
+
+    print(
+        f"{in_path.name}: domains={len(domains)} "
+        f"recent_v4={len(now_v4)} recent_v6={len(now_v6)} "
+        f"accum_v4={len(all_v4)} accum_v6={len(all_v6)}"
+    )
 
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--domain-dir", required=True)
     p.add_argument("--iplist-dir", required=True)
-    p.add_argument("--accumulate", action="store_true")
     p.add_argument("--workers", type=int, default=50)
     args = p.parse_args()
 
@@ -107,7 +121,7 @@ def main() -> None:
         return
 
     for path in files:
-        resolve_file(path, iplist_dir, args.accumulate, args.workers)
+        resolve_file(path, iplist_dir, args.workers)
 
 if __name__ == "__main__":
     main()
