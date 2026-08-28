@@ -129,3 +129,6 @@ www.noteable.spotify.com
 www.spotify.com
 yearinmusic.spotify.com
 yourfeedback.spotify.com
+audio-ak.spotify.com.edgesuite.net
+audio-ec.spotify.com
+audio-fa.spotify.com
