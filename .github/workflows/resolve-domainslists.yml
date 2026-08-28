@@ -27,6 +27,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
         run: |
+          set -euo pipefail
           mkdir -p domain_vpn_routing/iplists
           if [ "$EVENT_NAME" = "schedule" ]; then
             echo "Scheduled run; resolving all lists"
@@ -35,19 +36,17 @@ jobs:
               --iplist-dir domain_vpn_routing/iplists \
               --mode all
           elif [ "$EVENT_NAME" = "push" ]; then
-            mapfile -t CHANGED < <(
-              git diff --name-only HEAD~1 HEAD -- 'domain_vpn_routing/domainlists/*.txt' || true
-            )
-            if [ ${#CHANGED[@]} -eq 0 ]; then
+            CHANGED="$(git diff --name-only HEAD~1 HEAD -- domain_vpn_routing/domainlists || true)"
+            if [ -z "$CHANGED" ]; then
               echo "Push did not change any domain lists; skipping resolve"
               exit 0
             fi
             echo "Push changed:"
-            printf '%s\n' "${CHANGED[@]}"
+            echo "$CHANGED"
             python3 .github/scripts/resolve_domains.py \
               --domain-dir domain_vpn_routing/domainlists \
               --iplist-dir domain_vpn_routing/iplists \
-              --files "${CHANGED[@]}"
+              --files $CHANGED
           else
             echo "Manual run; resolving only domain lists whose content changed"
             python3 .github/scripts/resolve_domains.py \
