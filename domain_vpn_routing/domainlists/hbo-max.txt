@@ -1,3 +1,9 @@
 cinemax.com
 hbomax.com
 max.com
+comet.api.hbo.com
+default.any-any.prd.api.max.com
+hbowatch.com
+play.max.com
+www.hbomax.com
+www.max.com
