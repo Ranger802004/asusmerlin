@@ -1,0 +1,59 @@
+name: Add domain to list
+
+on:
+  workflow_dispatch:
+    inputs:
+      list:
+        description: "Domain list name without .txt (youtube, tiktok, spotify)"
+        required: true
+        type: string
+      domain:
+        description: "Domain(s) to add if missing. One per line, or comma/space separated."
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  add:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Add domain(s) if missing
+        env:
+          ADD_LIST: ${{ inputs.list }}
+          ADD_DOMAINS: ${{ inputs.domain }}
+        run: |
+          python3 .github/scripts/add_domain.py \
+            --domain-dir domain_vpn_routing/domainlists \
+            --list "$ADD_LIST" \
+            --domain "$ADD_DOMAINS"
+
+      - name: Resolve that list only
+        env:
+          ADD_LIST: ${{ inputs.list }}
+        run: |
+          set -euo pipefail
+          LIST="${ADD_LIST%.txt}"
+          mkdir -p domain_vpn_routing/iplists
+          python3 .github/scripts/resolve_domains.py \
+            --domain-dir domain_vpn_routing/domainlists \
+            --iplist-dir domain_vpn_routing/iplists \
+            --files "domain_vpn_routing/domainlists/${LIST}.txt"
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p domain_vpn_routing/iplists
+          touch domain_vpn_routing/iplists/.gitkeep
+          git add -A domain_vpn_routing/domainlists domain_vpn_routing/iplists
+          if git diff --staged --quiet; then
+            echo "No list changes"
+          else
+            git commit -m "Add domain(s) to ${{ inputs.list }} and update IP lists"
+            git push
+          fi
