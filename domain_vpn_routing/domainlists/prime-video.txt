@@ -38,3 +38,12 @@ trailer.row.aiv-cdn.net
 trickplay.aux.pv-cdn.net
 www.amazonvideo.com
 www.primevideo.com
+a233vod-dash-pv-ta-amazon.akamaized.net
+app.primevideo.com
+atv-ps.primevideo.com
+avodmp4s3ww-a.akamaihd.net
+cloudfront.xp-assets.aiv-cdn.net
+d25xi40x97liuc.cloudfront.net
+dmqdd6hw24ucf.cloudfront.net
+pop-iad-2.cf.dash.row.aiv-cdn.net
+vod-dash.main.amazon.pv-cdn.net
