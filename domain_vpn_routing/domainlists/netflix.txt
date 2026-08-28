@@ -10,3 +10,14 @@ nrdp26.prod.ftl.netflix.com
 oca-api.netflix.com
 oca.nflxvideo.net
 occ.nflxso.net
+android.prod.ftl.netflix.com
+api-global.netflix.com
+appboot.netflix.com
+customerevents.netflix.com
+ichnaea.netflix.com
+ios.prod.ftl.netflix.com
+netflix.com
+push.prod.netflix.com
+secure.netflix.com
+uiboot.netflix.com
+www.netflix.com
