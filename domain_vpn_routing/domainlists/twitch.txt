@@ -1,0 +1,15 @@
+919c2e654b58.j.cloudfront.hls.ttvnw.net
+cloudfront.hls.ttvnw.net
+gql.twitch.tv
+hermes.twitch.tv
+j.cloudfront.hls.ttvnw.net
+playlist.ttvnw.net
+static-cdn.jtvnw.net
+ttvnw.net
+use11.playlist.ttvnw.net
+use17.playlist.ttvnw.net
+use22.playlist.ttvnw.net
+use23.playlist.ttvnw.net
+use4.playlist.ttvnw.net
+use6.playlist.ttvnw.net
+usher.ttvnw.net

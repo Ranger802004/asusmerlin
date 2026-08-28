@@ -1,0 +1,3 @@
+espn.api.edge.bamgrid.com
+espncdn.com
+watchespn.com
