@@ -1,0 +1,48 @@
+name: Remove domain from list
+
+on:
+  workflow_dispatch:
+    inputs:
+      list:
+        description: "Domain list name without .txt (youtube, tiktok, spotify)"
+        required: true
+        type: string
+      domain:
+        description: "Domain(s) to remove. One per line, or comma/space separated."
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Remove domain(s) and strip unused IPs
+        env:
+          REMOVE_LIST: ${{ inputs.list }}
+          REMOVE_DOMAINS: ${{ inputs.domain }}
+        run: |
+          python3 .github/scripts/remove_domain.py \
+            --domain-dir domain_vpn_routing/domainlists \
+            --iplist-dir domain_vpn_routing/iplists \
+            --list "$REMOVE_LIST" \
+            --domain "$REMOVE_DOMAINS"
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p domain_vpn_routing/iplists
+          touch domain_vpn_routing/iplists/.gitkeep
+          git add -A domain_vpn_routing/domainlists domain_vpn_routing/iplists
+          if git diff --staged --quiet; then
+            echo "No list changes"
+          else
+            git commit -m "Remove domain(s) from ${{ inputs.list }} and update IP lists"
+            git push
+          fi
