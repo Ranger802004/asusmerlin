@@ -21,13 +21,10 @@ dg.video.google.com
 dyt2oh.withgoogle.com
 eligibility-panelresearch.googlevideo.com
 fcmatch.youtube.com
-fnie.youtube
 gdata.youtube.com
-gioq.youtube
 googlevideo.co
 googlevideo.com
 googlevideo.kilatiron.com
-hostmaster.hostmaster.www.youtube.omote.me
 i.ytimg.com
 i1.ytimg.com
 i2.ytimg.com
@@ -48,7 +45,6 @@ payments.youtube.com
 prefmgr-dev.youtube.com
 prefmgr-staging.youtube.com
 profilewidgets.youtube.com
-pussy.youtube
 qyts.googleapis.com
 r1---sn-25ge7nsd.googlevideo.com
 r1---sn-25glenlk.googlevideo.com
