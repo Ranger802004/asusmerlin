@@ -1995,6 +1995,7 @@ rr2---sn-5uaezn67.googlevideo.com
 rr2---sn-5uaezn6l.googlevideo.com
 rr2---sn-5uaezner.googlevideo.com
 rr2---sn-5uaeznez.googlevideo.com
+rr2---sn-5uaeznl6.googlevideo.com
 rr2---sn-5uaeznss.googlevideo.com
 rr2---sn-5uaeznze.googlevideo.com
 rr2---sn-5ualdnls.googlevideo.com
@@ -2306,6 +2307,7 @@ rr2.sn-5hnekne6.googlevideo.com
 rr2.sn-5hneknes.googlevideo.com
 rr2.sn-5uaezn67.googlevideo.com
 rr2.sn-5uaezn6l.googlevideo.com
+rr2.sn-5uaeznl6.googlevideo.com
 rr2.sn-5uaeznss.googlevideo.com
 rr2.sn-5uaeznze.googlevideo.com
 rr2.sn-5ualdnse.googlevideo.com

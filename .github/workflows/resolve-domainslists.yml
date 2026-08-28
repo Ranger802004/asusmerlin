@@ -20,13 +20,41 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
-      - name: Resolve all domain lists
+      - name: Resolve domain lists
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           mkdir -p domain_vpn_routing/iplists
-          python3 .github/scripts/resolve_domains.py \
-            --domain-dir domain_vpn_routing/domainlists \
-            --iplist-dir domain_vpn_routing/iplists
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            echo "Scheduled run; resolving all lists"
+            python3 .github/scripts/resolve_domains.py \
+              --domain-dir domain_vpn_routing/domainlists \
+              --iplist-dir domain_vpn_routing/iplists \
+              --mode all
+          elif [ "$EVENT_NAME" = "push" ]; then
+            mapfile -t CHANGED < <(
+              git diff --name-only HEAD~1 HEAD -- 'domain_vpn_routing/domainlists/*.txt' || true
+            )
+            if [ ${#CHANGED[@]} -eq 0 ]; then
+              echo "Push did not change any domain lists; skipping resolve"
+              exit 0
+            fi
+            echo "Push changed:"
+            printf '%s\n' "${CHANGED[@]}"
+            python3 .github/scripts/resolve_domains.py \
+              --domain-dir domain_vpn_routing/domainlists \
+              --iplist-dir domain_vpn_routing/iplists \
+              --files "${CHANGED[@]}"
+          else
+            echo "Manual run; resolving only domain lists whose content changed"
+            python3 .github/scripts/resolve_domains.py \
+              --domain-dir domain_vpn_routing/domainlists \
+              --iplist-dir domain_vpn_routing/iplists \
+              --mode changed
+          fi
 
       - name: Commit IP lists if changed
         run: |
