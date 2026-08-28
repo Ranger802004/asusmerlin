@@ -13,3 +13,15 @@ use23.playlist.ttvnw.net
 use4.playlist.ttvnw.net
 use6.playlist.ttvnw.net
 usher.ttvnw.net
+api.twitch.tv
+clips-media-assets2.twitch.tv
+cvp.twitch.tv
+id.twitch.tv
+irc-ws.chat.twitch.tv
+passport.twitch.tv
+pubsub-edge.twitch.tv
+spade.twitch.tv
+static.twitchcdn.net
+twitch.tv
+vod-secure.twitch.tv
+www.twitch.tv
