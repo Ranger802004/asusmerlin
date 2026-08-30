@@ -49,3 +49,14 @@ pop-iad-2.cf.dash.row.aiv-cdn.net
 vod-dash.main.amazon.pv-cdn.net
 abrkr43ghe3s.na.api.amazonvideo.com
 prod.us-east-1.sonar.prime-video.amazon.dev
+ab2xb7ra6e44.na.api.amazonvideo.com
+ab3cs84k69ya.na.api.amazonvideo.com
+abp3qqq33h8f.na.api.amazonvideo.com
+absewfkha8cb.na.api.amazonvideo.com
+abbye994khsg.na.api.amazonvideo.com
+ab89dfqwq3pf.na.api.amazonvideo.com
+ab77a657a6cg.na.api.amazonvideo.com
+andr.na.api.amazonvideo.com
+na-f.api.amazonvideo.com
+na.ab.api.amazonvideo.com
+cloudfront.na.api.amazonvideo.com
