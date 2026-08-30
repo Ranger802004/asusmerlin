@@ -9,15 +9,8 @@ from pathlib import Path
 SKIP_NAMES = {".gitkeep", "readme.txt", "README.txt"}
 
 
-def usable_ip(addr: ipaddress._BaseAddress) -> bool:
-    return not (
-        addr.is_private
-        or addr.is_loopback
-        or addr.is_link_local
-        or addr.is_multicast
-        or addr.is_unspecified
-        or addr.is_reserved
-    )
+def is_public(addr: ipaddress._BaseAddress) -> bool:
+    return bool(addr.is_global)
 
 
 def load_lines(path: Path) -> set[str]:
@@ -36,10 +29,10 @@ def load_ips(path: Path, version: int) -> set[str]:
     for item in load_lines(path):
         try:
             addr = ipaddress.ip_address(item)
-            if addr.version == version and usable_ip(addr):
-                ips.add(str(addr))
         except ValueError:
             continue
+        if addr.version == version and is_public(addr):
+            ips.add(str(addr))
     return ips
 
 
@@ -60,7 +53,7 @@ def resolve_one(name: str) -> tuple[set[str], set[str]]:
         try:
             for info in socket.getaddrinfo(name, None, family, socket.SOCK_STREAM):
                 addr = ipaddress.ip_address(info[4][0])
-                if usable_ip(addr):
+                if is_public(addr):
                     bucket.add(str(addr))
         except socket.gaierror:
             pass
@@ -110,6 +103,9 @@ def resolve_file(in_path: Path, iplist_dir: Path, workers: int) -> None:
     accum_v4 = iplist_dir / f"{stem}_ipv4_accumulative.txt"
     accum_v6 = iplist_dir / f"{stem}_ipv6_accumulative.txt"
 
+    prev_v4 = load_ips(accum_v4, 4)
+    prev_v6 = load_ips(accum_v6, 6)
+
     domains = sorted(
         {n.rstrip(".").lower() for n in load_lines(in_path) if is_domain(n)}
     )
@@ -120,8 +116,8 @@ def resolve_file(in_path: Path, iplist_dir: Path, workers: int) -> None:
             now_v4.update(new_v4)
             now_v6.update(new_v6)
 
-    all_v4 = load_ips(accum_v4, 4) | now_v4
-    all_v6 = load_ips(accum_v6, 6) | now_v6
+    all_v4 = prev_v4 | now_v4
+    all_v6 = prev_v6 | now_v6
 
     write_ips(recent_v4, now_v4)
     write_ips(recent_v6, now_v6)
@@ -132,7 +128,8 @@ def resolve_file(in_path: Path, iplist_dir: Path, workers: int) -> None:
     print(
         f"{in_path.name}: domains={len(domains)} "
         f"recent_v4={len(now_v4)} recent_v6={len(now_v6)} "
-        f"accum_v4={len(all_v4)} accum_v6={len(all_v6)}"
+        f"accum_v4={len(prev_v4)}->{len(all_v4)} "
+        f"accum_v6={len(prev_v6)}->{len(all_v6)}"
     )
 
 
