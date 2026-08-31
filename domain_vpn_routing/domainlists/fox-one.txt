@@ -26,3 +26,8 @@ static.fox.com
 static.foxsports.com
 www.fox.com
 www.foxsports.com
+foxsports01-i.akamaihd.net
+foxsports02-i.akamaihd.net
+foxsports03-i.akamaihd.net
+foxsports2.com
+foxsportsgo.com
