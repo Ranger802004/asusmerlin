@@ -46,17 +46,12 @@ jobs:
           except OSError:
               pass
 
-          print("resolvectl status (uplink):")
-          try:
-              print(subprocess.check_output(["resolvectl", "status"], text=True, timeout=10))
-          except Exception as exc:
-              print(exc)
-
           resolvers = [
               ("systemd/default", None),
-              ("8.8.8.8", "8.8.8.8"),
-              ("1.1.1.1", "1.1.1.1"),
-              ("9.9.9.9", "9.9.9.9"),
+              ("Google 8.8.8.8", "8.8.8.8"),
+              ("Cloudflare 1.1.1.1", "1.1.1.1"),
+              ("Quad9 9.9.9.9", "9.9.9.9"),
+              ("OpenDNS 208.67.222.222", "208.67.222.222"),
           ]
 
           def dig(name, rtype, server=None):
@@ -72,29 +67,27 @@ jobs:
           for name in names:
               print("=" * 72)
               print(f"Domain: {name}")
+              all_v4, all_v6 = set(), set()
               for label, server in resolvers:
                   print(f"--- {label} ---")
+                  a = dig(name, "A", server)
+                  aaaa = dig(name, "AAAA", server)
                   print("A:")
-                  print(dig(name, "A", server) or "(none)")
+                  print(a or "(none)")
                   print("AAAA:")
-                  print(dig(name, "AAAA", server) or "(none)")
-                  print("CNAME:")
-                  print(dig(name, "CNAME", server) or "(none)")
+                  print(aaaa or "(none)")
+                  for line in (a + "\n" + aaaa).splitlines():
+                      parts = line.split()
+                      if len(parts) >= 5 and parts[3] in {"A", "AAAA"}:
+                          try:
+                              addr = ipaddress.ip_address(parts[4])
+                          except ValueError:
+                              continue
+                          (all_v4 if addr.version == 4 else all_v6).add(str(addr))
 
-              v4, v6 = [], []
-              try:
-                  for info in socket.getaddrinfo(name, None, socket.AF_UNSPEC, socket.SOCK_STREAM):
-                      addr = ipaddress.ip_address(info[4][0])
-                      if addr.version == 4 and str(addr) not in v4:
-                          v4.append(str(addr))
-                      if addr.version == 6 and str(addr) not in v6:
-                          v6.append(str(addr))
-              except socket.gaierror as exc:
-                  print(f"getaddrinfo failed: {exc}")
-
-              print("--- getaddrinfo (what resolve_domains.py uses today) ---")
+              print("--- UNION ---")
               print("IPv4:")
-              print("\n".join(v4) if v4 else "(none)")
+              print("\n".join(sorted(all_v4, key=lambda x: ipaddress.ip_address(x))) or "(none)")
               print("IPv6:")
-              print("\n".join(v6) if v6 else "(none)")
+              print("\n".join(sorted(all_v6, key=lambda x: ipaddress.ip_address(x))) or "(none)")
           PY

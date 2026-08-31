@@ -3,8 +3,10 @@ import argparse
 import concurrent.futures
 import hashlib
 import ipaddress
+import random
 import re
 import socket
+import struct
 from pathlib import Path
 
 SKIP_NAMES = {".gitkeep", "readme.txt", "README.txt"}
@@ -12,6 +14,13 @@ CNAME_TRIPLE = re.compile(
     r"^((?:rr?)\d+)---(sn-[a-z0-9-]+\.googlevideo\.com)$",
     re.I,
 )
+DNS_SERVERS = (
+    "8.8.8.8",
+    "1.1.1.1",
+    "9.9.9.9",
+    "208.67.222.222",
+)
+DNS_TIMEOUT = 2.0
 
 socket.setdefaulttimeout(2)
 
@@ -70,19 +79,91 @@ def resolve_targets(domains: list[str]) -> list[str]:
     return out
 
 
+def _encode_name(name: str) -> bytes:
+    out = b""
+    for label in name.rstrip(".").split("."):
+        raw = label.encode("idna")
+        out += bytes([len(raw)]) + raw
+    return out + b"\x00"
+
+
+def _skip_name(buf: bytes, pos: int) -> int:
+    while pos < len(buf):
+        length = buf[pos]
+        if length == 0:
+            return pos + 1
+        if length & 0xC0 == 0xC0:
+            return pos + 2
+        pos += 1 + length
+    return pos
+
+
+def _parse_answers(buf: bytes, qtype: int) -> list[str]:
+    if len(buf) < 12:
+        return []
+    _, flags, qd, an, _, _ = struct.unpack("!HHHHHH", buf[:12])
+    if not (flags & 0x8000):
+        return []
+    pos = 12
+    for _ in range(qd):
+        pos = _skip_name(buf, pos) + 4
+    found = []
+    for _ in range(an):
+        pos = _skip_name(buf, pos)
+        if pos + 10 > len(buf):
+            break
+        rtype, _, _, rdlen = struct.unpack("!HHIH", buf[pos:pos + 10])
+        pos += 10
+        rdata = buf[pos:pos + rdlen]
+        pos += rdlen
+        if rtype != qtype:
+            continue
+        try:
+            if qtype == 1 and rdlen == 4:
+                found.append(str(ipaddress.IPv4Address(rdata)))
+            elif qtype == 28 and rdlen == 16:
+                found.append(str(ipaddress.IPv6Address(rdata)))
+        except ValueError:
+            continue
+    return found
+
+
+def dns_query(name: str, qtype: int, server: str) -> list[str]:
+    txn = random.randint(0, 65535)
+    header = struct.pack("!HHHHHH", txn, 0x0100, 1, 0, 0, 0)
+    question = _encode_name(name) + struct.pack("!HH", qtype, 1)
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.settimeout(DNS_TIMEOUT)
+        sock.sendto(header + question, (server, 53))
+        data, _ = sock.recvfrom(4096)
+    except OSError:
+        return []
+    finally:
+        sock.close()
+    return _parse_answers(data, qtype)
+
+
 def resolve_one(name: str) -> tuple[set[str], set[str]]:
     v4, v6 = set(), set()
+
     try:
         for info in socket.getaddrinfo(name, None, socket.AF_UNSPEC, socket.SOCK_STREAM):
             addr = ipaddress.ip_address(info[4][0])
-            if not is_public(addr):
-                continue
-            if addr.version == 4:
-                v4.add(str(addr))
-            else:
-                v6.add(str(addr))
+            if is_public(addr):
+                (v4 if addr.version == 4 else v6).add(str(addr))
     except (socket.gaierror, socket.timeout, OSError):
         pass
+
+    for server in DNS_SERVERS:
+        for ip in dns_query(name, 1, server) + dns_query(name, 28, server):
+            try:
+                addr = ipaddress.ip_address(ip)
+            except ValueError:
+                continue
+            if is_public(addr):
+                (v4 if addr.version == 4 else v6).add(str(addr))
+
     return v4, v6
 
 
@@ -164,7 +245,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--domain-dir", required=True)
     p.add_argument("--iplist-dir", required=True)
-    p.add_argument("--workers", type=int, default=150)
+    p.add_argument("--workers", type=int, default=80)
     p.add_argument("--mode", choices=("all", "changed"), default="all")
     p.add_argument("--files", nargs="*", default=None)
     args = p.parse_args()
