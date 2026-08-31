@@ -71,13 +71,17 @@ def main() -> None:
         seen.add(domain)
         added.append(domain)
 
-    if added:
-        path.write_text("\n".join(existing) + "\n", encoding="utf-8")
+    ordered = sorted(existing)
+    new_text = "\n".join(ordered) + ("\n" if ordered else "")
+    old_text = path.read_text(encoding="utf-8") if path.exists() else ""
+    if new_text != old_text:
+        path.write_text(new_text, encoding="utf-8")
 
     print(f"List: {path.name}")
     print(f"Submitted: {len(submitted)}")
     print(f"Added: {len(added)}")
     print(f"Already present: {len(skipped)}")
+    print(f"Sorted: {len(ordered)}")
     for name in added:
         print(f"  + {name}")
     for name in skipped:
