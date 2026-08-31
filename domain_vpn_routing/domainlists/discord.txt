@@ -33,3 +33,5 @@ discord.co
 i.dis.gd
 status.discordapp.com
 dl2.discordapp.net
+c-dfw14-097c5c6a.discord.media
+c-dfw11-11972f9a.discord.media
