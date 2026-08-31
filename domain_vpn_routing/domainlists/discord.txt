@@ -43,3 +43,15 @@ c-dfw09-84c1e64f.discord.media
 c-dfw13-bfed51fb.discord.media
 c-dfw11-7aef2adb.discord.media
 c-dfw05-a5341309.discord.media
+c-dfw16-fc3ddeee.discord.media
+c-dfw16-07e34fd8.discord.media
+us-south12039.discord.media
+c-dfw01-8edd6fc7.discord.media
+c-dfw01-9fcc6527.discord.media
+c-dfw07-06ab18bf.discord.media
+c-dfw13-e7135fcb.discord.media
+c-dfw01-feb842f7.discord.media
+c-dfw15-2e1e5559.discord.media
+us-south12013.discord.media
+c-dfw05-d0e4874e.discord.media
+c-dfw09-7a01d4e4.discord.media
