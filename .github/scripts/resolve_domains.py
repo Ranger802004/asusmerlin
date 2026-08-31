@@ -14,12 +14,31 @@ CNAME_TRIPLE = re.compile(
     r"^((?:rr?)\d+)---(sn-[a-z0-9-]+\.googlevideo\.com)$",
     re.I,
 )
+
+# Anycast (US PoP from GitHub Actions) plus unicast/regional resolvers.
 DNS_SERVERS = (
     "8.8.8.8",
     "1.1.1.1",
     "9.9.9.9",
     "208.67.222.222",
+    "84.200.69.80",       # DNS.WATCH DE
+    "84.200.70.40",       # DNS.WATCH DE
+    "51.75.96.82",        # le_dns FR
+    "151.115.80.165",     # le_dns PL
+    "89.233.43.71",       # UncensoredDNS DK unicast
+    "185.95.218.42",      # Digitale Gesellschaft CH
 )
+
+# Google honors ECS. Query these as if the client were in that prefix.
+ECS_SERVERS = ("8.8.8.8", "8.8.4.4")
+ECS_PREFIXES = (
+    "80.0.0.0/8",      # DE/EU
+    "2.16.0.0/13",     # FR/EU
+    "126.0.0.0/8",     # JP
+    "211.104.0.0/13",  # KR
+    "203.0.0.0/8",     # APAC
+)
+
 DNS_TIMEOUT = 2.0
 
 socket.setdefaulttimeout(2)
@@ -128,20 +147,50 @@ def _parse_answers(buf: bytes, qtype: int) -> list[str]:
     return found
 
 
-def dns_query(name: str, qtype: int, server: str) -> list[str]:
+def _ecs_option(prefix: str) -> bytes:
+    net = ipaddress.ip_network(prefix, strict=False)
+    if net.version != 4:
+        return b""
+    addr = net.network_address.packed
+    src_len = net.prefixlen
+    keep = (src_len + 7) // 8
+    addr = addr[:keep]
+    payload = struct.pack("!HBB", 1, src_len, 0) + addr  # family, source, scope
+    return struct.pack("!HH", 8, len(payload)) + payload
+
+
+def _opt_record(ecs_prefix: str | None) -> bytes:
+    rdata = _ecs_option(ecs_prefix) if ecs_prefix else b""
+    # NAME=root, TYPE=OPT(41), CLASS=udp payload 4096, TTL=0
+    return b"\x00" + struct.pack("!HHIH", 41, 4096, 0, len(rdata)) + rdata
+
+
+def dns_query(name: str, qtype: int, server: str, ecs_prefix: str | None = None) -> list[str]:
     txn = random.randint(0, 65535)
-    header = struct.pack("!HHHHHH", txn, 0x0100, 1, 0, 0, 0)
+    extra = _opt_record(ecs_prefix)
+    arcount = 1
+    header = struct.pack("!HHHHHH", txn, 0x0100, 1, 0, 0, arcount)
     question = _encode_name(name) + struct.pack("!HH", qtype, 1)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.settimeout(DNS_TIMEOUT)
-        sock.sendto(header + question, (server, 53))
+        sock.sendto(header + question + extra, (server, 53))
         data, _ = sock.recvfrom(4096)
     except OSError:
         return []
     finally:
         sock.close()
     return _parse_answers(data, qtype)
+
+
+def _collect(name: str, server: str, ecs_prefix: str | None, v4: set[str], v6: set[str]) -> None:
+    for ip in dns_query(name, 1, server, ecs_prefix) + dns_query(name, 28, server, ecs_prefix):
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            continue
+        if is_public(addr):
+            (v4 if addr.version == 4 else v6).add(str(addr))
 
 
 def resolve_one(name: str) -> tuple[set[str], set[str]]:
@@ -156,13 +205,11 @@ def resolve_one(name: str) -> tuple[set[str], set[str]]:
         pass
 
     for server in DNS_SERVERS:
-        for ip in dns_query(name, 1, server) + dns_query(name, 28, server):
-            try:
-                addr = ipaddress.ip_address(ip)
-            except ValueError:
-                continue
-            if is_public(addr):
-                (v4 if addr.version == 4 else v6).add(str(addr))
+        _collect(name, server, None, v4, v6)
+
+    for server in ECS_SERVERS:
+        for prefix in ECS_PREFIXES:
+            _collect(name, server, prefix, v4, v6)
 
     return v4, v6
 
@@ -245,7 +292,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--domain-dir", required=True)
     p.add_argument("--iplist-dir", required=True)
-    p.add_argument("--workers", type=int, default=80)
+    p.add_argument("--workers", type=int, default=50)
     p.add_argument("--mode", choices=("all", "changed"), default="all")
     p.add_argument("--files", nargs="*", default=None)
     args = p.parse_args()
