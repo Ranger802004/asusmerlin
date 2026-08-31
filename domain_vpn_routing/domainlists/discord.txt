@@ -11,9 +11,12 @@ discord.gift
 discord.gifts
 discord.media
 discord.new
+discord.store
 discordactivities.com
 discordapp.com
 discordapp.net
+discordmerch.com
+discordquests.com
 discordsays.com
 discordstatus.com
 dl.discordapp.net
