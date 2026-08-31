@@ -7,3 +7,4 @@ np-edge.itunes.apple.com
 play.itunes.apple.com
 play.tv.apple.com
 tv.apple.com
+hls-amt.itunes.apple.com
