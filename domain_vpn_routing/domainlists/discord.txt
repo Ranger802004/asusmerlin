@@ -36,3 +36,10 @@ dl2.discordapp.net
 c-dfw14-097c5c6a.discord.media
 c-dfw11-11972f9a.discord.media
 c-dfw16-0864f5a2.discord.media
+c-dfw16-09a50a5a.discord.media
+c-dfw07-a3b740d2.discord.media
+c-dfw14-6964edf3.discord.media
+c-dfw09-84c1e64f.discord.media
+c-dfw13-bfed51fb.discord.media
+c-dfw11-7aef2adb.discord.media
+c-dfw05-a5341309.discord.media
