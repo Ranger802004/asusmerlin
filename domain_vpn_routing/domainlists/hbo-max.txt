@@ -7,3 +7,10 @@ hbowatch.com
 play.max.com
 www.hbomax.com
 www.max.com
+hbo.com
+hbogo.com
+hbonow.com
+hbomax-images.warnermediacdn.com
+hbogoprod-vod.akamaized.net
+hboasialive.akamaized.net
+bcbolthboa-a.akamaihd.net
