@@ -126,3 +126,6 @@ vod-ftc-sa-west-2.media.dssott.com
 disneyplus.com
 www.disneyplus.com
 dssedge.com
+disney-portal.my.onetrust.com
+disneyplus.bn5x.net
+watchdisneyfe.com
