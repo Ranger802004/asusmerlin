@@ -27,3 +27,5 @@ vod-gcs-qwilt.cbsaavideo.com
 www.cbsstatic.com
 wwwimage-secure.cbsstatic.com
 wwwimage-us.pplusstatic.com
+cbsplaylistserver.aws.syncbak.com
+cbsservice.aws.syncbak.com
