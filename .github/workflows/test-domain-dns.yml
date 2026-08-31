@@ -46,19 +46,40 @@ jobs:
           except OSError:
               pass
 
+          print("resolvectl status (uplink):")
+          try:
+              print(subprocess.check_output(["resolvectl", "status"], text=True, timeout=10))
+          except Exception as exc:
+              print(exc)
+
+          resolvers = [
+              ("systemd/default", None),
+              ("8.8.8.8", "8.8.8.8"),
+              ("1.1.1.1", "1.1.1.1"),
+              ("9.9.9.9", "9.9.9.9"),
+          ]
+
+          def dig(name, rtype, server=None):
+              cmd = ["dig", "+time=3", "+tries=1", "+nocmd", "+noall", "+answer"]
+              if server:
+                  cmd.append(f"@{server}")
+              cmd.extend([name, rtype])
+              try:
+                  return subprocess.check_output(cmd, text=True, timeout=10).strip()
+              except Exception as exc:
+                  return f"failed: {exc}"
+
           for name in names:
               print("=" * 72)
               print(f"Domain: {name}")
-              try:
-                  out = subprocess.check_output(
-                      ["dig", "+nocmd", "+noall", "+answer", name, "A", name, "AAAA", name, "CNAME"],
-                      text=True,
-                      timeout=15,
-                  )
-                  print("dig:")
-                  print(out.strip() or "(no answer records)")
-              except Exception as exc:
-                  print(f"dig failed: {exc}")
+              for label, server in resolvers:
+                  print(f"--- {label} ---")
+                  print("A:")
+                  print(dig(name, "A", server) or "(none)")
+                  print("AAAA:")
+                  print(dig(name, "AAAA", server) or "(none)")
+                  print("CNAME:")
+                  print(dig(name, "CNAME", server) or "(none)")
 
               v4, v6 = [], []
               try:
@@ -71,8 +92,9 @@ jobs:
               except socket.gaierror as exc:
                   print(f"getaddrinfo failed: {exc}")
 
-              print("getaddrinfo IPv4:")
+              print("--- getaddrinfo (what resolve_domains.py uses today) ---")
+              print("IPv4:")
               print("\n".join(v4) if v4 else "(none)")
-              print("getaddrinfo IPv6:")
+              print("IPv6:")
               print("\n".join(v6) if v6 else "(none)")
           PY
