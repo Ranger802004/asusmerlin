@@ -3,10 +3,17 @@ import argparse
 import concurrent.futures
 import hashlib
 import ipaddress
+import re
 import socket
 from pathlib import Path
 
 SKIP_NAMES = {".gitkeep", "readme.txt", "README.txt"}
+CNAME_TRIPLE = re.compile(
+    r"^((?:rr?)\d+)---(sn-[a-z0-9-]+\.googlevideo\.com)$",
+    re.I,
+)
+
+socket.setdefaulttimeout(2)
 
 
 def is_public(addr: ipaddress._BaseAddress) -> bool:
@@ -47,16 +54,35 @@ def is_domain(name: str) -> bool:
         return True
 
 
+def resolve_targets(domains: list[str]) -> list[str]:
+    present = set(domains)
+    out = []
+    skipped = 0
+    for name in domains:
+        m = CNAME_TRIPLE.match(name)
+        if m:
+            target = f"{m.group(1).lower()}.{m.group(2).lower()}"
+            if target in present:
+                skipped += 1
+                continue
+        out.append(name)
+    print(f"  resolve {len(out)} of {len(domains)} (skipped {skipped} googlevideo CNAME aliases)")
+    return out
+
+
 def resolve_one(name: str) -> tuple[set[str], set[str]]:
     v4, v6 = set(), set()
-    for family, bucket in ((socket.AF_INET, v4), (socket.AF_INET6, v6)):
-        try:
-            for info in socket.getaddrinfo(name, None, family, socket.SOCK_STREAM):
-                addr = ipaddress.ip_address(info[4][0])
-                if is_public(addr):
-                    bucket.add(str(addr))
-        except socket.gaierror:
-            pass
+    try:
+        for info in socket.getaddrinfo(name, None, socket.AF_UNSPEC, socket.SOCK_STREAM):
+            addr = ipaddress.ip_address(info[4][0])
+            if not is_public(addr):
+                continue
+            if addr.version == 4:
+                v4.add(str(addr))
+            else:
+                v6.add(str(addr))
+    except (socket.gaierror, socket.timeout, OSError):
+        pass
     return v4, v6
 
 
@@ -109,10 +135,11 @@ def resolve_file(in_path: Path, iplist_dir: Path, workers: int) -> None:
     domains = sorted(
         {n.rstrip(".").lower() for n in load_lines(in_path) if is_domain(n)}
     )
+    targets = resolve_targets(domains)
 
     now_v4, now_v6 = set(), set()
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-        for new_v4, new_v6 in pool.map(resolve_one, domains):
+        for new_v4, new_v6 in pool.map(resolve_one, targets, chunksize=32):
             now_v4.update(new_v4)
             now_v6.update(new_v6)
 
@@ -126,7 +153,7 @@ def resolve_file(in_path: Path, iplist_dir: Path, workers: int) -> None:
     save_hash(in_path, iplist_dir)
 
     print(
-        f"{in_path.name}: domains={len(domains)} "
+        f"{in_path.name}: domains={len(domains)} queried={len(targets)} "
         f"recent_v4={len(now_v4)} recent_v6={len(now_v6)} "
         f"accum_v4={len(prev_v4)}->{len(all_v4)} "
         f"accum_v6={len(prev_v6)}->{len(all_v6)}"
@@ -137,7 +164,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--domain-dir", required=True)
     p.add_argument("--iplist-dir", required=True)
-    p.add_argument("--workers", type=int, default=50)
+    p.add_argument("--workers", type=int, default=150)
     p.add_argument("--mode", choices=("all", "changed"), default="all")
     p.add_argument("--files", nargs="*", default=None)
     args = p.parse_args()
