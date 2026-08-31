@@ -39,6 +39,8 @@ ECS_PREFIXES = (
     "203.0.0.0/8",     # APAC
 )
 
+# googlevideo.com is large; skip regional/ECS fan-out on those names.
+FAST_SERVERS = ("8.8.8.8", "1.1.1.1")
 DNS_TIMEOUT = 2.0
 
 socket.setdefaulttimeout(2)
@@ -155,21 +157,19 @@ def _ecs_option(prefix: str) -> bytes:
     src_len = net.prefixlen
     keep = (src_len + 7) // 8
     addr = addr[:keep]
-    payload = struct.pack("!HBB", 1, src_len, 0) + addr  # family, source, scope
+    payload = struct.pack("!HBB", 1, src_len, 0) + addr
     return struct.pack("!HH", 8, len(payload)) + payload
 
 
 def _opt_record(ecs_prefix: str | None) -> bytes:
     rdata = _ecs_option(ecs_prefix) if ecs_prefix else b""
-    # NAME=root, TYPE=OPT(41), CLASS=udp payload 4096, TTL=0
     return b"\x00" + struct.pack("!HHIH", 41, 4096, 0, len(rdata)) + rdata
 
 
 def dns_query(name: str, qtype: int, server: str, ecs_prefix: str | None = None) -> list[str]:
     txn = random.randint(0, 65535)
     extra = _opt_record(ecs_prefix)
-    arcount = 1
-    header = struct.pack("!HHHHHH", txn, 0x0100, 1, 0, 0, arcount)
+    header = struct.pack("!HHHHHH", txn, 0x0100, 1, 0, 0, 1)
     question = _encode_name(name) + struct.pack("!HH", qtype, 1)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -204,12 +204,15 @@ def resolve_one(name: str) -> tuple[set[str], set[str]]:
     except (socket.gaierror, socket.timeout, OSError):
         pass
 
-    for server in DNS_SERVERS:
+    extra = not name.endswith(".googlevideo.com")
+    servers = DNS_SERVERS if extra else FAST_SERVERS
+    for server in servers:
         _collect(name, server, None, v4, v6)
 
-    for server in ECS_SERVERS:
-        for prefix in ECS_PREFIXES:
-            _collect(name, server, prefix, v4, v6)
+    if extra:
+        for server in ECS_SERVERS:
+            for prefix in ECS_PREFIXES:
+                _collect(name, server, prefix, v4, v6)
 
     return v4, v6
 
@@ -292,7 +295,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--domain-dir", required=True)
     p.add_argument("--iplist-dir", required=True)
-    p.add_argument("--workers", type=int, default=50)
+    p.add_argument("--workers", type=int, default=150)
     p.add_argument("--mode", choices=("all", "changed"), default="all")
     p.add_argument("--files", nargs="*", default=None)
     args = p.parse_args()
