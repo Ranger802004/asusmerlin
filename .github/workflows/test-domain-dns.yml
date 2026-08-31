@@ -1,0 +1,78 @@
+name: Test domain DNS on GitHub
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Domain(s) to resolve. One per line, or comma/space separated."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  lookup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve on the GitHub runner
+        env:
+          TEST_DOMAINS: ${{ inputs.domain }}
+        run: |
+          set -euo pipefail
+          python3 - << 'PY'
+          import ipaddress
+          import os
+          import socket
+          import subprocess
+
+          raw = os.environ.get("TEST_DOMAINS", "")
+          text = raw.replace(",", "\n").replace(";", "\n")
+          names = []
+          seen = set()
+          for part in text.split():
+              name = part.strip().lower().rstrip(".")
+              if name and name not in seen:
+                  seen.add(name)
+                  names.append(name)
+
+          if not names:
+              raise SystemExit("No domains provided")
+
+          print("Runner resolver:")
+          try:
+              print(open("/etc/resolv.conf", encoding="utf-8").read())
+          except OSError:
+              pass
+
+          for name in names:
+              print("=" * 72)
+              print(f"Domain: {name}")
+              try:
+                  out = subprocess.check_output(
+                      ["dig", "+nocmd", "+noall", "+answer", name, "A", name, "AAAA", name, "CNAME"],
+                      text=True,
+                      timeout=15,
+                  )
+                  print("dig:")
+                  print(out.strip() or "(no answer records)")
+              except Exception as exc:
+                  print(f"dig failed: {exc}")
+
+              v4, v6 = [], []
+              try:
+                  for info in socket.getaddrinfo(name, None, socket.AF_UNSPEC, socket.SOCK_STREAM):
+                      addr = ipaddress.ip_address(info[4][0])
+                      if addr.version == 4 and str(addr) not in v4:
+                          v4.append(str(addr))
+                      if addr.version == 6 and str(addr) not in v6:
+                          v6.append(str(addr))
+              except socket.gaierror as exc:
+                  print(f"getaddrinfo failed: {exc}")
+
+              print("getaddrinfo IPv4:")
+              print("\n".join(v4) if v4 else "(none)")
+              print("getaddrinfo IPv6:")
+              print("\n".join(v6) if v6 else "(none)")
+          PY
