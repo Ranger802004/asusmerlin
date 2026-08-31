@@ -1,0 +1,57 @@
+name: Update one list
+
+on:
+  workflow_dispatch:
+    inputs:
+      list:
+        description: "Domain list name without .txt (youtube, tiktok, spotify)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve selected list
+        env:
+          UPDATE_LIST: ${{ inputs.list }}
+        run: |
+          set -euo pipefail
+          LIST="${UPDATE_LIST%.txt}"
+          LIST="${LIST##*/}"
+          FILE="domain_vpn_routing/domainlists/${LIST}.txt"
+          if [ ! -f "$FILE" ]; then
+            echo "List not found: $FILE"
+            exit 1
+          fi
+          mkdir -p domain_vpn_routing/iplists
+          python3 .github/scripts/resolve_domains.py \
+            --domain-dir domain_vpn_routing/domainlists \
+            --iplist-dir domain_vpn_routing/iplists \
+            --files "$FILE" \
+            --workers 150
+
+      - name: Collapse accumulative IPs to CIDRs
+        run: |
+          python3 .github/scripts/collapse_iplists.py \
+            --iplist-dir domain_vpn_routing/iplists
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p domain_vpn_routing/iplists
+          touch domain_vpn_routing/iplists/.gitkeep
+          git add -A domain_vpn_routing/iplists
+          if git diff --staged --quiet; then
+            echo "No IP list changes"
+          else
+            git commit -m "Update IP/CIDR lists for ${{ inputs.list }}"
+            git push
+          fi
