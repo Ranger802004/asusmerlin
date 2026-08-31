@@ -29,3 +29,7 @@ discord.gift
 discord.gifts
 discord.new
 discord.dev
+discord.co
+i.dis.gd
+status.discordapp.com
+dl2.discordapp.net
