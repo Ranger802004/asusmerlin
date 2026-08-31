@@ -31,3 +31,4 @@ foxsports02-i.akamaihd.net
 foxsports03-i.akamaihd.net
 foxsports2.com
 foxsportsgo.com
+fa-dvpvideo.map.fastly.net
