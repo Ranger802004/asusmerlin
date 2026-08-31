@@ -16,3 +16,5 @@ secure.espncdn.com
 watch.auth.api.espn.com
 watch.product.api.espn.com
 www.espn.com
+espn.net
+espn.co.uk
