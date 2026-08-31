@@ -1,0 +1,103 @@
+name: Create new domain list
+
+on:
+  workflow_dispatch:
+    inputs:
+      list:
+        description: "New list name without .txt (example: discord)"
+        required: true
+        type: string
+      domain:
+        description: "Optional starter domain(s). One per line, or comma/space separated."
+        required: false
+        type: string
+      resolve:
+        description: "Resolve IPs after creating the list"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Create list file
+        env:
+          NEW_LIST: ${{ inputs.list }}
+          NEW_DOMAINS: ${{ inputs.domain }}
+        run: |
+          set -euo pipefail
+          python3 - << 'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          raw = os.environ.get("NEW_LIST", "").strip()
+          stem = Path(raw).name
+          if stem.endswith(".txt"):
+              stem = stem[:-4]
+          stem = stem.strip().lower()
+          if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,62}", stem):
+              raise SystemExit(f"Invalid list name: {raw}")
+
+          path = Path("domain_vpn_routing/domainlists") / f"{stem}.txt"
+          path.parent.mkdir(parents=True, exist_ok=True)
+          if path.exists():
+              raise SystemExit(f"List already exists: {path}")
+
+          text = os.environ.get("NEW_DOMAINS", "") or ""
+          text = text.replace(",", "\n").replace(";", "\n")
+          seen = set()
+          domains = []
+          for part in text.split():
+              name = part.strip().lower().rstrip(".")
+              if not name or name in seen:
+                  continue
+              if "." not in name or " " in name or "/" in name:
+                  raise SystemExit(f"Invalid domain: {name}")
+              seen.add(name)
+              domains.append(name)
+
+          path.write_text(("\n".join(domains) + "\n") if domains else "", encoding="utf-8")
+          print(f"Created {path} with {len(domains)} domain(s)")
+          for name in domains:
+              print(f"  + {name}")
+          Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8").write(f"LIST_STEM={stem}\n")
+          PY
+
+      - name: Resolve new list
+        if: ${{ inputs.resolve }}
+        run: |
+          set -euo pipefail
+          mkdir -p domain_vpn_routing/iplists
+          python3 .github/scripts/resolve_domains.py \
+            --domain-dir domain_vpn_routing/domainlists \
+            --iplist-dir domain_vpn_routing/iplists \
+            --files "domain_vpn_routing/domainlists/${LIST_STEM}.txt" \
+            --workers 80
+
+      - name: Collapse accumulative IPs to CIDRs
+        if: ${{ inputs.resolve }}
+        run: |
+          python3 .github/scripts/collapse_iplists.py \
+            --iplist-dir domain_vpn_routing/iplists
+
+      - name: Commit new list
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p domain_vpn_routing/iplists
+          touch domain_vpn_routing/iplists/.gitkeep
+          git add -A domain_vpn_routing/domainlists domain_vpn_routing/iplists
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Create domain list ${{ inputs.list }}"
+            git push
+          fi
