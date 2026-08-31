@@ -18,7 +18,7 @@ permissions:
 jobs:
   add:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
 
@@ -42,7 +42,13 @@ jobs:
           python3 .github/scripts/resolve_domains.py \
             --domain-dir domain_vpn_routing/domainlists \
             --iplist-dir domain_vpn_routing/iplists \
-            --files "domain_vpn_routing/domainlists/${LIST}.txt"
+            --files "domain_vpn_routing/domainlists/${LIST}.txt" \
+            --workers 150
+
+      - name: Collapse accumulative IPs to CIDRs
+        run: |
+          python3 .github/scripts/collapse_iplists.py \
+            --iplist-dir domain_vpn_routing/iplists
 
       - name: Commit if changed
         run: |
