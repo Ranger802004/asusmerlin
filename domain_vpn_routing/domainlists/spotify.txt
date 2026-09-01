@@ -17,8 +17,11 @@ api.spotify.com
 apresolve.spotify.com
 artists.spotify.com
 audio-ak-spotify-com.akamaized.net
+audio-ak.spotify.com.edgesuite.net
+audio-ec.spotify.com
 audio-fa-tls13.spotifycdn.com
 audio-fa.scdn.co
+audio-fa.spotify.com
 audio4-ak-spotify-com.akamaized.net
 beta.developer.spotify.com
 canary-certificate-for-noop.spotify.com
@@ -70,7 +73,9 @@ images.spotify.com
 inapp-support.spotify.com
 investors.spotify.com
 labs.spotify.com
+lexicon-assets.spotifycdn.com
 lexikon-slack-app.spotify.com
+links.tospotify.com
 login5.spotify.com
 misc.scdn.co
 mixed-media-images.spotifycdn.com
@@ -100,8 +105,10 @@ sparta-api.spotify.com
 spclient.wg.spotify.com
 spoti.fi
 spotify-everywhere.com
+spotify.app.link
 spotify.com
 spotify.design
+spotify.link
 spotifycharts.com
 spotifycodes.com
 spotifyforbrands.com
@@ -115,6 +122,8 @@ testcdn.spotify.com
 testing-open.spotify.com
 thisis-images.scdn.co
 thisis-images.spotifycdn.com
+tls13.spotifycdn.map.fastly.net
+tospotify.com
 upgrade.spotify.com
 video-akpcw-cdn-spotify-com.akamaized.net
 wap.spotifycdn.com
@@ -129,8 +138,3 @@ www.noteable.spotify.com
 www.spotify.com
 yearinmusic.spotify.com
 yourfeedback.spotify.com
-audio-ak.spotify.com.edgesuite.net
-audio-ec.spotify.com
-audio-fa.spotify.com
-spotify.link
-spotify.app.link
