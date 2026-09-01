@@ -14,7 +14,7 @@ permissions:
 jobs:
   lookup:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Resolve on the GitHub runner
         env:
@@ -24,7 +24,6 @@ jobs:
           python3 - << 'PY'
           import ipaddress
           import os
-          import socket
           import subprocess
 
           raw = os.environ.get("TEST_DOMAINS", "")
@@ -52,12 +51,46 @@ jobs:
               ("Cloudflare 1.1.1.1", "1.1.1.1"),
               ("Quad9 9.9.9.9", "9.9.9.9"),
               ("OpenDNS 208.67.222.222", "208.67.222.222"),
+              ("DNS.WATCH DE 84.200.69.80", "84.200.69.80"),
+              ("DNS.WATCH DE 84.200.70.40", "84.200.70.40"),
+              ("le_dns FR 51.75.96.82", "51.75.96.82"),
+              ("le_dns PL 151.115.80.165", "151.115.80.165"),
+              ("UncensoredDNS DK 89.233.43.71", "89.233.43.71"),
+              ("Digitale Gesellschaft CH 185.95.218.42", "185.95.218.42"),
           ]
 
-          def dig(name, rtype, server=None):
+          ecs_prefixes = [
+              ("AT&T US", "12.0.0.0/8"),
+              ("AT&T US 32/8", "32.0.0.0/8"),
+              ("AT&T consumer US", "99.0.0.0/8"),
+              ("Comcast US", "73.0.0.0/8"),
+              ("Spectrum / Charter US", "24.0.0.0/8"),
+              ("Verizon US", "174.192.0.0/10"),
+              ("Lumen / Level 3 US", "8.0.0.0/8"),
+              ("DE/EU", "80.0.0.0/8"),
+              ("FR/EU", "2.16.0.0/13"),
+              ("JP", "126.0.0.0/8"),
+              ("KR", "211.104.0.0/13"),
+              ("APAC", "203.0.0.0/8"),
+          ]
+
+          def collect_ips(text, v4, v6):
+              for line in text.splitlines():
+                  parts = line.split()
+                  if len(parts) >= 5 and parts[3] in {"A", "AAAA"}:
+                      try:
+                          addr = ipaddress.ip_address(parts[4])
+                      except ValueError:
+                          continue
+                      if addr.is_global:
+                          (v4 if addr.version == 4 else v6).add(str(addr))
+
+          def dig(name, rtype, server=None, subnet=None):
               cmd = ["dig", "+time=3", "+tries=1", "+nocmd", "+noall", "+answer"]
               if server:
                   cmd.append(f"@{server}")
+              if subnet:
+                  cmd.append(f"+subnet={subnet}")
               cmd.extend([name, rtype])
               try:
                   return subprocess.check_output(cmd, text=True, timeout=10).strip()
@@ -68,6 +101,7 @@ jobs:
               print("=" * 72)
               print(f"Domain: {name}")
               all_v4, all_v6 = set(), set()
+
               for label, server in resolvers:
                   print(f"--- {label} ---")
                   a = dig(name, "A", server)
@@ -76,14 +110,17 @@ jobs:
                   print(a or "(none)")
                   print("AAAA:")
                   print(aaaa or "(none)")
-                  for line in (a + "\n" + aaaa).splitlines():
-                      parts = line.split()
-                      if len(parts) >= 5 and parts[3] in {"A", "AAAA"}:
-                          try:
-                              addr = ipaddress.ip_address(parts[4])
-                          except ValueError:
-                              continue
-                          (all_v4 if addr.version == 4 else all_v6).add(str(addr))
+                  collect_ips(a + "\n" + aaaa, all_v4, all_v6)
+
+              for label, prefix in ecs_prefixes:
+                  print(f"--- Google ECS {label} {prefix} ---")
+                  a = dig(name, "A", "8.8.8.8", prefix)
+                  aaaa = dig(name, "AAAA", "8.8.8.8", prefix)
+                  print("A:")
+                  print(a or "(none)")
+                  print("AAAA:")
+                  print(aaaa or "(none)")
+                  collect_ips(a + "\n" + aaaa, all_v4, all_v6)
 
               print("--- UNION ---")
               print("IPv4:")

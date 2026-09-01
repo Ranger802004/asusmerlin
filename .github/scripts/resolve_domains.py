@@ -32,6 +32,13 @@ DNS_SERVERS = (
 # Google honors ECS. Query these as if the client were in that prefix.
 ECS_SERVERS = ("8.8.8.8", "8.8.4.4")
 ECS_PREFIXES = (
+    "12.0.0.0/8",      # AT&T US
+    "32.0.0.0/8",      # AT&T US
+    "99.0.0.0/8",      # AT&T consumer US
+    "73.0.0.0/8",      # Comcast US
+    "24.0.0.0/8",      # Spectrum / Charter US
+    "174.192.0.0/10",  # Verizon US
+    "8.0.0.0/8",       # Lumen / Level 3 US
     "80.0.0.0/8",      # DE/EU
     "2.16.0.0/13",     # FR/EU
     "126.0.0.0/8",     # JP
