@@ -1,0 +1,52 @@
+name: Remove IP or CIDR from list
+
+on:
+  workflow_dispatch:
+    inputs:
+      list:
+        description: "List name without .txt (youtube, fox-one, spotify)"
+        required: true
+        type: string
+      entry:
+        description: "IP and/or CIDR values. One per line, or comma/space separated."
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  remove:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Remove IP/CIDR values
+        env:
+          REMOVE_LIST: ${{ inputs.list }}
+          REMOVE_ENTRY: ${{ inputs.entry }}
+        run: |
+          python3 .github/scripts/remove_ip.py \
+            --iplist-dir domain_vpn_routing/iplists \
+            --list "$REMOVE_LIST" \
+            --entry "$REMOVE_ENTRY"
+
+      - name: Collapse accumulative IPs to CIDRs
+        run: |
+          python3 .github/scripts/collapse_iplists.py \
+            --iplist-dir domain_vpn_routing/iplists
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p domain_vpn_routing/iplists
+          touch domain_vpn_routing/iplists/.gitkeep
+          git add -A domain_vpn_routing/iplists
+          if git diff --staged --quiet; then
+            echo "No IP list changes"
+          else
+            git commit -m "Remove IP/CIDR value(s) from ${{ inputs.list }}"
+            git push
+          fi
