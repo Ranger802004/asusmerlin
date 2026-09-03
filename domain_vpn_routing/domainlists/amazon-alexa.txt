@@ -1,0 +1,3 @@
+api.amazonalexa.com
+dss-na.amazon.com
+arcus-uswest.amazon.com
