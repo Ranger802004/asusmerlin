@@ -20,12 +20,18 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: domain-vpn-lists
+  cancel-in-progress: false
+
 jobs:
   create:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Create list file
         env:
@@ -90,6 +96,7 @@ jobs:
 
       - name: Commit new list
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p domain_vpn_routing/iplists
@@ -97,7 +104,8 @@ jobs:
           git add -A domain_vpn_routing/domainlists domain_vpn_routing/iplists
           if git diff --staged --quiet; then
             echo "No changes"
-          else
-            git commit -m "Create domain list ${{ inputs.list }}"
-            git push
+            exit 0
           fi
+          git commit -m "Create domain list ${{ inputs.list }}"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push

@@ -15,12 +15,18 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: domain-vpn-lists
+  cancel-in-progress: false
+
 jobs:
   remove:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Remove domain(s) and strip unused IPs
         env:
@@ -40,6 +46,7 @@ jobs:
 
       - name: Commit if changed
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p domain_vpn_routing/iplists
@@ -47,7 +54,8 @@ jobs:
           git add -A domain_vpn_routing/domainlists domain_vpn_routing/iplists
           if git diff --staged --quiet; then
             echo "No list changes"
-          else
-            git commit -m "Remove domain(s) from ${{ inputs.list }} and update IP lists"
-            git push
+            exit 0
           fi
+          git commit -m "Remove domain(s) from ${{ inputs.list }} and update IP lists"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push

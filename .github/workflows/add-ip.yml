@@ -15,12 +15,18 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: domain-vpn-lists
+  cancel-in-progress: false
+
 jobs:
   add:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Add IP/CIDR values
         env:
@@ -40,6 +46,7 @@ jobs:
 
       - name: Commit if changed
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p domain_vpn_routing/iplists
@@ -47,7 +54,8 @@ jobs:
           git add -A domain_vpn_routing/iplists
           if git diff --staged --quiet; then
             echo "No IP list changes"
-          else
-            git commit -m "Add IP/CIDR value(s) to ${{ inputs.list }}"
-            git push
+            exit 0
           fi
+          git commit -m "Add IP/CIDR value(s) to ${{ inputs.list }}"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push

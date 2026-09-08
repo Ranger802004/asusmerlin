@@ -15,6 +15,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: domain-vpn-lists
+  cancel-in-progress: false
+
 jobs:
   resolve:
     runs-on: ubuntu-latest
@@ -22,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Resolve domain lists
         env:
@@ -67,6 +71,7 @@ jobs:
 
       - name: Commit IP lists if changed
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p domain_vpn_routing/iplists
@@ -74,7 +79,8 @@ jobs:
           git add -A domain_vpn_routing/iplists
           if git diff --staged --quiet; then
             echo "No IP list changes"
-          else
-            git commit -m "Update resolved IPv4/IPv6 lists from domainlists"
-            git push
+            exit 0
           fi
+          git commit -m "Update resolved IPv4/IPv6 lists from domainlists"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push
