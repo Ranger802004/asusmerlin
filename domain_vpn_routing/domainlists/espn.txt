@@ -10,7 +10,9 @@ cdn.espn.com
 espn.api.edge.bamgrid.com
 espn.co.uk
 espn.com
+espn.connections.edge.bamgrid.com
 espn.net
+espn.playback.edge.bamgrid.com
 espncdn.com
 linear-espn-akc-na-central-1.media.dssott.com
 linear-espn-akc-na-central-1.media.dssott.com.akamaized.net
@@ -32,6 +34,7 @@ secure.espncdn.com
 stitcher.espn.com
 stitcher.geo.hosted.espn.com
 svcs-plus-espn.playback.edge.bamgrid.com
+sw88.espn.com
 watch.auth.api.espn.com
 watch.product.api.espn.com
 watchespn.com
