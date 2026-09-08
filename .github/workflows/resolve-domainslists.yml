@@ -76,11 +76,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p domain_vpn_routing/iplists
           touch domain_vpn_routing/iplists/.gitkeep
-          git add -A domain_vpn_routing/iplists
+          git add -A
           if git diff --staged --quiet; then
             echo "No IP list changes"
             exit 0
           fi
           git commit -m "Update resolved IPv4/IPv6 lists from domainlists"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push

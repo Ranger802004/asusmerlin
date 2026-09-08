@@ -51,11 +51,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p domain_vpn_routing/iplists
           touch domain_vpn_routing/iplists/.gitkeep
-          git add -A domain_vpn_routing/domainlists domain_vpn_routing/iplists
+          git add -A
           if git diff --staged --quiet; then
             echo "No list changes"
             exit 0
           fi
           git commit -m "Remove domain(s) from ${{ inputs.list }} and update IP lists"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push
