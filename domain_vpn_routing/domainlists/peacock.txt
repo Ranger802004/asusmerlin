@@ -1,6 +1,7 @@
 atom.peacocktv.com
 bff-ext.clients.peacocktv.com
 cdn.peacocktv.com
+cfrt.stream.peacocktv.com
 clients.api.prod.nbcuott.com
 config.clients.peacocktv.com
 connect.ctn.ovpe.prod.nbcuott.com
@@ -130,6 +131,7 @@ meg.disco.peacocktv.com
 mytv.clients.peacocktv.com
 nbcstreaming.hb-api.omtrdc.net
 nbcstreaming.sc.omtrdc.net
+nbcstreamingservice.data.adobedc.net
 nbcu-peacock-prod.map.fastly.net
 oauth.id.peacocktv.com
 ovp.peacocktv.com
