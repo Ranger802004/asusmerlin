@@ -5,6 +5,7 @@ ab3cs84k69ya.na.api.amazonvideo.com
 ab64preq9sbn.api.amazonvideo.com
 ab64preq9sbn.eu.api.amazonvideo.com
 ab64preq9sbn.fe.api.amazonvideo.com
+ab64preq9sbn.na-f.api.amazonvideo.com
 ab64preq9sbn.na.api.amazonvideo.com
 ab64preq9sbn.zaz.api.amazonvideo.com
 ab77a657a6cg.na.api.amazonvideo.com
