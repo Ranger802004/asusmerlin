@@ -1,6 +1,7 @@
 api.fox.com
 api2.fox.com
 cf.edge.foxdtc.digitalvideoplatform.com
+cf.mt.edge.foxdtc.digitalvideoplatform.com
 config.foxplus.com
 digitalvideoplatform.com
 ent.fox.com
