@@ -10,7 +10,14 @@ ab64preq9sbn.zaz.api.amazonvideo.com
 ab77a657a6cg.na.api.amazonvideo.com
 ab89dfqwq3pf.na.api.amazonvideo.com
 abbye994khsg.na.api.amazonvideo.com
+abc2ediaaaaaaaamaqva4urapk2nm.ta.vod-dash.main.amazon.pv-cdn.net
+abc2ediaaaaaaaamdl4q4h4uxlrsq.ta.vod-dash.main.amazon.pv-cdn.net
+abc2ediaaaaaaaamkhav777yhcoqn.vod-dash.main.amazon.pv-cdn.net
+abc2ediaaaaaaaamkweyphwdc56uk.ta.vod-dash.main.amazon.pv-cdn.net
+abc2ediaaaaaaaaml2iclred2erfk.ta.vod-dash.main.amazon.pv-cdn.net
+abc2ediaaaaaaaamm736qfhpk5uct.ta.mid-pop-vod-dash.main.amazon.pv-cdn.net
 abc2ediaaaaaaaammd7tege4ckhop.ta.vod-dash.main.amazon.pv-cdn.net
+abc2ediaaaaaaaamocg6ebgoatvqt.vod-dash.main.amazon.pv-cdn.net
 abp3qqq33h8f.na.api.amazonvideo.com
 abrkr43ghe3s.api.amazonvideo.com
 abrkr43ghe3s.eu.api.amazonvideo.com
