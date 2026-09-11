@@ -1,0 +1,10 @@
+devices-private.owletdata.com
+accounts.owletdata.com
+owletdata.com
+sleep-data.owletdata.com
+vital-data.owletdata.com
+proxy-owlnova.aylanetworks.com
+proxy-ingress-owlnova.aylanetworks.com
+ads-owlue1.aylanetworks.com
+ss3-sleep-1a2039d9-device.aylanetworks.com
+logs.owletdata.com
