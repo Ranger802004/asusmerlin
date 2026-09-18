@@ -34,6 +34,8 @@ abzzpdkgwfbs.zaz.api.amazonvideo.com
 aiv-cdn.net
 aiv-delivery.net
 amazonvideo.com
+amzpvxrayassetv2-a.akamaihd.net
+amzpvxrayassetv2-a.akamaihd.net.edgesuite.net
 andr.na.api.amazonvideo.com
 api.amazonvideo.com
 api.eu-west-1.aiv-delivery.net
@@ -87,5 +89,8 @@ trailer.row.aiv-cdn.net
 trickplay.aux.pv-cdn.net
 vod-dash-pv.amazon.fastly-edge.com
 vod-dash.main.amazon.pv-cdn.net
+wetfs.global-1.telemetry.insights.video.a2z.com
+wetfs.global-2.telemetry.insights.video.a2z.com
+wetfs.global-3.telemetry.insights.video.a2z.com
 www.amazonvideo.com
 www.primevideo.com
