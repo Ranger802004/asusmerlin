@@ -1,0 +1,12 @@
+epdg.epc.att-idns.net
+epdg.epc.att.net
+epdg.epc.geo.mnc260.mcc310.pub.3gppnetwork.org
+epdg.epc.mnc240.mcc310.pub.3gppnetwork.org
+epdg.epc.mnc260.mcc310.pub.3gppnetwork.org
+fi.google.com
+sentitlement2.mobile.att.net
+sg.vzwfemto.com
+ss.epdg.epc.mnc260.mcc310.pub.3gppnetwork.org
+voice.google.com
+vvm.mobile.att.net
+wo.vzwwo.com
