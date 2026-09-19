@@ -3433,6 +3433,15 @@ if [[ -n "${STATE}" ]] &>/dev/null && [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${
         || logger -p 2 -st "${ALIAS}" "Create IP Mark Rules - Failed to delete IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${PRIORITY}"
       fi
     fi
+    # Ensure lower-priority Safety Net Unreachable IPv6 Rule
+    SAFETYPRIORITY=$((${PRIORITY}+1))
+    if [[ -z "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${SAFETYPRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip -6 rule list | awk '($1 == "'${SAFETYPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
+      logger -p 5 -t "${ALIAS}" "Create IP Mark Rules - Checking for Safety Net Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}"
+      ${ipbinpath}ip -6 rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${SAFETYPRIORITY} \
+      && logger -p 4 -st "${ALIAS}" "Create IP Mark Rules - Added Safety Net Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}" \
+      || logger -p 2 -st "${ALIAS}" "Create IP Mark Rules - ***Error*** Failed to add Safety Net Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}"
+    fi
+    unset SAFETYPRIORITY
   fi
 	
   # Create FWMark IPv4 Rule
@@ -3462,6 +3471,15 @@ if [[ -n "${STATE}" ]] &>/dev/null && [[ -n "${FWMARK}" ]] &>/dev/null && [[ "${
       || logger -p 2 -st "${ALIAS}" "Create IP Mark Rules - ***Error*** Failed to delete IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${PRIORITY}"
     fi
   fi
+  # Ensure lower-priority Safety Net Unreachable IPv4 Rule
+  SAFETYPRIORITY=$((${PRIORITY}+1))
+  if [[ -z "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${SAFETYPRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${SAFETYPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Create IP Mark Rules - Checking for Safety Net Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}"
+    ${ipbinpath}ip rule add unreachable from all fwmark ${FWMARK}/${MASK} priority ${SAFETYPRIORITY} \
+    && logger -p 4 -st "${ALIAS}" "Create IP Mark Rules - Added Safety Net Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}" \
+    || logger -p 2 -st "${ALIAS}" "Create IP Mark Rules - ***Error*** Failed to add Safety Net Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}"
+  fi
+  unset SAFETYPRIORITY
 else
   logger -p 2 -st "${ALIAS}" "Create IP Mark Rules - ***Error*** FWMark not set for ${INTERFACE}"
 fi
@@ -3488,6 +3506,15 @@ if [[ "${ENABLE}" == "0" ]] &>/dev/null || { [[ -n "${FWMARK}" ]] &>/dev/null &&
     && logger -p 4 -st "${ALIAS}" "Delete IP Mark Rules - Deleted Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${PRIORITY}" \
     || logger -p 2 -st "${ALIAS}" "Delete IP Mark Rules - ***Error*** Failed to delete Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${PRIORITY}"
   fi
+  # Delete Safety Net Unreachable IPv6 Rule
+  SAFETYPRIORITY=$((${PRIORITY}+1))
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip -6 rule list from all fwmark ${FWMARK}/${MASK} priority ${SAFETYPRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip -6 rule list | awk '($1 == "'${SAFETYPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Delete IP Mark Rules - Checking for Safety Net Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}"
+    ${ipbinpath}ip -6 rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${SAFETYPRIORITY} \
+    && logger -p 4 -st "${ALIAS}" "Delete IP Mark Rules - Deleted Safety Net Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}" \
+    || logger -p 2 -st "${ALIAS}" "Delete IP Mark Rules - ***Error*** Failed to delete Safety Net Unreachable IPv6 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}"
+  fi
+  unset SAFETYPRIORITY
   # Delete IPv4
   # Delete FWMark IPv4 Rule
   if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} table ${ROUTETABLE} priority ${PRIORITY} 2>/dev/null || ${ipbinpath}ip rule list | awk '($1 == "'${PRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "'${ROUTETABLE}'") {print}')" ]] &>/dev/null;then
@@ -3503,6 +3530,15 @@ if [[ "${ENABLE}" == "0" ]] &>/dev/null || { [[ -n "${FWMARK}" ]] &>/dev/null &&
     && logger -p 4 -st "${ALIAS}" "Delete IP Mark Rules - Deleted Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${PRIORITY}" \
     || logger -p 2 -st "${ALIAS}" "Delete IP Mark Rules - ***Error*** Failed to delete Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${PRIORITY}"
   fi
+  # Delete Safety Net Unreachable IPv4 Rule
+  SAFETYPRIORITY=$((${PRIORITY}+1))
+  if [[ -n "${FWMARK}" ]] &>/dev/null && [[ -n "$(${ipbinpath}ip rule list from all fwmark ${FWMARK}/${MASK} priority ${SAFETYPRIORITY} 2>/dev/null | grep -w "unreachable" || ${ipbinpath}ip rule list | awk '($1 == "'${SAFETYPRIORITY}':" && $2 == "from" && $3 == "all" && $4 == "fwmark" && $5 == "'${FWMARK}'/'${MASK}'" && $NF == "unreachable") {print}')" ]] &>/dev/null;then
+    logger -p 5 -t "${ALIAS}" "Delete IP Mark Rules - Checking for Safety Net Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}"
+    ${ipbinpath}ip rule del unreachable from all fwmark ${FWMARK}/${MASK} priority ${SAFETYPRIORITY} \
+    && logger -p 4 -st "${ALIAS}" "Delete IP Mark Rules - Deleted Safety Net Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}" \
+    || logger -p 2 -st "${ALIAS}" "Delete IP Mark Rules - ***Error*** Failed to delete Safety Net Unreachable IPv4 Rule for Interface: ${INTERFACE} using FWMark: ${FWMARK}/${MASK} Priority: ${SAFETYPRIORITY}"
+  fi
+  unset SAFETYPRIORITY
 fi
 return
 }
