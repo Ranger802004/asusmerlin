@@ -7550,6 +7550,9 @@ for RESTOREPOLICY in ${RESTOREPOLICIES};do
   fi
   [[ -n "${saveipv4ipset+x}" ]] &>/dev/null && unset saveipv4ipset
 
+  # Create IP FWMark Rules
+  createipmarkrules
+
   # Reset Restore flags
   unset restoreipv6mode restoreipv4mode
 
