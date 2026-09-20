@@ -11,6 +11,7 @@ espn.api.edge.bamgrid.com
 espn.co.uk
 espn.com
 espn.connections.edge.bamgrid.com
+espn.hb-api.omtrdc.net
 espn.net
 espn.playback.edge.bamgrid.com
 espncdn.com
@@ -24,6 +25,11 @@ linear-espn-akc-na-west-1.media.dssott.com
 linear-espn-akc-na-west-1.media.dssott.com.akamaized.net
 linear-espn-akc-na-west-2.media.dssott.com
 linear-espn-akc-na-west-2.media.dssott.com.akamaized.net
+live-espn-akc-na-central-1.media.dssott.com
+live-espn-akc-na-east-1.media.dssott.com
+live-espn-akc-na-east-2.media.dssott.com
+live-espn-akc-na-west-1.media.dssott.com
+live-espn-akc-na-west-2.media.dssott.com
 media.espn.com
 playback.svcs.plus.espn.com
 plus.espn.com
