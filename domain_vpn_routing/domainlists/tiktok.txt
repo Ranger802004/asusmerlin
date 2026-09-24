@@ -662,6 +662,7 @@ lf16-tiktok-web.ttwstatic.com
 lf16-tiktok-web.ttwstatic.com.edgesuite.net
 lf16-tos-files.tiktokcdn.com
 lf19-adsformat-sign.tiktokcdn.com
+lf19-cdn-tos.tiktokcdn-us.com
 lf19-effect.tiktokcdn-us.com
 lf19-effectcdn-sg.tiktokcdn.com
 lf19-effectcdn-us.tiktokcdn-us.com
@@ -675,6 +676,7 @@ lf19-pitaya-pkg-sign.tiktokcdn-us.com
 lf19-pitayacdn.tiktokcdn.com
 lf19-pkgcdn.pitaya-clientai.com
 lf21-effectcdn-va.tiktokcdn.com
+lf21-gecko-source.tiktokcdn.com
 lf3-short.ibytedapm.com
 lf3-short.ibytedapm.com.w.cdngslb.com
 lf3-starry.byteimg.com
@@ -1051,6 +1053,7 @@ p16-pu-sign-no.tiktokcdn-eu.com
 p16-pu-sign-no.tiktokcdn-eu.com.edgesuite.net
 p16-pu-sign-useast8.tiktokcdn-us.com
 p16-pu-sign-useast8.tiktokcdn-us.com.edgesuite.net
+p16-rc-captcha-useast2a.ibyteimg.com
 p16-rc-captcha-useast2a.ibyteimg.com.edgesuite.net
 p16-rc-captcha-useast2a.tiktokcdn-eu.com
 p16-rc-captcha-useast8.tiktokcdn-us.com
@@ -1129,10 +1132,13 @@ p16-zr-sign-useast5.tiktokcdn-us.com
 p16-zr-sign-useast8.tiktokcdn-us.com
 p16.tiktokcdn-us.com
 p16.tiktokcdn.com
+p16.tiktokcdn.com.edgekey.net
 p16.tiktokcdn.com.edgesuite.net
 p16a.tiktokcdn.com
+p16a.tiktokcdn.com.edgekey.net
 p16a.tiktokcdn.com.edgesuite.net
 p16b.tiktokcdn.com
+p16b.tiktokcdn.com.edgekey.net
 p16b.tiktokcdn.com.edgesuite.net
 p19-asset-image-sign-sg.ibyteimg.com
 p19-asset-image-sign-va.ibyteimg.com
@@ -1161,11 +1167,13 @@ p19-pu-sign-useast8.tiktokcdn-us.com
 p19-push-sign-useast2a.tiktokcdn-eu.com
 p19-rc-captcha-useast8.tiktokcdn-us.com
 p19-sign.tiktokcdn-us.com
+p19-tk.tiktokcdn.com
 p19-ttbulletin-sign-sg.ibyteimg.com
 p19-vimo-sg.ibyteimg.com
 p19-webcast.muscdn.com
 p19-webcast.tiktokcdn.com
 p19.tiktokcdn-us.com
+p21-tk.tiktokcdn.com
 p21-webcast.muscdn.com
 p21-webcast.tiktokcdn.com
 p26-magicarena-online-sign.byteimg.com
@@ -1732,10 +1740,13 @@ s16-ies.tiktok.com.edgesuite.net
 s16.byteoversea.com
 s16.byteoversea.com.edgekey.net
 s16.tiktokcdn.com
+s16.tiktokcdn.com.edgekey.net
 s16.tiktokcdn.com.edgesuite.net
 s16a.tiktokcdn.com
+s16a.tiktokcdn.com.edgekey.net
 s16a.tiktokcdn.com.edgesuite.net
 s16b.tiktokcdn.com
+s16b.tiktokcdn.com.edgekey.net
 s16b.tiktokcdn.com.edgesuite.net
 s20.tiktokcdn.com
 s20.tiktokcdn.com.edgesuite.net
@@ -1839,6 +1850,7 @@ sf16-tk-m.tiktokcdn.com.edgesuite.net
 sf16-tk.tiktokcdn.com
 sf16-tk.tiktokcdn.com.edgesuite.net
 sf16-ttcdn-row.capcutcdn-us.com
+sf16-unpkg-va.ibytedtos.com
 sf16-unpkg-va.ibytedtos.com.edgesuite.net
 sf16-va.tiktokcdn-us.com
 sf16-va.tiktokcdn.com
@@ -1856,19 +1868,25 @@ sf16-website-login.neutral.ttwstatic.com.edgesuite.net
 sf16-website.neutral.ttwstatic.com
 sf16.tiktokcdn-us.com
 sf16.tiktokcdn-us.com.edgesuite.net
+sf16.tiktokcdn.com
+sf16.tiktokcdn.com.edgesuite.net
 sf16m-geckocdn.tiktokcdn.com
 sf19-geckocdn.tiktokcdn.com
 sf19-music-sign.tiktokcdn.com
 sf19-music.tiktokcdn-eu.com
+sf19-sg.tiktokcdn.com
 sf19-teko.tiktokcdn.com
 sf19-va.tiktokcdn.com
 sf19-webcast.muscdn.com
 sf19-webcast.tiktokcdn.com
 sf19.tiktokcdn-us.com
+sf19.tiktokcdn.com
+sf21-sg.tiktokcdn.com
 sf21-tk.tiktokcdn.com
 sf21-va.tiktokcdn.com
 sf21-webcast.muscdn.com
 sf21-webcast.tiktokcdn.com
+sf21-webcast.tiktokcdn.com.edgesuite.net
 sf3-sg.tiktokcdn.com
 sf53-sg.tiktokcdn.com
 sf53-va.tiktokcdn.com
@@ -1997,6 +2015,7 @@ tos-alisg16-alisgtlb-up.tiktokcdn.com.edgesuite.net
 tos-alisg16-up.byteoversea.com
 tos-alisg16-up.byteoversea.com.edgesuite.net
 tos-alisg16-up.muscdn.com
+tos-alisg16-up.muscdn.com.edgesuite.net
 tos-alisg16-up.tiktokcdn.com
 tos-alisg16-up.tiktokcdn.com.edgesuite.net
 tos-alisg19-alisgtlb-up.tiktokcdn.com
@@ -2016,6 +2035,7 @@ tos-awsbh16-up-va.tiktokcdn.com
 tos-awsbh16-up-va.tiktokcdn.com.edgesuite.net
 tos-awsbh16-up.byteoversea.net
 tos-awsbh16-up.muscdn.com
+tos-awsbh16-up.muscdn.com.edgesuite.net
 tos-awsbh16-up.tiktokcdn.com
 tos-awsbh16-up.tiktokcdn.com.edgesuite.net
 tos-awsbh19-up.byteoversea.net
@@ -2023,9 +2043,13 @@ tos-awsbh19-up.tiktokcdn.com
 tos-awsbh21-up-va.tiktokcdn.com
 tos-awsbh21-up.byteoversea.net
 tos-awsbr.byteoversea.net
+tos-awsbr16-up-va.tiktokcdn.com
+tos-awsbr16-up-va.tiktokcdn.com.edgesuite.net
 tos-awsbr16-up.byteoversea.com
 tos-awsbr16-up.byteoversea.com.edgekey.net
+tos-awsbr16-up.byteoversea.com.edgesuite.net
 tos-awsbr16-up.muscdn.com
+tos-awsbr16-up.muscdn.com.edgesuite.net
 tos-awsbr16-up.tiktokcdn.com
 tos-awsbr16-up.tiktokcdn.com.edgesuite.net
 tos-awsbr19-up.byteoversea.com
@@ -2034,6 +2058,9 @@ tos-awsbr19-up.tiktokcdn.com
 tos-awsbr21-up.byteoversea.com
 tos-awsde.byteoversea.com
 tos-awsde16-up.byteoversea.com
+tos-awsde16-up.byteoversea.com.edgesuite.net
+tos-awsde16-up.muscdn.com
+tos-awsde16-up.muscdn.com.edgesuite.net
 tos-awsde16-up.tiktokcdn.com
 tos-awsde16-up.tiktokcdn.com.edgesuite.net
 tos-awsde19-up.byteoversea.com
@@ -2043,6 +2070,7 @@ tos-awsfr.byteoversea.com
 tos-awsfr.muscdn.com
 tos-awsfr.tiktokcdn.com
 tos-awsfr16-up-va.tiktokcdn.com
+tos-awsfr16-up-va.tiktokcdn.com.edgesuite.net
 tos-awsfr16-up.byteoversea.com
 tos-awsfr16-up.byteoversea.com.edgesuite.net
 tos-awsfr16-up.muscdn.com
@@ -2062,6 +2090,7 @@ tos-awsin16-up-va.tiktokcdn.com.edgesuite.net
 tos-awsin16-up.byteoversea.com
 tos-awsin16-up.byteoversea.com.edgesuite.net
 tos-awsin16-up.muscdn.com
+tos-awsin16-up.muscdn.com.edgesuite.net
 tos-awsin16-up.tiktokcdn.com
 tos-awsin16-up.tiktokcdn.com.edgesuite.net
 tos-awsin19-up.byteoversea.com
@@ -2076,7 +2105,9 @@ tos-awsjp16-up-va.tiktokcdn.com
 tos-awsjp16-up-va.tiktokcdn.com.edgesuite.net
 tos-awsjp16-up.byteoversea.com
 tos-awsjp16-up.byteoversea.com.edgekey.net
+tos-awsjp16-up.byteoversea.com.edgesuite.net
 tos-awsjp16-up.muscdn.com
+tos-awsjp16-up.muscdn.com.edgesuite.net
 tos-awsjp16-up.tiktokcdn.com
 tos-awsjp16-up.tiktokcdn.com.edgesuite.net
 tos-awsjp19-up-va.tiktokcdn.com
@@ -2089,6 +2120,7 @@ tos-awssg.muscdn.com
 tos-awssg.tiktokcdn.com
 tos-awssg16-up-va.tiktokcdn.com
 tos-awssg16-up-va.tiktokcdn.com.edgesuite.net
+tos-awssg16-up.byteoversea.com.edgesuite.net
 tos-awssg16-up.byteoversea.net
 tos-awssg16-up.muscdn.com
 tos-awssg16-up.muscdn.com.edgesuite.net
@@ -2120,6 +2152,7 @@ tos-gcpnl.muscdn.com
 tos-maliva16-up-va.tiktokcdn.com
 tos-maliva16-up-va.tiktokcdn.com.edgesuite.net
 tos-maliva16-up.muscdn.com
+tos-maliva16-up.muscdn.com.edgekey.net
 tos-maliva16-up.muscdn.com.edgesuite.net
 tos-maliva16-up.musical.ly
 tos-maliva16-up.musical.ly.edgesuite.net
@@ -2142,6 +2175,7 @@ tos-useast2a.muscdn.com
 tos-useast2a.tiktokcdn.com
 tos-useast2a16-up.byteoversea.net
 tos-useast2a16-up.muscdn.com
+tos-useast2a16-up.muscdn.com.edgesuite.net
 tos-useast2a16-up.tiktokcdn.com
 tos-useast2a16-up.tiktokcdn.com.edgesuite.net
 tos-useast2a19-up.byteoversea.net
@@ -2227,6 +2261,7 @@ v16.byteoversea.com.edgesuite.net
 v16.muscdn.com
 v16.musical.ly
 v16.tiktokcdn.com
+v16.tiktokcdn.com.edgekey.net
 v16.tiktokcdn.com.edgesuite.net
 v16.tiktokv.com
 v16.tiktokv.com.edgesuite.net
