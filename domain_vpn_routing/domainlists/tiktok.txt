@@ -967,6 +967,7 @@ oec22-normal-useast2a.tiktokv.com
 oec3-normal-useast1a.tiktokv.com
 oec31-normal-useast1a.tiktokv.com
 oec9-normal-useast1a.tiktokv.com
+oecim16-normal-useast5.tiktokv.us
 open-api-useast1a.tiktok.com
 open-api.musical.ly
 open-api.tiktok.com
@@ -1068,6 +1069,7 @@ p16-sign-va.tiktokcdn.com.akamaized.net
 p16-sign.tiktokcdn-us.com
 p16-sign.tiktokcdn-us.com.edgesuite.net
 p16-ssop-sg.tiktokcdn.com
+p16-tako-img-gen-useast5.tiktokcdn-us.com
 p16-tako-internal-common-sg.tiktokcdn.com
 p16-tako-sg.ibyteimg.com
 p16-tcscdn.byteoversea.com.edgekey.net
