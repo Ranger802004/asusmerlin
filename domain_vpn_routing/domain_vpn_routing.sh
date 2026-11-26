@@ -4545,6 +4545,17 @@ for QUERYASN in ${QUERYASNS};do
     && { { tempfile="/tmp/${QUERYASN}_query.tmp" ; tempfiles="${tempfiles} ${tempfile}" ;} && break ;} \
     || { logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Attempt ${i} failed to query ASN: ${QUERYASN}" && i="$((${i}+1))" && continue ;}
   done
+  
+  # Keep the existing IPSET if all query attempts failed or the result is less than half of the current IPv4 subnets.
+  # Without this, an empty or truncated result removes every missing subnet from the IPSET and the ASN traffic falls back to WAN.
+  asncurrentcount="$(ipset list ${IPSETPREFIX}-${QUERYASN}-v4 2>/dev/null | grep -cE '^[0-9]+\.' || true)"
+  asnquerycount="$(grep -cE '^[0-9]+\.' /tmp/${QUERYASN}_query.tmp 2>/dev/null || true)"
+  if [[ "${i}" -gt "10" ]] &>/dev/null || [[ "${asnquerycount:-0}" -lt "$((${asncurrentcount:-0}/2))" ]] &>/dev/null;then
+    logger -p 2 -st "${ALIAS}" "Query ASN - ***Error*** Keeping existing IPSET for ASN: ${QUERYASN} (current: ${asncurrentcount:-0} IPv4 subnets, received: ${asnquerycount:-0})"
+    { ipset list ${IPSETPREFIX}-${QUERYASN}-v4 2>/dev/null ; ipset list ${IPSETPREFIX}-${QUERYASN}-v6 2>/dev/null ;} | grep -E '^[0-9a-fA-F:.]+(/[0-9]+)?$' > /tmp/${QUERYASN}_query.tmp || true
+    tempfile="/tmp/${QUERYASN}_query.tmp" ; tempfiles="${tempfiles} ${tempfile}"
+  fi
+  unset asncurrentcount asnquerycount
   unset i
   
   # Check if IPv6 is enabled and query for IPv6 subnets
